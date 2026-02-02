@@ -1,0 +1,96 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from core import settings
+
+class Case(models.Model):
+    """
+    این مدل نماینده پرونده‌های پلیس است.
+    مسئولیت: نگهداری وضعیت حقوقی، سطح جرم و گردش کار پرونده.
+    """
+
+    class CrimeLevel(models.TextChoices):
+        CRITICAL = 'CR', "Critical"
+        LEVEL_3 = 'L3', "Level 3"
+        LEVEL_2 = 'L2', "Level 2"
+        LEVEL_1 = 'L1', "Level 1"
+
+    # طبق بخش ۱۰۴ و ۲۰۴ (روندهای تشکیل پرونده) [cite: 153, 154, 198]
+    class Status(models.TextChoices):
+        OPEN_INVESTIGATION = 'open'
+        SOLVED = 'solved'
+        CLOSED = 'closed'
+
+    # شناسه پرونده (غیر از ID دیتابیس، برای نمایش به کاربر)
+    case_number = models.CharField(max_length=20, unique=True, editable=False)
+    
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    
+    crime_level = models.CharField(
+        max_length=2, 
+        choices=CrimeLevel.choices, 
+        default=CrimeLevel.LEVEL_3
+    )
+    status = models.CharField(
+        max_length=20, 
+        choices=Status.choices, 
+        default=Status.OPEN_INVESTIGATION
+    )
+
+    # --- 3. Relations (ارتباطات) ---
+    
+    # چه کسی پرونده را ثبت کرده؟ (می‌تواند شهروند یا پلیس باشد) [cite: 151, 163]
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='reported_cases'
+    )
+
+    # کارآگاه مسئول پرونده (پس از تشکیل پرونده مشخص می‌شود) [cite: 198]
+    lead_detective = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_cases'
+    )
+
+    complainants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through='CaseComplainant',
+        related_name='filed_cases'
+    )
+
+    witnesses = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='witnessed_cases',
+        blank=True
+    )
+
+    # --- 4. Metadata ---
+    crime_date = models.DateTimeField() # [cite: 165]
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.case_number} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        # تولید خودکار شماره پرونده اگر وجود نداشته باشد
+        if not self.case_number:
+            import uuid
+            self.case_number = str(uuid.uuid4())[:8].upper()
+        super().save(*args, **kwargs)
+
+class Complaint(models.Model):
+    title = models.CharField()
+    description = models.TextField()
+
+    complainants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through='CaseComplainant',
+        related_name='filed_cases'
+    )
+
+class CrimeScene(models.Model):
+    pass
