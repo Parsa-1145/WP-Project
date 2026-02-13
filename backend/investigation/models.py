@@ -5,6 +5,9 @@ from django.db import models
 class DetectiveBoard(models.Model):
     pass
 
+class BoardItem(models.Model):
+    pass
+
 class InvestigationResults(models.Model):
     pass
 

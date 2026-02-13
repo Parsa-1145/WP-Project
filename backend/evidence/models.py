@@ -60,27 +60,41 @@ class WitnessEvidence(Evidence):
 
 class BioEvidence(Evidence):
     """
-    Implements Section 2.3.4: Biological evidence (blood, fingerprints, etc.)
-    Requires Coroner verification.
+    Implements Section 2.3.4: Biological evidence.
+    Refactored to support multiple images via BioEvidenceImage model.
     """
+    # Removed the single 'image' field from here.
+    
+    coroner_result = models.TextField(
+        null=True, 
+        blank=True
+    )
+    
+    is_verified = models.BooleanField(
+        default=False
+    )
+
+class BioEvidenceImage(models.Model):
+    """
+    Allows multiple images for a single BioEvidence record.
+    """
+    evidence = models.ForeignKey(
+        BioEvidence,
+        on_delete=models.CASCADE,
+        related_name='images'
+    )
+
     image = models.ImageField(
         upload_to='evidence/bio/'
     )
 
-    # Result from the Coroner or Database check
-    coroner_result = models.TextField(
-        null=True, 
+    caption = models.CharField(
+        max_length=255, 
         blank=True, 
-        verbose_name=_("Coroner/Database Result")
-    )
-    
-    # Verification status
-    is_verified = models.BooleanField(
-        default=False, 
-        verbose_name=_("Verified by Coroner")
+        null=True
     )
 
-
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class VehicleEvidence(Evidence):
     """
@@ -120,3 +134,26 @@ class VehicleEvidence(Evidence):
         
         if not self.plate_number and not self.serial_number:
             raise ValidationError(
+                _("Vehicle must have at least a license plate or a serial number.")
+            )
+        
+class IdentityEvidence(Evidence):
+    """
+    Implements Section 4.3.4: Identity documents found.
+    Uses Key-Value storage for flexibility.
+    """
+    full_name = models.CharField(
+        max_length=255, 
+        verbose_name=_("Owner Full Name")
+    )
+
+    # JSONField allows storing arbitrary key-value pairs 
+    # (e.g., {"father_name": "John", "national_id": "123"})
+    details = models.JSONField(
+        default=dict, 
+        verbose_name=_("Details (Key-Value)")
+    )
+
+    class Meta:
+        verbose_name = _("Identity Evidence")
+        verbose_name_plural = _("Identity Evidences")

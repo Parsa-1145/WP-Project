@@ -17,7 +17,7 @@ To get started with the project, follow these steps:
     ```bash
     cp .env.example .env
     ```
-    Update the `.env` file with your configuration.
+    Update the `.env` file with your configuration. Fill the *DJANGO_SECRET_KEY* and *DATABASE_URL*
 4. **Run Migrations**
     ```bash
     pdm run python manage.py migrate

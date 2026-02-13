@@ -24,7 +24,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "your-default-secret-key")
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "6NBnaJGqISvX858adqYqQvcn4xSzTGDLhMhyGsnconK")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -164,19 +165,15 @@ if not CORS_ALLOW_ALL_ORIGINS:
 
 # --- Django REST Framework Settings ---
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
-    ],
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-    ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "100/day", "user": "1000/day"},
 }
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Web Programming Project API",
@@ -193,7 +190,7 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
-
+SECRET_KEY
 
 # --- Security Settings ---
 # Use X-Forwarded-Proto header to determine if the request is secure
