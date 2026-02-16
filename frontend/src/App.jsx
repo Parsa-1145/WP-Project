@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate } from 'react
 import { useReducer } from 'react'
 import './App.css'
 import Health from './Health'
-import { Login } from './Auth'
+import { Login, Signup } from './Auth'
 import session from './session'
 
 const Home = () => {
@@ -15,6 +15,7 @@ const Home = () => {
 		{ session.username && <p>Logged in as {session.username}</p> }
 		<button onClick={() => navigate('/health')}>Health Check</button>
 		{ !session.username && <button onClick={() => navigate('/login')}>Login</button> }
+		{ !session.username && <button onClick={() => navigate('/signup')}>Signup</button> }
 		{  session.username && <button onClick={() => session.set_creds()}>Logout</button> }
 	</>)
 }
@@ -26,6 +27,7 @@ const App = () => {
 			<Route path="/home" exact element={<Home/>}/>
 			<Route path="/health" exact element={<Health/>}/>
 			<Route path="/login" exact element={<Login/>}/>
+			<Route path="/signup" exact element={<Signup/>}/>
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);
