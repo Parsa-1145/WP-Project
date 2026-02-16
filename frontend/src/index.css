@@ -66,3 +66,29 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.item {
+	/* background-color: #ACB6BF; */
+	/* border-color: #7f7f7f; */
+	text-align: center;
+	border: solid;
+	padding: 1em;
+	margin: 0.5em;
+	background-color: #242424;
+}
+
+.subitem {
+	text-align: center;
+	border: solid;
+	border-width: 2px;
+	padding: 0.5em;
+	margin: 0.5em;
+	background-color: #242424;
+}
+
+.icon-button {
+	font-size: 16pt;
+	padding: 0;
+	width: 32px;
+	height: 32px;
+}

@@ -3,6 +3,7 @@ import { useReducer } from 'react'
 import './App.css'
 import Health from './Health'
 import { Login, Signup } from './Auth'
+import DetectiveBoard from './DetectiveBoard'
 import session from './session'
 
 const Home = () => {
@@ -28,6 +29,7 @@ const App = () => {
 			<Route path="/health" exact element={<Health/>}/>
 			<Route path="/login" exact element={<Login/>}/>
 			<Route path="/signup" exact element={<Signup/>}/>
+			<Route path="/board" exact element={<DetectiveBoard/>}/>
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);
