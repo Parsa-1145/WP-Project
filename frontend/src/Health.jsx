@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
-import axios from 'axios'
+import session from './session.jsx'
 
 function App() {
 	const [str, setStr] = useState('Checking...')
 	const [done, setDone] = useState(false);
 
 	useEffect(() => {
-			axios.get(import.meta.env.VITE_BACKEND_URL + '/health/')
+			session.get('/health/')
 				.then(res => setStr('OK: ' + res.status))
 				.catch(err => {
 					if (err.response)
