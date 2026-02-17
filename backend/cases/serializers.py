@@ -41,19 +41,21 @@ class CrimeSceneSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "witnesses"]
     
     def validate_witnesses(self, witnesses):
-        seen = set()
-        duplicates = set()
-
+        counts = {}
         for w in witnesses:
             nid = w.get("national_id")
-            if nid in seen:
-                duplicates.add(nid)
-            seen.add(nid)
+            counts[nid] = counts.get(nid, 0) + 1
 
-        if duplicates:
-            raise serializers.ValidationError(
-                f"Duplicate witness national_id(s): {', '.join(sorted(duplicates))}."
-            )
+        indexed_errors = {}
+        for i, w in enumerate(witnesses):
+            nid = w.get("national_id")
+            if counts.get(nid, 0) > 1:
+                indexed_errors[str(i)] = {
+                    "national_id": [f"Duplicate national_id: {nid}."]
+                }
+
+        if indexed_errors:
+            raise serializers.ValidationError(indexed_errors)
 
         return witnesses
 

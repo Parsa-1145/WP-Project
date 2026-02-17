@@ -1,6 +1,8 @@
 from django.urls import path
-from .views import SubmissionCreateView
+from . import views
 
 urlpatterns = [
-    path("", SubmissionCreateView.as_view(), name="submission-create")
+    path("mine/", views.SubmissionListCreateView.as_view(), name="submission-mine-list-create"),
+    path("inbox/", views.SubmissionListCreateView.as_view(), name="submission-inbox-list"),
+    path("submission-types/", views.SubmissionTypeListView.as_view(), name="submission-type-list"),
 ]

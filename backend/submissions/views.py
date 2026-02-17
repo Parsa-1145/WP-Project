@@ -1,25 +1,126 @@
-from django.shortcuts import render
 from rest_framework import generics
 from django.http import HttpRequest
 from .serializers.classes import SubmissionSerializer
 from rest_framework.permissions import IsAuthenticated
-from submissiontypes.registry import SUBMISSION_TYPES
+from submissions.submissiontypes.registry import SUBMISSION_TYPES
+from drf_spectacular.utils import extend_schema_view ,extend_schema, OpenApiExample, inline_serializer, PolymorphicProxySerializer
+from rest_framework import serializers
+from . import models
+from django.db.models import Q, F
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-class SubmissionCreateView(generics.CreateAPIView):
+def submission_create_request_schema():
+    variants = []
+
+    for type_key, st_cls in SUBMISSION_TYPES.items():
+        payload_ser = st_cls.serializer_class
+
+        variants.append(
+            inline_serializer(
+                name=f"{st_cls.__name__}CreateRequest",
+                fields={
+                    "submission_type": serializers.ChoiceField(choices=[(type_key, st_cls.display_name)]),
+                    "payload": payload_ser(),
+                },
+            )
+        )
+
+    return PolymorphicProxySerializer(
+        component_name="SubmissionCreateRequest",
+        serializers=variants,
+        resource_type_field_name="submission_type",
+    )
+
+
+def submission_create_examples():
+    examples = []
+    for type_key, st_cls in SUBMISSION_TYPES.items():
+        payload_ser = st_cls.serializer_class()
+
+        payload_example = {}
+        for name, field in payload_ser.fields.items():
+            if field.read_only:
+                continue
+
+            if getattr(field, "many", False) or getattr(field, "child", None):
+                payload_example[name] = ["string"]
+            elif field.__class__.__name__ in ("IntegerField",):
+                payload_example[name] = 0
+            elif field.__class__.__name__ in ("BooleanField",):
+                payload_example[name] = False
+            else:
+                payload_example[name] = "string"
+
+        examples.append(
+            OpenApiExample(
+                name=st_cls.display_name,
+                value={
+                    "submission_type": type_key,
+                    "payload": payload_example,
+                },
+                request_only=True,
+            )
+        )
+    return examples
+@extend_schema_view(
+    post=extend_schema(
+        request=submission_create_request_schema(),
+        responses=SubmissionSerializer,
+        examples=submission_create_examples()
+    )
+)
+class SubmissionListCreateView(generics.ListCreateAPIView):
     permission_classes=[IsAuthenticated]
     serializer_class=SubmissionSerializer
-
-class SubmissionsGetView(generics.RetrieveAPIView):
-    permission_classes=[IsAuthenticated]
-    serializer_class=SubmissionSerializer
+    queryset = models.Submission.objects.all()
 
     def get_queryset(self):
+        user = self.request.user
+        user_perms = list(user.get_all_permissions())
 
-        return super().get_queryset()
+        return (
+            models.Submission.objects.filter(
+                Q(stages__order=F("current_stage")) &
+                (
+                    Q(stages__target_user=user) |
+                    Q(stages__target_permission__in=user_perms)
+                )
+            )
+            .distinct()
+        )
     
-class SubmissionTypeRetrieveView(generics.RetrieveAPIView):
-    def get(self, request: HttpRequest, *args, **kwargs):
+class SubmissionInboxListView(generics.ListAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=SubmissionSerializer
+    queryset = models.Submission.objects.all()
+
+    def get_queryset(self):
+        user = self.request.user
+        user_perms = list(user.get_all_permissions())
+
+        return (
+            models.Submission.objects.filter(
+                Q(stages__order=F("current_stage")) &
+                (
+                    Q(stages__target_user=user) |
+                    Q(stages__target_permission__in=user_perms)
+                )
+            )
+            .distinct()
+        )
+
+class SubmissionTypeListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
         out = []
         for cls in SUBMISSION_TYPES.values():
             if cls.does_user_have_access(request.user):
                 out.append({"key": cls.type_key, "name": cls.display_name})
+        return Response(out)
+
+
+class SubmittionEventCreateView(generics.CreateAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=SubmissionSerializer

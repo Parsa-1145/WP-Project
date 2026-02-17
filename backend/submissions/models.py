@@ -25,6 +25,8 @@ class Submission(models.Model):
     object_id = models.PositiveIntegerField()
 
     status = models.CharField(max_length=16, choices=SubmissionStatus.choices, default=SubmissionStatus.PENDING)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
     current_stage=models.IntegerField(default=0)
 
 class SubmissionEvent(models.Model):
@@ -51,7 +53,7 @@ class SubmissionStage(models.Model):
         blank=True,
         null=True,
     )
-    target_permissions = models.CharField(max_length=64)
+    target_permission = models.CharField(max_length=128, blank=True, null=True)
 
     order = models.PositiveIntegerField(null=False, blank=False)
 
@@ -64,7 +66,7 @@ class SubmissionStage(models.Model):
             ),
             # each stage should have target_user or target_group
             models.CheckConstraint(
-                condition=models.Q(target_user__isnull=False) | models.Q(target_permissions__isnull=False),
+                condition=models.Q(target_user__isnull=False) | models.Q(target_permission__isnull=False),
                 name="stage_has_target_user_or_group",
             ),
         ]

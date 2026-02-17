@@ -2,6 +2,7 @@ from typing import ClassVar, Type
 from rest_framework.serializers import Serializer
 from django.db.models import Model
 from typing import ClassVar, Generic, Type, TypeVar
+from accounts.models import User
 TModel = TypeVar("TModel", bound=Model)
 
 
@@ -10,13 +11,15 @@ class BaseSubmissionType(Generic[TModel]):
     display_name: ClassVar[str]
     serializer_class: ClassVar[type[Serializer]]
     model_class: ClassVar[type[TModel]]
-    create_groups: ClassVar[list[str]] = []
+    create_permissions: ClassVar[list[str]] = []
 
     @classmethod
-    def does_user_have_access(cls, user) -> bool:
-        if not cls.create_groups:
+    def does_user_have_access(cls, user: User) -> bool:
+        if not user or not user.is_authenticated:
+            return False
+        if not cls.create_permissions:
             return True
-        return user.groups.filter(name__in=cls.create_groups).exists()
+        return user.has_perms(cls.create_permissions)
 
     @classmethod
     def validate_submission_data(cls, data, context):

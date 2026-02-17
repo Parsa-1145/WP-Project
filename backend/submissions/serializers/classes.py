@@ -13,7 +13,7 @@ class SubmissionEventSerializer(serializers.ModelSerializer):
 class SubmissionStageSerializer(serializers.ModelSerializer):
     class Meta:
         model=SubmissionStage
-        fields=["id", "target_permissions", "target_user", "order"]
+        fields=["id", "target_permission", "target_user", "order"]
 
 class SubmissionSerializer(serializers.ModelSerializer):
     payload = serializers.JSONField(write_only=True)
@@ -27,9 +27,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
         model=models.Submission
         fields = [
             "id", "submission_type", "payload", "status",
-            "target", "events", "current_stage", "stages",
+            "target", "events", "current_stage", "stages", "created_by", "created_at"
         ]
-        read_only_fields = ["status", "target", "events", "current_stage", "stages"]
+        read_only_fields = ["status", "target", "events", "current_stage", "stages", "created_by", "created_at"]
 
     def get_target(self, obj):
         submission_type_cls = get_submission_type(obj.submission_type)
@@ -48,6 +48,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
         except KeyError:
             raise ValidationError({"submission_type": "Unsupported submission type: " + type_key})
         
+        user = self.context["request"].user
+        if not submission_type_cls.does_user_have_access(user):
+            raise PermissionDenied()
         
         try:
             payload_serializer = submission_type_cls.validate_submission_data(
@@ -57,9 +60,6 @@ class SubmissionSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError({"payload": [e.detail]}) # TODO dog shit
 
-        user = self.context["request"].user
-        if not submission_type_cls.does_user_have_access(user):
-            raise PermissionDenied()
     
 
         attrs["_submission_type_cls"] = submission_type_cls
@@ -78,6 +78,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             submission_type=submission_type,
             object_id=target_obj.pk,
             status=SubmissionStatus.PENDING,
+            created_by=validated_data["creator"]
         )
 
         submission_type_cls.on_submit(submission=submission)

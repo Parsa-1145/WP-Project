@@ -80,6 +80,11 @@ class Case(models.Model):
         super().save(*args, **kwargs)
 
 class Complaint(models.Model):
+    class Meta:
+        permissions = [
+            ("first_complaint_review", "Can approve complaint submissions"),
+            ("final_complaint_review", "Can approve the approval of a complaint submissions"),
+        ]
     title = models.CharField()
     description = models.TextField()
     creator = models.ForeignKey(
@@ -92,7 +97,13 @@ class Complaint(models.Model):
         settings.AUTH_USER_MODEL
     )
 
+
 class CrimeScene(models.Model):
+    class Meta:
+        permissions = [
+            ("create_crime_scene", "Can create crime scene")
+        ]
+
     title = models.CharField(max_length=10)
     description = models.TextField(max_length=10)
     witnesses = models.JSONField(
