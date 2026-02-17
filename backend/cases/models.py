@@ -58,13 +58,10 @@ class Case(models.Model):
 
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        through='CaseComplainant',
         related_name='filed_cases'
     )
 
-    witnesses = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='witnessed_cases',
+    witnesses = models.JSONField(
         blank=True
     )
 
@@ -85,12 +82,19 @@ class Case(models.Model):
 class Complaint(models.Model):
     title = models.CharField()
     description = models.TextField()
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_complaints",
+    )
 
     complainants = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        through='CaseComplainant',
-        related_name='filed_cases'
+        settings.AUTH_USER_MODEL
     )
 
 class CrimeScene(models.Model):
-    pass
+    title = models.CharField(max_length=10)
+    description = models.TextField(max_length=10)
+    witnesses = models.JSONField(
+        blank=True
+    )

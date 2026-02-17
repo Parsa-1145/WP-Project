@@ -1,0 +1,42 @@
+from typing import ClassVar, Type
+from rest_framework.serializers import Serializer
+from django.db.models import Model
+from typing import ClassVar, Generic, Type, TypeVar
+TModel = TypeVar("TModel", bound=Model)
+
+
+class BaseSubmissionType(Generic[TModel]):
+    type_key: ClassVar[str]
+    display_name: ClassVar[str]
+    serializer_class: ClassVar[type[Serializer]]
+    model_class: ClassVar[type[TModel]]
+    create_groups: ClassVar[list[str]] = []
+
+    @classmethod
+    def does_user_have_access(cls, user) -> bool:
+        if not cls.create_groups:
+            return True
+        return user.groups.filter(name__in=cls.create_groups).exists()
+
+    @classmethod
+    def validate_submission_data(cls, data, context):
+        serializer = cls.serializer_class(
+            data=data,
+            context=context
+        )
+        serializer.is_valid(raise_exception=True)
+        return serializer
+
+    @classmethod
+    def handle_submission_event(cls, submission_obj, event: str, **kwargs):
+        pass
+
+    @classmethod
+    def get_object(cls, object_id) -> TModel:
+        return cls.model_class._default_manager.get(pk=object_id)
+    
+    @classmethod
+    def on_submit(cls, submission) -> None:
+        pass
+
+

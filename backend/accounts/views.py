@@ -3,7 +3,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from rest_framework import generics
 from rest_framework import permissions
 from drf_spectacular.utils import extend_schema, OpenApiExample
-from . import serializers as customSerializers 
+from .serializers import classes as customSerializers 
 
 @extend_schema(
     summary="Sign up",
