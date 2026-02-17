@@ -12,7 +12,7 @@ class Evidence(models.Model):
         'cases.Case', 
         on_delete=models.CASCADE, 
         related_name='evidences',
-        verbose_name=_("Relevant Case")
+        verbose_name=("Relevant Case")
     )
     
     # The person who recorded this evidence
@@ -20,12 +20,12 @@ class Evidence(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='recorded_evidences',
-        verbose_name=_("Recorder")
+        verbose_name=("Recorder")
     )
 
-    title = models.CharField(max_length=255, verbose_name=_("Title"))
-    description = models.TextField(verbose_name=_("Description"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Date Recorded"))
+    title = models.CharField(max_length=255, verbose_name=("Title"))
+    description = models.TextField(verbose_name=("Description"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=("Date Recorded"))
 
     def __str__(self):
         return f"{self.title} ({self.get_evidence_type_display()})"
@@ -56,6 +56,7 @@ class WitnessEvidence(Evidence):
         null=True, 
         blank=True
     )
+
 
 
 class BioEvidence(Evidence):
@@ -100,27 +101,27 @@ class VehicleEvidence(Evidence):
     """
     Implements Section 3.3.4: Vehicle details found at the scene.
     """
-    model_name = models.CharField(max_length=100, verbose_name=_("Car Model"))
-    color = models.CharField(max_length=50, verbose_name=_("Color"))
+    model_name = models.CharField(max_length=100, verbose_name=("Car Model"))
+    color = models.CharField(max_length=50, verbose_name=("Color"))
     
     # Logic: Either Plate OR Serial Number (VIN)
     plate_number = models.CharField(
         max_length=20, 
         null=True, 
         blank=True, 
-        verbose_name=_("License Plate")
+        verbose_name=("License Plate")
     )
     
     serial_number = models.CharField(
         max_length=50, 
         null=True, 
         blank=True, 
-        verbose_name=_("Serial Number (VIN)")
+        verbose_name=("Serial Number (VIN)")
     )
 
     class Meta:
-        verbose_name = _("Vehicle Evidence")
-        verbose_name_plural = _("Vehicle Evidences")
+        verbose_name = ("Vehicle Evidence")
+        verbose_name_plural = ("Vehicle Evidences")
 
     def clean(self):
         """
@@ -129,12 +130,12 @@ class VehicleEvidence(Evidence):
         """
         if self.plate_number and self.serial_number:
             raise ValidationError(
-                _("A vehicle cannot have both a license plate and a serial number.")
+                ("A vehicle cannot have both a license plate and a serial number.")
             )
         
         if not self.plate_number and not self.serial_number:
             raise ValidationError(
-                _("Vehicle must have at least a license plate or a serial number.")
+                ("Vehicle must have at least a license plate or a serial number.")
             )
         
 class IdentityEvidence(Evidence):
@@ -144,16 +145,17 @@ class IdentityEvidence(Evidence):
     """
     full_name = models.CharField(
         max_length=255, 
-        verbose_name=_("Owner Full Name")
+        verbose_name=("Owner Full Name")
     )
 
     # JSONField allows storing arbitrary key-value pairs 
     # (e.g., {"father_name": "John", "national_id": "123"})
     details = models.JSONField(
         default=dict, 
-        verbose_name=_("Details (Key-Value)")
+        verbose_name=("Details (Key-Value)")
     )
 
     class Meta:
-        verbose_name = _("Identity Evidence")
-        verbose_name_plural = _("Identity Evidences")
+        verbose_name = ("Identity Evidence")
+        verbose_name_plural = ("Identity Evidences")
+

@@ -52,6 +52,8 @@ INSTALLED_APPS = [
 #Your Apps
 INSTALLED_APPS += [
     'accounts',
+    # 'cases',
+    # 'evidence',
 ]
 
 
