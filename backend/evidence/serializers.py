@@ -2,15 +2,20 @@ from rest_framework import serializers
 from .models import *
 
 class WitnessEvidenceSerializer(serializers.ModelSerializer):
+    media_file = serializers.FileField(required=False)
     class Meta:
         model = WitnessEvidence
         fields = "__all__"
+        read_only_fields = ['recorder']
+
 
 
 class BioEvidenceImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
     class Meta:
         model = BioEvidenceImage
         fields = ['id', 'image', 'uploaded_at']
+        
 
 class BioEvidenceSerializer(serializers.ModelSerializer):
     uploaded_images = serializers.ListField(
@@ -24,6 +29,7 @@ class BioEvidenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BioEvidence
         fields = "__all__"
+        read_only_fields = ['recorder']
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop('uploaded_images', [])
@@ -38,6 +44,7 @@ class VehicleEvidenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleEvidence
         fields = "__all__"
+        read_only_fields = ['recorder']
     
     def validate(self, data):
         plate = data.get('plate_number')
@@ -49,10 +56,6 @@ class VehicleEvidenceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Vehicle must have at least a license plate or a serial number.")
         return data
     
-class IdentityEvidenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = IdentityEvidence
-        fields = "__all__"
 
 
 class EvidencePolymorphicSerializer(serializers.Serializer):
@@ -61,6 +64,7 @@ class EvidencePolymorphicSerializer(serializers.Serializer):
     class Meta:
         model = Evidence
         fields = "__all__"
+        read_only_fields = ['recorder']
     
     def get_resource_type(self, obj):
         return obj.__class__.__name__
@@ -76,3 +80,15 @@ class EvidencePolymorphicSerializer(serializers.Serializer):
             return IdentityEvidenceSerializer(instance).data
         else:
             return super().to_representation(instance)
+
+class IdentityEvidenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IdentityEvidence
+        fields = "__all__"
+        read_only_fields = ['recorder']
+
+class OtherEvidenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OtherEvidence
+        fields = "__all__"
+        read_only_fields = ['recorder']

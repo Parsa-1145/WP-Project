@@ -35,7 +35,7 @@ class Evidence(models.Model):
         Helper method to identify evidence type in Admin/UI.
         """
         if hasattr(self, 'witnessevidence'): return 'Witness'
-        if hasattr(self, 'bioevidence'): return 'Bio/Medical'
+        if hasattr(self, 'bioevidence'): return 'Bio'
         if hasattr(self, 'vehicleevidence'): return 'Vehicle'
         if hasattr(self, 'identityevidence'): return 'Identity'
         return 'Other'
@@ -76,7 +76,7 @@ class BioEvidence(Evidence):
     )
 
 
-class BioEvidenceImage(models.Model):
+class BioEvidenceImage(models.Model): # TODO: should approve by Coroner 
     """
     Allows multiple images for a single BioEvidence record.
     """
@@ -161,3 +161,5 @@ class IdentityEvidence(Evidence):
         verbose_name = ("Identity Evidence")
         verbose_name_plural = ("Identity Evidences")
 
+class OtherEvidence(Evidence):
+    pass

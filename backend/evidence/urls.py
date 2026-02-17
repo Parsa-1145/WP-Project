@@ -1,12 +1,8 @@
 from rest_framework.routers import DefaultRouter
-from .views import *
+from .views import EvidenceViewSet
 
 router = DefaultRouter()
-router.register(r'', EvidenceListViewSet, basename='evidence')
-router.register(r'witness', WitnessEvidenceViewSet, basename='witnessevidence')
-router.register(r'bio', BioEvidenceViewSet, basename='bioevidence')
-router.register(r'vehicle', VehicleEvidenceViewSet, basename='vehicleevidence')
-router.register(r'identity', IdentityEvidenceViewSet, basename='identityevidence')
+router.register(r'', EvidenceViewSet, basename='evidence')
 
 
 urlpatterns = [
