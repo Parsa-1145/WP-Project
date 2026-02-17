@@ -14,5 +14,4 @@ class User(AbstractUser):
         validators=[customValidators.validate_phone_number]
     )
 
-class Role(models.Model):
-    pass
+    

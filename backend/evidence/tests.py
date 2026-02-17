@@ -2,12 +2,14 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from .models import Evidence
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class EvidenceTests(APITestCase):
     def setUp(self) -> None:
-        self.recorder1 = self._create_user("recorder1")
-        self.list_url = reverse('')
+        self.recorder1 = User.objects.create_user(username="recorder1", password="password123")
+        self.list_url = reverse('evidence-list')
         self.evidence = Evidence.objects.create(
             title="Test Vehicle Evidence",
             recorder=self.recorder1,

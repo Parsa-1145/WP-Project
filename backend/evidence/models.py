@@ -75,6 +75,7 @@ class BioEvidence(Evidence):
         default=False
     )
 
+
 class BioEvidenceImage(models.Model):
     """
     Allows multiple images for a single BioEvidence record.
@@ -95,7 +96,8 @@ class BioEvidenceImage(models.Model):
         null=True
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
 
 class VehicleEvidence(Evidence):
     """

@@ -58,7 +58,7 @@ class Case(models.Model):
 
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        through='CaseComplainant',
+        through='Complaint',
         related_name='filed_cases'
     )
 
@@ -83,13 +83,19 @@ class Case(models.Model):
         super().save(*args, **kwargs)
 
 class Complaint(models.Model):
-    title = models.CharField()
+    title = models.CharField(max_length=255)
     description = models.TextField()
 
-    complainants = models.ManyToManyField(
+    case = models.ForeignKey(
+        Case, 
+        on_delete=models.CASCADE,
+        related_name='complaints_list' 
+    )
+
+    complainant = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        through='CaseComplainant',
-        related_name='filed_cases'
+        on_delete=models.CASCADE,
+        related_name='filed_complaints'
     )
 
 class CrimeScene(models.Model):
