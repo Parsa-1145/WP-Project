@@ -4,6 +4,10 @@ from core import settings
 from submissions.models import Submission
 
 class Case(models.Model):
+    class Meta:
+        permissions = {
+
+        }
     class CrimeLevel(models.TextChoices):
         CRITICAL = 'CR', "Critical"
         LEVEL_3 = 'L3', "Level 3"
@@ -108,8 +112,8 @@ class CaseSubmissionLink(models.Model):
 class Complaint(models.Model):
     class Meta:
         permissions = [
-            ("first_complaint_review", "Can approve complaint submissions"),
-            ("final_complaint_review", "Can approve the approval of a complaint submissions"),
+            ("complaint_initial_approve", "Can approve complaint submissions"),
+            ("complaint_final_approve", "Can approve the approval of a complaint submissions"),
         ]
 
     title = models.CharField(
@@ -136,7 +140,6 @@ class Complaint(models.Model):
 class CrimeScene(models.Model):
     class Meta:
         permissions = [
-            ("create_crime_scene", "Can create crime scene"),
             ("approve_crime_scene", "Can approve crime scene")
         ]
 

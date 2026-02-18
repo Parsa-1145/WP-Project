@@ -20,9 +20,9 @@ class AuthFlowTests(APITestCase):
     def setUp(self):
         # Users:
         # u1 = creator / submitter (no review perms)
-        # u2 = first reviewer (first_complaint_review)
-        # u3 = final reviewer + can create crime scenes (final_complaint_review, create_crime_scene)
-        # u4 = first reviewer + can create crime scenes (first_complaint_review, create_crime_scene)
+        # u2 = first reviewer (complaint_initial_approve)
+        # u3 = final reviewer + can create crime scenes (complaint_final_approve, add_crimescene)
+        # u4 = first reviewer + can create crime scenes (complaint_initial_approve, add_crimescene)
         self.u1 = User.objects.create_user(
             username="creator",
             password="pass12345",
@@ -48,9 +48,9 @@ class AuthFlowTests(APITestCase):
             phone_number="+989121234569",
         )
 
-        self.add_perms(self.u2, "first_complaint_review")
-        self.add_perms(self.u3, "final_complaint_review", "create_crime_scene")
-        self.add_perms(self.u4, "first_complaint_review", "create_crime_scene")
+        self.add_perms(self.u2, "complaint_initial_approve")
+        self.add_perms(self.u3, "complaint_final_approve", "add_crimescene")
+        self.add_perms(self.u4, "complaint_initial_approve", "add_crimescene")
 
         # Endpoints
         self.submission_type_list_url            = reverse("submission-type-list")
@@ -177,7 +177,7 @@ class AuthFlowTests(APITestCase):
 
         # ---------------------------------------------------------------------
         # 3) Crime scene submission creation tests:
-        #    u3 can create crime scene submissions (has create_crime_scene).
+        #    u3 can create crime scene submissions (has add_crimescene).
         #    Test witness nested payload validation (IDs + phone numbers + trimming).
         # ---------------------------------------------------------------------
         self.client.force_authenticate(self.u3)
@@ -209,7 +209,7 @@ class AuthFlowTests(APITestCase):
         )
         self.printJ(res)
 
-        # u2 attempts to create CRIME_SCENE without create_crime_scene perm => expect 403/denied
+        # u2 attempts to create CRIME_SCENE without add_crimescene perm => expect 403/denied
         self.client.force_authenticate(self.u2)
         res = self.send_submission(
             submission_type="CRIME_SCENE",

@@ -89,13 +89,13 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
         )
         SubmissionStage.objects.create(
             submission=submission,
-            target_permission="cases.first_complaint_review",
+            target_permission="cases.complaint_initial_approve",
             order=1,
             allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
         )
         SubmissionStage.objects.create(
             submission=submission,
-            target_permission="cases.final_complaint_review",
+            target_permission="cases.complaint_final_approve",
             order=2,
             allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
         )
@@ -107,7 +107,7 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
     type_key = "CRIME_SCENE"
     display_name = "Crime Scene"
     serializer_class = CrimeSceneSerializer
-    create_permissions = ["cases.create_crime_scene"]
+    create_permissions = ["cases.add_crimescene"]
     model_class=CrimeScene
     api_payload_example ={
             "title" : "KMKH",
@@ -119,6 +119,8 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
 
     @classmethod
     def on_submit(cls, submission: Submission):
+        target = cls.get_object(submission.object_id)
+
         if submission.created_by.has_perm("cases.approve_crime_scene"):
             submit_action = SubmissionAction.objects.create(
                 submission = submission,
@@ -129,7 +131,7 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
 
             submission.status = SubmissionStatus.APPROVED
             
-            #TODO create the case
+            cls.create_case(submission, target)
 
             submission.save()
             return
@@ -143,10 +145,11 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
 
     @classmethod
     def handle_submission_action(cls, submission:Submission, action:SubmissionAction, context, **kwargs):
+        target = cls.get_object(submission.object_id)
         if submission.current_stage == 0:
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status = SubmissionStatus.APPROVED
-                #TODO create the case
+                cls.create_case(submission, target)
             if action.action_type == SubmissionActionType.REJECT:
                 submission.status = SubmissionStatus.REJECTED
 
@@ -158,5 +161,3 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
             submission=submission,
             relation_type=CaseSubmissionLink.RelationType.ORIGIN
         )
-        
-
