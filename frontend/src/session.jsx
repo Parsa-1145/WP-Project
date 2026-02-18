@@ -14,18 +14,21 @@ class Session {
 
 	listen(fn) {
 		this.subs.push(fn)
-		return () => this.subs = this.subs.filter(f => f === fn);
+		return () => this.subs = this.subs.filter(f => f !== fn);
 	}
 
-	http_request(method, path, body0) {
-		const body = { ...body0 };
-		if (this.auth_token)
-			body.headers = { ...body.headers, Authorization: `Bearer ${this.auth_token}` };
-
-		return axios[method](import.meta.env.VITE_BACKEND_URL + path, body);
+	_add_auth(config) {
+		if (this.auth_token) {
+			const res = { ...config };
+			res.headers = { ...res.headers };
+			res.headers['Authorization'] = `Bearer ${this.auth_token}`;
+			return res;
+		}
+		return config;
 	}
-	get(path) { return this.http_request('get', path); }
-	post(path, body) { return this.http_request('post', path, body); }
+
+	get(path, config) { return axios.get(import.meta.env.VITE_BACKEND_URL + path, this._add_auth(config)); }
+	post(path, body, config) { return axios.post(import.meta.env.VITE_BACKEND_URL + path, body, this._add_auth(config)); }
 }
 
 const session = new Session;
