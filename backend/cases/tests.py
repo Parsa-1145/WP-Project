@@ -7,6 +7,7 @@ from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 import json
 from submissions.models import SubmissionActionType
+from .models import Case
 #TODO actual test
 # TODO: actual assertions (currently this is an interactive workflow trace)
 class AuthFlowTests(APITestCase):
@@ -300,6 +301,7 @@ class AuthFlowTests(APITestCase):
             {
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   4444444444  ", "  555555 5"],
             },
             1,
@@ -310,6 +312,7 @@ class AuthFlowTests(APITestCase):
             {
                 "title": "KMKH2",
                 "description": "KMKH2",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["3333333333", "   2222222222  "],
             },
             1,
@@ -320,6 +323,7 @@ class AuthFlowTests(APITestCase):
             {
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   2222222222  "],
             },
             1,
@@ -343,6 +347,7 @@ class AuthFlowTests(APITestCase):
             {
                 "title": "KMKH3",
                 "description": "KMKH3",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   2222222222  "],
             },
             1,
@@ -359,6 +364,7 @@ class AuthFlowTests(APITestCase):
             {
                 "title": "KMKH3",
                 "description": "KMKH3",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   2222222222  "],
             },
             1,
@@ -397,3 +403,20 @@ class AuthFlowTests(APITestCase):
         self.client.force_authenticate(self.u1)
         self.printJ(self.get_submission_action_types(2))
         self.printJ(self.get_submission_action_history(2))
+        self.printJ(self.send_submission_action(
+            SubmissionActionType.RESUBMIT,
+            {
+                "title": "KMKH3",
+                "description": "KMKH3",
+                "crime_datetime": "2026-02-17T21:35:00Z",
+                "complainant_national_ids": ["2222222222", "2222222222", "   2222222222  "],
+            },
+            2,
+        ))
+
+        self.client.force_authenticate(self.u4)
+        self.printJ(self.send_submission_action(SubmissionActionType.APPROVE, {}, 2))
+        self.client.force_authenticate(self.u3)
+        self.printJ(self.send_submission_action(SubmissionActionType.APPROVE, {}, 2))
+
+        print(Case.objects.first())
