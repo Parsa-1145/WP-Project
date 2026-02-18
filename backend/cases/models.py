@@ -3,24 +3,18 @@ from django.contrib.auth.models import AbstractUser
 from core import settings
 
 class Case(models.Model):
-    """
-    این مدل نماینده پرونده‌های پلیس است.
-    مسئولیت: نگهداری وضعیت حقوقی، سطح جرم و گردش کار پرونده.
-    """
-
     class CrimeLevel(models.TextChoices):
         CRITICAL = 'CR', "Critical"
         LEVEL_3 = 'L3', "Level 3"
         LEVEL_2 = 'L2', "Level 2"
         LEVEL_1 = 'L1', "Level 1"
 
-    # طبق بخش ۱۰۴ و ۲۰۴ (روندهای تشکیل پرونده) [cite: 153, 154, 198]
     class Status(models.TextChoices):
         OPEN_INVESTIGATION = 'open'
         SOLVED = 'solved'
         CLOSED = 'closed'
 
-    # شناسه پرونده (غیر از ID دیتابیس، برای نمایش به کاربر)
+    # An identifier
     case_number = models.CharField(max_length=20, unique=True, editable=False)
     
     title = models.CharField(max_length=255)
@@ -37,17 +31,6 @@ class Case(models.Model):
         default=Status.OPEN_INVESTIGATION
     )
 
-    # --- 3. Relations (ارتباطات) ---
-    
-    # چه کسی پرونده را ثبت کرده؟ (می‌تواند شهروند یا پلیس باشد) [cite: 151, 163]
-    reporter = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        related_name='reported_cases'
-    )
-
-    # کارآگاه مسئول پرونده (پس از تشکیل پرونده مشخص می‌شود) [cite: 198]
     lead_detective = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -65,8 +48,7 @@ class Case(models.Model):
         blank=True
     )
 
-    # --- 4. Metadata ---
-    crime_date = models.DateTimeField() # [cite: 165]
+    crime_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -92,7 +74,6 @@ class Complaint(models.Model):
         on_delete=models.CASCADE,
         related_name="created_complaints",
     )
-
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL
     )
@@ -107,19 +88,7 @@ class CrimeScene(models.Model):
 
     title = models.CharField(max_length=10)
     description = models.TextField(max_length=10)
-    witnesses = models.JSONField(
-        blank=True
-    )
-
-class CrimeScene(models.Model):
-    class Meta:
-        permissions = [
-            ("create_crime_scene", "Can create crime scene"),
-            ("approve_crime_scene", "Can approve crime scene")
-        ]
-
-    title = models.CharField(max_length=10)
-    description = models.TextField(max_length=10)
+    crime_datetime = models.DateTimeField(auto_now=False, blank=False, null=False)
     witnesses = models.JSONField(
         blank=True
     )

@@ -71,7 +71,7 @@ class CrimeSceneSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CrimeScene
-        fields = ["id", "title", "description", "witnesses"]
+        fields = ["id", "title", "description", "witnesses", "crime_datetime"]
     
     def validate_witnesses(self, witnesses):
         counts = {}

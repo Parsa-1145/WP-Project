@@ -72,7 +72,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                 print("case created todo") #TODO
     
     @classmethod
-    def on_submit(cls, submission):
+    def on_submit(cls, submission): 
         SubmissionStage.objects.create(
             submission=submission,
             target_user=submission.created_by,
@@ -104,6 +104,7 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
     api_payload_example ={
             "title" : "KMKH",
             "description" : "KMKH",
+            "crime_datetime": "2026-02-17T21:35:00Z",
             "witnesses" : [{"phone_number": "989112405786", "national_id": "2222222222"}, {"phone_number": "989112405786", "national_id": "   3333333333   "}]
         }
     api_schema = CrimeSceneSerializer()
