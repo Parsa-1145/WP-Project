@@ -9,6 +9,10 @@ const evi_fields_common = [
 	['textarea', 'Description', 'description'],
 ];
 const evi_fields = {
+	witness: [
+		['textarea', 'Transcript', 'transcript'],
+		['file', 'Media', 'media_file'],
+	],
 	other: [],
 };
 const evi_types = [...Object.keys(evi_fields)];
@@ -26,9 +30,12 @@ export function EvidenceSubmitForm({ returnTo }) {
 	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
 
-	const changeFn = name => e => {
+	const changeFn = (type, name) => e => {
 		const data2 = {...data};
-		data2[name] = e.target.value;
+		if (type === 'file')
+			data2[name] = e.target.files[0];
+		else
+			data2[name] = e.target.value;
 		setData(data2);
 	}
 	const setMsg = msg => setMsgs([msg]);
@@ -37,13 +44,12 @@ export function EvidenceSubmitForm({ returnTo }) {
 		setMsg('Awaiting response...');
 		setPost(true);
 
-		const subdata = {type: data.type};
-		for (const ent of evi_fields_common)
-			subdata[ent[2]] = data[ent[2]];
-		for (const ent of evi_fields[data.type])
-			subdata[ent[2]] = data[ent[2]];
+		const formData = new FormData();
+		formData.append('type', data.type);
+		for (const ents of [evi_fields_common, evi_fields[data.type]]) for (const ent of ents)
+			formData.append(ent[2], data[ent[2]]);
 
-		session.post('/api/evidence/', subdata)
+		session.post('/api/evidence/', formData)
 			.then(res => {
 				setMsg('Submit successful');
 				if (returnTo) navigate(returnTo);
@@ -61,21 +67,26 @@ export function EvidenceSubmitForm({ returnTo }) {
 			.finally(() => setPost(false));
 	}
 
-	const Field5 = (type, name, id, value, onChange) => (<div key={id}>
-		<label htmlFor={id}>{name}: </label>
-		{
-			  type === 'textarea' ? (<textarea id={id} value={value} onChange={onChange}/>)
-			: /* else */            (<input id={id} type={type} value={value} onChange={onChange}/>)
-		}
-	</div>);
-	const Field = (type, name, id) => Field5(type, name, id, data[id], changeFn(id));
+	const Field5 = (type, name, id, value, onChange) => {
+		const Simple = body => (
+			<div key={id}>
+				<label htmlFor={id}>{name}: </label>
+				{body}
+			</div>
+		);
+		if (type === 'textarea')
+			return Simple((<textarea id={id} value={value} onChange={onChange}/>));
+		else
+			return Simple((<input id={id} type={type} value={value} onChange={onChange}/>));
+	};
+	const Field = (type, name, id) => Field5(type, name, id, data[id], changeFn(type, id));
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
 		<h1>Evidence Submission</h1>
 		{msgs.map((x, i) => <p key={i}>{x}</p>)}
 		<div style={{ display: 'flex', flexDirection: 'column' }}>
-			<select onChange={changeFn('type')}>
+			<select onChange={changeFn('text', 'type')}>
 				{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
 			</select>
 			{evi_fields_common.map(ent => FieldArr(ent))}
