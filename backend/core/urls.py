@@ -14,12 +14,9 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     path('api/auth/', include("accounts.urls")),
-<<<<<<< HEAD
     path('api/evidence/', include("evidence.urls")),
     
 
-=======
     path('api/submission/', include("submissions.urls")),
->>>>>>> request
     path(settings.ADMIN_URL, admin.site.urls),
 ]

@@ -25,6 +25,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
                 seen.add(nid)
                 deduped.append(nid)
         return deduped
+    
 
     def create(self, validated_data):
         national_ids = validated_data.pop("complainant_national_ids")

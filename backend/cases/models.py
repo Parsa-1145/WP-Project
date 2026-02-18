@@ -58,10 +58,6 @@ class Case(models.Model):
 
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-<<<<<<< HEAD
-        through='Complaint',
-=======
->>>>>>> request
         related_name='filed_cases'
     )
 
@@ -84,21 +80,6 @@ class Case(models.Model):
         super().save(*args, **kwargs)
 
 class Complaint(models.Model):
-<<<<<<< HEAD
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-
-    case = models.ForeignKey(
-        Case, 
-        on_delete=models.CASCADE,
-        related_name='complaints_list' 
-    )
-
-    complainant = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='filed_complaints'
-=======
     class Meta:
         permissions = [
             ("first_complaint_review", "Can approve complaint submissions"),
@@ -110,13 +91,25 @@ class Complaint(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="created_complaints",
->>>>>>> request
     )
 
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL
     )
 
+
+class CrimeScene(models.Model):
+    class Meta:
+        permissions = [
+            ("create_crime_scene", "Can create crime scene"),
+            ("approve_crime_scene", "Can approve crime scene")
+        ]
+
+    title = models.CharField(max_length=10)
+    description = models.TextField(max_length=10)
+    witnesses = models.JSONField(
+        blank=True
+    )
 
 class CrimeScene(models.Model):
     class Meta:
