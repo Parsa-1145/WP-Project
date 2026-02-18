@@ -7,7 +7,8 @@ from accounts.serializers.fields import NationalIDField, PhoneNumberField
 class ComplaintSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.ListField(
         child=NationalIDField(should_exist=True),
-        write_only=True
+        write_only=True,
+        required=False,   # allow partial updates without sending this field
     )
 
     class Meta:
@@ -15,9 +16,19 @@ class ComplaintSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "complainant_national_ids", "complainants"]
         read_only_fields = ["complainants"]
 
+    def validate_complainant_national_ids(self, national_ids):
+        # optional: dedupe while preserving order
+        seen = set()
+        deduped = []
+        for nid in national_ids:
+            if nid not in seen:
+                seen.add(nid)
+                deduped.append(nid)
+        return deduped
+
     def create(self, validated_data):
         national_ids = validated_data.pop("complainant_national_ids")
-        creator:User = self.context["request"].user
+        creator = self.context["request"].user
 
         complaint = Complaint.objects.create(creator=creator, **validated_data)
 
@@ -26,25 +37,28 @@ class ComplaintSerializer(serializers.ModelSerializer):
             users.append(creator)
 
         complaint.complainants.set(users)
-
         return complaint
-    
+
     def update(self, instance, validated_data):
-        national_ids = validated_data.pop("complainant_national_ids", None)
+        creator = self.context["request"].user
 
-        for attr in ("title", "description"):
-            if attr in validated_data:
-                setattr(instance, attr, validated_data[attr])
+        # update scalar fields
+        for field in ("title", "description"):
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+
+        # update complainants if provided
+        if "complainant_national_ids" in validated_data:
+            national_ids = validated_data.pop("complainant_national_ids")
+
+            users = list(User.objects.filter(national_id__in=national_ids))
+            # ensure updater is included (same rule as create)
+            if creator.national_id not in national_ids:
+                users.append(creator)
+
+            instance.complainants.set(users)
+
         instance.save()
-
-        creator:User = self.context["request"].user
-
-        users = list(User.objects.filter(national_id__in=national_ids))
-        if creator.national_id not in national_ids:
-            users.append(creator)
-
-        instance.complainants.set(users)
-
         return instance
 
 class WitnessItemSerializer(serializers.Serializer):

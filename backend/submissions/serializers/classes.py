@@ -6,6 +6,7 @@ from submissions.models import Submission, SubmissionStatus, SubmissionAction, S
 from submissions.submissiontypes.classes import BaseSubmissionType
 from submissions.submissiontypes.registry import get_submission_type
 from accounts.models import User
+from drf_spectacular.utils import extend_schema_serializer
 
 class SubmissionActionSerializer(serializers.ModelSerializer):
     submission = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -76,13 +77,36 @@ class SubmissionStageSerializer(serializers.ModelSerializer):
         model=SubmissionStage
         fields=["id", "target_permission", "target_user", "order", "allowed_actions"]
 
+
+
+@extend_schema_serializer(
+    component_name="Submission",
+    description="Request / Response body for creating a submission action."
+)
 class SubmissionSerializer(serializers.ModelSerializer):
-    payload = serializers.JSONField(write_only=True)
-    submission_type = serializers.CharField()
-    
-    target = serializers.SerializerMethodField(read_only=True)
-    actions_history = SubmissionActionSerializer(many=True, read_only=True)
-    stages = SubmissionStageSerializer(many=True, read_only=True)
+    payload = serializers.JSONField(
+        write_only=True,
+        help_text=(
+            "Submission data. Shape depends on `submission_type` and is validated dynamically."
+        ),
+    )
+
+    target = serializers.SerializerMethodField(
+        read_only=True,
+        help_text="Resolved target object (serialized) created/linked by this submission type. For example the created Complaint object",
+    )
+
+    actions_history = SubmissionActionSerializer(
+        many=True,
+        read_only=True,
+        help_text="List of actions performed on this submission."
+    )
+
+    stages = SubmissionStageSerializer(
+        many=True,
+        read_only=True,
+        help_text="Workflow stages for this submission."
+    )
 
     class Meta:
         model=models.Submission
@@ -147,6 +171,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
         submit_action = SubmissionAction.objects.create(
             submission = submission,
             action_type = SubmissionActionType.SUBMIT,
+            created_by = validated_data["creator"],
             payload={}
         )
 

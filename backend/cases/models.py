@@ -101,7 +101,8 @@ class Complaint(models.Model):
 class CrimeScene(models.Model):
     class Meta:
         permissions = [
-            ("create_crime_scene", "Can create crime scene")
+            ("create_crime_scene", "Can create crime scene"),
+            ("approve_crime_scene", "Can approve crime scene")
         ]
 
     title = models.CharField(max_length=10)

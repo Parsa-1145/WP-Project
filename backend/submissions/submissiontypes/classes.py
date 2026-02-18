@@ -1,9 +1,10 @@
 from typing import ClassVar, Type
-from rest_framework.serializers import Serializer
+from rest_framework.serializers import Serializer, DictField
 from django.db.models import Model
 from typing import ClassVar, Generic, Type, TypeVar
 from accounts.models import User
 from submissions.models import Submission, SubmissionAction
+from drf_spectacular.utils import inline_serializer, OpenApiExample
 
 TModel = TypeVar("TModel", bound=Model)
 
@@ -14,6 +15,8 @@ class BaseSubmissionType(Generic[TModel]):
     serializer_class: ClassVar[type[Serializer]]
     model_class: ClassVar[type[TModel]]
     create_permissions: ClassVar[list[str]] = []
+    api_schema: ClassVar[type[Serializer]] = DictField(required=True)
+    api_payload_example: ClassVar[dict] = {}
 
     @classmethod
     def does_user_have_access(cls, user: User) -> bool:
@@ -38,6 +41,10 @@ class BaseSubmissionType(Generic[TModel]):
 
     @classmethod
     def handle_submission_action(cls, submission_obj, action: SubmissionAction, context, **kwargs):
+        pass
+
+    @classmethod
+    def validate_submission_action_payload(cls, submission, action_type, payload, context, **kwargs):
         pass
 
     @classmethod
