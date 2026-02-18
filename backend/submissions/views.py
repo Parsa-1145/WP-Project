@@ -19,8 +19,8 @@ def submission_create_request_schema():
     variants = []
 
     for type_key, st_cls in SUBMISSION_TYPES.items():
-        payload_ser = st_cls.serializer_class
-
+        if not st_cls.api_schema:
+            continue
         variants.append(
             inline_serializer(
                 name=f"{st_cls.__name__}CreateRequest",
@@ -40,6 +40,8 @@ def submission_create_request_schema():
 def submission_create_examples():
     examples = []
     for type_key, st_cls in SUBMISSION_TYPES.items():
+        if not st_cls.api_payload_example:
+            continue
         examples.append(
             OpenApiExample(
                 name=st_cls.display_name,

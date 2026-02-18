@@ -148,13 +148,11 @@ class SubmissionSerializer(serializers.ModelSerializer):
         if not submission_type_cls.does_user_have_access(user):
             raise PermissionDenied()
         
+        if not submission_type_cls.serializer_class:
+            raise ValidationError({"submission_type": "Unsupported submission type: " + type_key})
+
         try:
-            payload_serializer = submission_type_cls.serializer_class(
-                data=payload,
-                context=self.context,
-            )
-            payload_serializer.is_valid(raise_exception=True)
-            submission_type_cls.validate_submission_data(
+            payload_serializer = submission_type_cls.validate_submission_data(
                 data=payload,
                 context=self.context,
             )

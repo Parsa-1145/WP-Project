@@ -8,12 +8,15 @@ class SubmissionStatus(models.TextChoices):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
+    ACCEPTED = "ACCEPTED"
+
 
 class SubmissionActionType(models.TextChoices):
     SUBMIT = "SUBMIT"
     APPROVE = "APPROVE"
+    ACCEPT = "ACCEPT"
     REJECT = "REJECT"
-    CANCEL = "CANCLE"
+    CANCEL = "CANCEL"
     RESUBMIT = "RESUBMIT"
 
 class Submission(models.Model):

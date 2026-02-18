@@ -5,9 +5,12 @@ from submissions.models import Submission
 
 class Case(models.Model):
     class Meta:
-        permissions = {
-
-        }
+        permissions = [
+            ("view_all_cases", "Can view all cases"),
+            ("investigate_on_case", "Can investigate on a case"),
+            ("supervise_case", "Can supervise a case"),
+            
+        ]
     class CrimeLevel(models.TextChoices):
         CRITICAL = 'CR', "Critical"
         LEVEL_3 = 'L3', "Level 3"
@@ -16,6 +19,8 @@ class Case(models.Model):
 
     class Status(models.TextChoices):
         OPEN_INVESTIGATION = 'open'
+        AWAITING_INVESTIGATOR_ACCEPTANCE = "awaiting_investigator", "Awaiting Investigator Acceptance"
+        AWAITING_SUPERVISOR_ACCEPTANCE = "awaiting_supervisor", "Awaiting Supervisor Acceptance"
         SOLVED = 'solved'
         CLOSED = 'closed'
 
@@ -62,10 +67,17 @@ class Case(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='assigned_cases'
+        related_name='assigned_investigations'
+    )
+    supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_supervisions'
     )
     status = models.CharField(
-        max_length=20, 
+        max_length=64, 
         choices=Status.choices, 
         default=Status.OPEN_INVESTIGATION
     )

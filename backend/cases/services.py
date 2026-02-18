@@ -1,6 +1,8 @@
 from .models import Case, CrimeScene, Complaint, CaseSubmissionLink
 from django.db import transaction
 from rest_framework.serializers import ValidationError
+from . import submissiontypes
+from submissions.service import create_submission
 
 @transaction.atomic
 def create_case_from_complaint(complaint: Complaint) -> Case:
@@ -10,6 +12,15 @@ def create_case_from_complaint(complaint: Complaint) -> Case:
         crime_datetime=complaint.crime_datetime
     )
     case.complainants.set(complaint.complainants.all())
+    case.status = Case.Status.AWAITING_INVESTIGATOR_ACCEPTANCE
+    submission = create_submission(
+        submission_type_cls=submissiontypes.CaseAcceptanceSubmissionType,
+        target=case
+        )
+    attach_submission_to_case(
+        submission=submission,
+        case=case
+    )
     
     return case
 
@@ -21,10 +32,22 @@ def create_case_from_crime_scene(crime_scene: CrimeScene) -> Case:
         witnesses=crime_scene.witnesses or [],
         crime_datetime=crime_scene.crime_datetime
     )
+
+    case.status = Case.Status.AWAITING_INVESTIGATOR_ACCEPTANCE
+
+    submission = create_submission(
+        submission_type_cls=submissiontypes.CaseAcceptanceSubmissionType,
+         target= case)
+    attach_submission_to_case(
+        submission=submission,
+        case=case
+    )
+
     return case
 
+
 @transaction.atomic
-def attach_submission_to_case(*, submission, case, relation_type="ORIGIN") -> CaseSubmissionLink:
+def attach_submission_to_case(*, submission, case, relation_type=CaseSubmissionLink.RelationType.RELATED) -> CaseSubmissionLink:
     link, created = CaseSubmissionLink.objects.get_or_create(
         submission=submission,
         defaults={"case": case, "relation_type": relation_type},

@@ -2,17 +2,19 @@ from submissions.submissiontypes.classes import BaseSubmissionType
 from cases.models import Complaint, CrimeScene, CaseSubmissionLink
 from cases.serializers import ComplaintSerializer, CrimeSceneSerializer
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
-from rest_framework.serializers import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from cases.models import Case
 from drf_spectacular.utils import OpenApiExample
-from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
+
+
 class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
-    type_key = "COMPLAINT"
-    display_name = "Complaint"
-    serializer_class = ComplaintSerializer
-    create_permissions = []
-    model_class=Complaint
-    api_payload_example = {
+    type_key             = "COMPLAINT"
+    display_name         = "Complaint"
+    serializer_class     = ComplaintSerializer
+    create_permissions   = []
+    model_class          = Complaint
+    api_schema           = ComplaintSerializer()
+    api_payload_example  = {
         "title":"title",
         "description":"description",
         "crime_datetime": "2026-02-17T21:35:00Z",
@@ -21,10 +23,10 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
             "  2591892340"
         ]
     }
-    api_schema = ComplaintSerializer()
 
     @classmethod
     def handle_submission_action(cls, submission: Submission, action: SubmissionAction, context, **kwargs):
+        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
         context = context or {}
         stage = SubmissionStage.objects.filter(
             submission=submission,
@@ -104,11 +106,11 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
         submission.save()
     
 class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
-    type_key = "CRIME_SCENE"
-    display_name = "Crime Scene"
-    serializer_class = CrimeSceneSerializer
-    create_permissions = ["cases.add_crimescene"]
-    model_class=CrimeScene
+    type_key            = "CRIME_SCENE"
+    display_name        = "Crime Scene"
+    serializer_class    = CrimeSceneSerializer
+    create_permissions  = ["cases.add_crimescene"]
+    model_class         =CrimeScene
     api_payload_example ={
             "title" : "KMKH",
             "description" : "KMKH",
@@ -149,12 +151,17 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
         if submission.current_stage == 0:
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status = SubmissionStatus.APPROVED
-                cls.create_case(submission, target)
+                cls.create_case(
+                    submission,
+                      target)
             if action.action_type == SubmissionActionType.REJECT:
                 submission.status = SubmissionStatus.REJECTED
 
+        submission.save()
+
     @classmethod
-    def create_case(submission: Submission, crime_scene: CrimeScene):
+    def create_case(cls, submission: Submission, crime_scene: CrimeScene):
+        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
         case = create_case_from_crime_scene(crime_scene=crime_scene)
         attach_submission_to_case(
             case=case,
@@ -163,18 +170,50 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
         )
 
 class CaseAcceptanceSubmissionType(BaseSubmissionType["Case"]):
-    type_key = "CASE_ACCEPTANCE"
-    display_name = "Case Acceptance"
-    serializer_class = ComplaintSerializer
-    create_permissions = []
-    model_class=Complaint
-    api_payload_example = {
-        "title":"title",
-        "description":"description",
-        "crime_datetime": "2026-02-17T21:35:00Z",
-        "complainants":[
-            "2581801910",
-            "  2591892340"
-        ]
-    }
-    api_schema = ComplaintSerializer()
+    type_key             = "CASE_ACCEPTANCE"
+    display_name         = "Case Acceptance"
+    create_permissions   = []
+    model_class          =Complaint
+    serializer_class     = None
+    api_payload_example  = None
+    api_schema           = None
+
+    @classmethod
+    def on_submit(cls, submission):
+        SubmissionStage.objects.create(
+            submission=submission,
+            target_permission="cases.investigate_on_case",
+            order=0,
+            allowed_actions=[SubmissionActionType.ACCEPT]
+        )
+        SubmissionStage.objects.create(
+            submission=submission,
+            target_permission="cases.supervise_case",
+            order=1,
+            allowed_actions=[SubmissionActionType.ACCEPT]
+        )
+        return super().on_submit(submission)
+
+    @classmethod
+    def handle_submission_action(cls, submission, action, context, **kwargs):
+        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
+        stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
+
+        target = cls.get_object(submission.object_id)
+
+        if stage.order == 0:
+            if action.action_type == SubmissionActionType.ACCEPT:
+                target.lead_detective = context["request"].user
+                target.status = target.Status.AWAITING_SUPERVISOR_ACCEPTANCE
+
+                submission.current_stage = 1
+                submission.save()
+        if stage.order == 1:
+            if action.action_type == SubmissionActionType.ACCEPT:
+                if target.lead_detective == context["request"].user:
+                    raise PermissionDenied("Lead detective cannot approve as supervisor.")
+                target.supervisor = context["request"].user
+                target.status = Case.Status.OPEN_INVESTIGATION
+
+                submission.status = SubmissionStatus.ACCEPTED
+                submission.save()
