@@ -99,3 +99,6 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+
+# Ignore uploaded media files
+/media/

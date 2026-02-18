@@ -70,16 +70,32 @@ class EvidencePolymorphicSerializer(serializers.Serializer):
         return obj.__class__.__name__
 
     def to_representation(self, instance):
-        if isinstance(instance, WitnessEvidence):
-            return WitnessEvidenceSerializer(instance).data
-        elif isinstance(instance, BioEvidence):
-            return BioEvidenceSerializer(instance).data
-        elif isinstance(instance, VehicleEvidence):
-            return VehicleEvidenceSerializer(instance).data
-        elif isinstance(instance, IdentityEvidence):
-            return IdentityEvidenceSerializer(instance).data
-        else:
-            return super().to_representation(instance)
+        if hasattr(instance, 'witnessevidence'):
+            data = WitnessEvidenceSerializer(instance.witnessevidence, context=self.context).data
+            data['resource_type'] = 'WitnessEvidence'
+            return data
+            
+        elif hasattr(instance, 'bioevidence'):
+            data = BioEvidenceSerializer(instance.bioevidence, context=self.context).data
+            data['resource_type'] = 'BioEvidence'
+            return data
+            
+        elif hasattr(instance, 'vehicleevidence'):
+            data = VehicleEvidenceSerializer(instance.vehicleevidence, context=self.context).data
+            data['resource_type'] = 'VehicleEvidence'
+            return data
+            
+        elif hasattr(instance, 'identityevidence'):
+            data = IdentityEvidenceSerializer(instance.identityevidence, context=self.context).data
+            data['resource_type'] = 'IdentityEvidence'
+            return data
+
+        elif hasattr(instance, 'otherevidence'):
+            data = OtherEvidenceSerializer(instance.otherevidence, context=self.context).data
+            data['resource_type'] = 'OtherEvidence'
+            return data
+
+        return super().to_representation(instance)
 
 class IdentityEvidenceSerializer(serializers.ModelSerializer):
     class Meta:

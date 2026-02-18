@@ -140,7 +140,9 @@ USE_X_FORWARDED_PORT = os.environ.get("DJANGO_USE_X_FORWARDED_PORT", "False").lo
 STATIC_URL = FORCE_SCRIPT_NAME + "/static/" if FORCE_SCRIPT_NAME else "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-WHITENOISE_STATIC_PREFIX = "/static/"
+WHITENOISE_STATIC_PREFIX = STATIC_URL
+MEDIA_URL = FORCE_SCRIPT_NAME + "/media/" if FORCE_SCRIPT_NAME else "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
