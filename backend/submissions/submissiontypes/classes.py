@@ -28,12 +28,7 @@ class BaseSubmissionType(Generic[TModel]):
 
     @classmethod
     def validate_submission_data(cls, data, context):
-        serializer = cls.serializer_class(
-            data=data,
-            context=context
-        )
-        serializer.is_valid(raise_exception=True)
-        return serializer
+        pass
 
     @classmethod
     def on_submit(cls, submission: Submission) -> None:

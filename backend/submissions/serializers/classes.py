@@ -7,13 +7,20 @@ from submissions.submissiontypes.classes import BaseSubmissionType
 from submissions.submissiontypes.registry import get_submission_type
 from accounts.models import User
 from drf_spectacular.utils import extend_schema_serializer
+from submissions.service import create_submission
+
+
+# ---------------------------------------------------------------------
+# SubmissionActionSerializer
+# ---------------------------------------------------------------------
 
 class SubmissionActionSerializer(serializers.ModelSerializer):
-    submission = serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
         model = SubmissionAction
         fields = ["id", "submission", "action_type", "payload", "created_by", "created_at"]
         read_only_fields = ["id", "submission", "created_by", "created_at"]
+
+    submission = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate(self, attrs):
         submission: Submission = self.context.get("submission") or getattr(self.instance, "submission", None)
@@ -38,7 +45,7 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
 
         action_type: SubmissionActionType = attrs["action_type"]
 
-        allowed = stage.allowed_actions or []  # list like ["APPROVE", "REJECT"]
+        allowed = stage.allowed_actions or []
 
         if action_type not in allowed:
             raise serializers.ValidationError({
@@ -49,7 +56,7 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
 
         if action_type == SubmissionActionType.REJECT:
             message = payload.get("message")
-            if not message:  # covers None, "", missing
+            if not message:
                 raise serializers.ValidationError({
                     "payload": {
                         "message": ["Rejection message required"]
@@ -72,42 +79,24 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
         attrs["submission"] = submission
         return attrs
 
+# ---------------------------------------------------------------------
+# SubmissionStageSerializer
+# ---------------------------------------------------------------------
+
 class SubmissionStageSerializer(serializers.ModelSerializer):
     class Meta:
         model=SubmissionStage
         fields=["id", "target_permission", "target_user", "order", "allowed_actions"]
 
-
+# ---------------------------------------------------------------------
+# SubmissionSerializer
+# ---------------------------------------------------------------------
 
 @extend_schema_serializer(
     component_name="Submission",
     description="Request / Response body for creating a submission action."
 )
 class SubmissionSerializer(serializers.ModelSerializer):
-    payload = serializers.JSONField(
-        write_only=True,
-        help_text=(
-            "Submission data. Shape depends on `submission_type` and is validated dynamically."
-        ),
-    )
-
-    target = serializers.SerializerMethodField(
-        read_only=True,
-        help_text="Resolved target object (serialized) created/linked by this submission type. For example the created Complaint object",
-    )
-
-    actions_history = SubmissionActionSerializer(
-        many=True,
-        read_only=True,
-        help_text="List of actions performed on this submission."
-    )
-
-    stages = SubmissionStageSerializer(
-        many=True,
-        read_only=True,
-        help_text="Workflow stages for this submission."
-    )
-
     class Meta:
         model=models.Submission
         fields = [
@@ -115,6 +104,28 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "target", "actions_history", "current_stage", "stages", "created_by", "created_at"
         ]
         read_only_fields = ["status", "target", "actions_history", "current_stage", "stages", "created_by", "created_at"]
+
+    payload = serializers.JSONField(
+        write_only=True,
+        help_text=(
+            "Submission data. Shape depends on `submission_type` and is validated dynamically."
+        ),
+    )
+    target = serializers.SerializerMethodField(
+        read_only=True,
+        help_text="Resolved target object (serialized) created/linked by this submission type. For example the created Complaint object",
+    )
+    actions_history = SubmissionActionSerializer(
+        many=True,
+        read_only=True,
+        help_text="List of actions performed on this submission."
+    )
+    stages = SubmissionStageSerializer(
+        many=True,
+        read_only=True,
+        help_text="Workflow stages for this submission."
+    )
+
 
     def get_target(self, obj):
         submission_type_cls = get_submission_type(obj.submission_type)
@@ -127,7 +138,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         type_key = attrs.get("submission_type")
         payload = attrs.get("payload") or {}
-        
+
         try:
             submission_type_cls = get_submission_type(type_key)
         except KeyError:
@@ -138,14 +149,17 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise PermissionDenied()
         
         try:
-            payload_serializer = submission_type_cls.validate_submission_data(
+            payload_serializer = submission_type_cls.serializer_class(
+                data=payload,
+                context=self.context,
+            )
+            payload_serializer.is_valid(raise_exception=True)
+            submission_type_cls.validate_submission_data(
                 data=payload,
                 context=self.context,
             )
         except Exception as e:
             raise serializers.ValidationError({"payload": [e.detail]}) # TODO dog shit
-
-    
 
         attrs["_submission_type_cls"] = submission_type_cls
         attrs["_payload_serializer"] = payload_serializer
@@ -157,22 +171,11 @@ class SubmissionSerializer(serializers.ModelSerializer):
         payload_serializer = validated_data.pop("_payload_serializer")
 
         target_obj = payload_serializer.save()
-        submission_type=validated_data["submission_type"]
 
-        submission = Submission.objects.create(
-            submission_type=submission_type,
-            object_id=target_obj.pk,
-            status=SubmissionStatus.PENDING,
+        submission = create_submission(
+            submission_type_cls=submission_type_cls,
+            target=target_obj,
             created_by=validated_data["creator"]
-        )
-
-        submission_type_cls.on_submit(submission=submission)
-
-        submit_action = SubmissionAction.objects.create(
-            submission = submission,
-            action_type = SubmissionActionType.SUBMIT,
-            created_by = validated_data["creator"],
-            payload={}
         )
 
         return submission

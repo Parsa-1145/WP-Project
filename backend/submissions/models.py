@@ -24,17 +24,19 @@ class Submission(models.Model):
         verbose_name = "Submission"
         verbose_name_plural = "Submissions"
         ordering = ["-created_at"]
-    submission_type = models.CharField(
-        max_length=64
-    )
+
     submission_type = models.CharField(
         max_length=64,
+        blank=False,
+        null=False,
         db_index=True,
         verbose_name="Submission type",
         help_text="Type key used to route validation/handling and resolve the target object.",
     )
 
     object_id = models.PositiveIntegerField(
+        blank=False,
+        null=False,
         verbose_name="Target object ID",
         help_text="Primary key of the target object created/linked by this submission.",
     )
@@ -43,6 +45,7 @@ class Submission(models.Model):
         max_length=16,
         choices=SubmissionStatus.choices,
         default=SubmissionStatus.PENDING,
+        null=False,
         db_index=True,
         verbose_name="Status",
         help_text="Current workflow status of the submission.",
@@ -51,6 +54,8 @@ class Submission(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        blank=True,
+        null=True,
         related_name="submissions",
         verbose_name="Created by",
         help_text="User who created the submission.",
@@ -73,11 +78,17 @@ class SubmissionAction(models.Model):
     An immutable event in a submission’s workflow history (e.g., SUBMIT, APPROVE, REJECT, RESUBMIT).
     Stores any action-specific data in `payload`.
     """
+    class Meta:
+        verbose_name = "Submission action"
+        verbose_name_plural = "Submission actions"
+        ordering = ["-created_at"]
 
     submission = models.ForeignKey(
         Submission,
         related_name="actions_history",
         on_delete=models.CASCADE,
+        null=False,
+        blank=False,
         verbose_name="Submission",
         help_text="Submission this action belongs to.",
     )
@@ -85,6 +96,8 @@ class SubmissionAction(models.Model):
     action_type = models.CharField(
         max_length=32,
         choices=SubmissionActionType.choices,
+        null=False,
+        blank=False,
         verbose_name="Action type",
         help_text="Workflow action performed on the submission.",
     )
@@ -92,12 +105,15 @@ class SubmissionAction(models.Model):
     payload = models.JSONField(
         default=dict,
         blank=True,
+        null=False,
         verbose_name="Payload",
         help_text="Action-specific data. Structure depends on `action_type` (and possibly submission_type).",
     )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=False,
+        blank=False,
         on_delete=models.CASCADE,
         related_name="submission_actions",
         verbose_name="Created by",
@@ -110,12 +126,6 @@ class SubmissionAction(models.Model):
         verbose_name="Created at",
         help_text="Timestamp when the action was created.",
     )
-
-    class Meta:
-        verbose_name = "Submission action"
-        verbose_name_plural = "Submission actions"
-        ordering = ["-created_at"]
-
 
 class SubmissionStage(models.Model):
     """

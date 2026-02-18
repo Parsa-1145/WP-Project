@@ -161,3 +161,20 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
             submission=submission,
             relation_type=CaseSubmissionLink.RelationType.ORIGIN
         )
+
+class CaseAcceptanceSubmissionType(BaseSubmissionType["Case"]):
+    type_key = "CASE_ACCEPTANCE"
+    display_name = "Case Acceptance"
+    serializer_class = ComplaintSerializer
+    create_permissions = []
+    model_class=Complaint
+    api_payload_example = {
+        "title":"title",
+        "description":"description",
+        "crime_datetime": "2026-02-17T21:35:00Z",
+        "complainants":[
+            "2581801910",
+            "  2591892340"
+        ]
+    }
+    api_schema = ComplaintSerializer()
