@@ -1,10 +1,11 @@
 from submissions.submissiontypes.classes import BaseSubmissionType
-from cases.models import Complaint, CrimeScene
+from cases.models import Complaint, CrimeScene, CaseSubmissionLink
 from cases.serializers import ComplaintSerializer, CrimeSceneSerializer
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.serializers import ValidationError
 from cases.models import Case
 from drf_spectacular.utils import OpenApiExample
+from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
 class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     type_key = "COMPLAINT"
     display_name = "Complaint"
@@ -69,8 +70,14 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                 submission.save()
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status=SubmissionStatus.APPROVED
-                
-                #TODO create the case
+                submission.save()
+
+                case = create_case_from_complaint(complaint=target)
+                attach_submission_to_case(
+                    case=case,
+                    submission=submission,
+                    relation_type=CaseSubmissionLink.RelationType.ORIGIN
+                )
     
     @classmethod
     def on_submit(cls, submission): 
@@ -142,5 +149,14 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
                 #TODO create the case
             if action.action_type == SubmissionActionType.REJECT:
                 submission.status = SubmissionStatus.REJECTED
+
+    @classmethod
+    def create_case(submission: Submission, crime_scene: CrimeScene):
+        case = create_case_from_crime_scene(crime_scene=crime_scene)
+        attach_submission_to_case(
+            case=case,
+            submission=submission,
+            relation_type=CaseSubmissionLink.RelationType.ORIGIN
+        )
         
 
