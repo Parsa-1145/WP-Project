@@ -14,23 +14,18 @@ class Case(models.Model):
         SOLVED = 'solved'
         CLOSED = 'closed'
 
-    # An identifier
-    case_number = models.CharField(max_length=20, unique=True, editable=False)
-    
     title = models.CharField(max_length=255)
     description = models.TextField()
     
+    complainants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='filed_cases'
+    )
     crime_level = models.CharField(
         max_length=2, 
         choices=CrimeLevel.choices, 
         default=CrimeLevel.LEVEL_3
     )
-    status = models.CharField(
-        max_length=20, 
-        choices=Status.choices, 
-        default=Status.OPEN_INVESTIGATION
-    )
-
     lead_detective = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -38,28 +33,16 @@ class Case(models.Model):
         blank=True,
         related_name='assigned_cases'
     )
-
-    complainants = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='filed_cases'
-    )
-
     witnesses = models.JSONField(
         blank=True
     )
-
+    status = models.CharField(
+        max_length=20, 
+        choices=Status.choices, 
+        default=Status.OPEN_INVESTIGATION
+    )
     crime_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.case_number} - {self.title}"
-
-    def save(self, *args, **kwargs):
-        # تولید خودکار شماره پرونده اگر وجود نداشته باشد
-        if not self.case_number:
-            import uuid
-            self.case_number = str(uuid.uuid4())[:8].upper()
-        super().save(*args, **kwargs)
 
 class Complaint(models.Model):
     class Meta:
