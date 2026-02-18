@@ -13,7 +13,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Complaint
-        fields = ["id", "title", "description", "complainant_national_ids", "complainants"]
+        fields = ["id", "title", "description", "crime_datetime", "complainant_national_ids", "complainants"]
         read_only_fields = ["complainants"]
 
     def validate_complainant_national_ids(self, national_ids):
@@ -31,7 +31,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         national_ids = validated_data.pop("complainant_national_ids")
         creator = self.context["request"].user
 
-        complaint = Complaint.objects.create(creator=creator, **validated_data)
+        complaint = Complaint.objects.create(**validated_data)
 
         users = list(User.objects.filter(national_id__in=national_ids))
         if creator.national_id not in national_ids:

@@ -14,6 +14,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     api_payload_example = {
         "title":"title",
         "description":"description",
+        "crime_datetime": "2026-02-17T21:35:00Z",
         "complainants":[
             "2581801910",
             "  2591892340"
@@ -69,7 +70,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status=SubmissionStatus.APPROVED
                 
-                print("case created todo") #TODO
+                #TODO create the case
     
     @classmethod
     def on_submit(cls, submission): 
