@@ -2,34 +2,95 @@ from rest_framework import serializers
 from submissions import models
 from submissions.submissiontypes.registry import get_submission_type
 from django.core.exceptions import ValidationError, PermissionDenied
-from submissions.models import Submission, SubmissionStatus, SubmissionEvent, SubmissionEventType, SubmissionStage
+from submissions.models import Submission, SubmissionStatus, SubmissionAction, SubmissionActionType, SubmissionStage
 from submissions.submissiontypes.classes import BaseSubmissionType
+from submissions.submissiontypes.registry import get_submission_type
+from accounts.models import User
 
-class SubmissionEventSerializer(serializers.ModelSerializer):
+class SubmissionActionSerializer(serializers.ModelSerializer):
+    submission = serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
-        model=SubmissionEvent
-        fields=["id", "event_type", "message", "created_at", "actor"]
+        model = SubmissionAction
+        fields = ["id", "submission", "action_type", "payload", "created_by", "created_at"]
+        read_only_fields = ["id", "submission", "created_by", "created_at"]
+
+    def validate(self, attrs):
+        submission: Submission = self.context.get("submission") or getattr(self.instance, "submission", None)
+        if submission is None:
+            raise serializers.ValidationError({"submission": "This field is required."})
+        
+        user: User = self.context["request"].user
+
+        submission_type_cls = get_submission_type(submission.submission_type)  # FIX: use instance, not model class
+
+        stage = SubmissionStage.objects.filter(
+            submission=submission,
+            order=submission.current_stage,
+        ).first()
+
+        if stage is None:
+            raise serializers.ValidationError({"submission": "Submission stage corrupted"})
+
+        if not (((stage.target_user is not None) and stage.target_user == user) 
+                or ((stage.target_permission is not None) and user.has_perm(stage.target_permission))):
+            raise PermissionDenied()
+
+        action_type: SubmissionActionType = attrs["action_type"]
+
+        allowed = stage.allowed_actions or []  # list like ["APPROVE", "REJECT"]
+
+        if action_type not in allowed:
+            raise serializers.ValidationError({
+                "action_type": f"Action type not allowed at this stage. allowed actions: {allowed}"
+            })
+        
+        payload = attrs["payload"]
+
+        if action_type == SubmissionActionType.REJECT:
+            message = payload.get("message")
+            if not message:  # covers None, "", missing
+                raise serializers.ValidationError({
+                    "payload": {
+                        "message": ["Rejection message required"]
+                    }
+                })
+            
+        if action_type ==SubmissionActionType.RESUBMIT:
+            try:
+                submission_type_cls.validate_submission_data(payload, self.context)
+            except serializers.ValidationError as e:
+                raise serializers.ValidationError({
+                    "payload": e.detail
+                })
+            except ValidationError as e:
+                raise serializers.ValidationError({
+                    "payload": e.message
+                })
+
+        attrs["created_by"] = user
+        attrs["submission"] = submission
+        return attrs
 
 class SubmissionStageSerializer(serializers.ModelSerializer):
     class Meta:
         model=SubmissionStage
-        fields=["id", "target_permission", "target_user", "order"]
+        fields=["id", "target_permission", "target_user", "order", "allowed_actions"]
 
 class SubmissionSerializer(serializers.ModelSerializer):
     payload = serializers.JSONField(write_only=True)
     submission_type = serializers.CharField()
     
     target = serializers.SerializerMethodField(read_only=True)
-    events = SubmissionEventSerializer(many=True, read_only=True)
+    actions_history = SubmissionActionSerializer(many=True, read_only=True)
     stages = SubmissionStageSerializer(many=True, read_only=True)
 
     class Meta:
         model=models.Submission
         fields = [
             "id", "submission_type", "payload", "status",
-            "target", "events", "current_stage", "stages", "created_by", "created_at"
+            "target", "actions_history", "current_stage", "stages", "created_by", "created_at"
         ]
-        read_only_fields = ["status", "target", "events", "current_stage", "stages", "created_by", "created_at"]
+        read_only_fields = ["status", "target", "actions_history", "current_stage", "stages", "created_by", "created_at"]
 
     def get_target(self, obj):
         submission_type_cls = get_submission_type(obj.submission_type)
@@ -83,11 +144,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
         submission_type_cls.on_submit(submission=submission)
 
-        submit_event = SubmissionEvent.objects.create(
+        submit_action = SubmissionAction.objects.create(
             submission = submission,
-            event_type = SubmissionEventType.SUBMIT,
-            message = "Request created",
-            actor = validated_data["creator"]
+            action_type = SubmissionActionType.SUBMIT,
+            payload={}
         )
 
         return submission

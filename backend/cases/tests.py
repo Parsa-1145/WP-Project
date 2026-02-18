@@ -6,6 +6,7 @@ from accounts.serializers.fields import NationalIDField
 from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 import json
+from submissions.models import SubmissionActionType
 #TODO actual test
 class AuthFlowTests(APITestCase):
 
@@ -28,7 +29,13 @@ class AuthFlowTests(APITestCase):
             phone_number="+989121234568",
         )
         self.u3 = User.objects.create_user(
-            username="u2",
+            username="u3",
+            password="pass12345",
+            national_id="3333333333",
+            phone_number="+989121234569",
+        )
+        self.u4 = User.objects.create_user(
+            username="u4",
             password="pass12345",
             national_id="3333333333",
             phone_number="+989121234569",
@@ -36,18 +43,26 @@ class AuthFlowTests(APITestCase):
 
         self.add_perms(self.u2, "first_complaint_review")
         self.add_perms(self.u3, "final_complaint_review", "create_crime_scene")
+        self.add_perms(self.u4, "first_complaint_review", "create_crime_scene")
+
 
         self.submission_type_list_url            = reverse("submission-type-list")
         self.submission_inbox_list_url           = reverse("submission-inbox-list")
         self.submission_mine_list_create_url     = reverse("submission-mine-list-create")
 
-
     def send_submission(self, submission_type, payload) -> HttpResponse:
         return self.client.post(self.submission_mine_list_create_url, data={"submission_type":submission_type, "payload": payload}, format="json")
-
     
-    def get_submissions(self):
+    def send_submission_action(self, action_type: SubmissionActionType, payload, submission_id) -> HttpResponse:
+        url = reverse("submission-action-create", kwargs={"pk": submission_id})
+        return self.client.post(url, data={"action_type":action_type, "payload": payload}, format="json")
+
+    def get_submissions_inbox(self):
         return self.client.get(self.submission_inbox_list_url, format="json")
+    
+
+    def get_my_submissions(self):
+        return self.client.get(self.submission_mine_list_create_url, format="json")
 
     def printJ(self, response: HttpResponse):
         print(json.dumps(response.json(), indent=3))
@@ -107,11 +122,11 @@ class AuthFlowTests(APITestCase):
         )
         self.printJ(res)
 
-        self.printJ(self.get_submissions())
+        self.printJ(self.get_submissions_inbox())
         self.client.force_authenticate(self.u2)
-        self.printJ(self.get_submissions())
+        self.printJ(self.get_submissions_inbox())
         self.client.force_authenticate(self.u3)
-        self.printJ(self.get_submissions())
+        self.printJ(self.get_submissions_inbox())
 
         self.client.force_authenticate(self.u3)
         res = self.send_submission(
@@ -144,6 +159,59 @@ class AuthFlowTests(APITestCase):
             }
         )
         self.printJ(res)
+
+        self.client.force_authenticate(self.u1)
+        self.printJ(self.get_my_submissions())
+        self.client.force_authenticate(self.u2)
+        self.printJ(self.get_my_submissions())
+        self.client.force_authenticate(self.u3)
+        self.printJ(self.get_my_submissions())
+
+        self.printJ(self.send_submission_action(SubmissionActionType.RESUBMIT, {}, 1))
+
+        self.client.force_authenticate(self.u1)
+        self.printJ(self.send_submission_action(SubmissionActionType.RESUBMIT, {}, 1))
+
+        self.client.force_authenticate(self.u2)
+        self.printJ(self.send_submission_action(SubmissionActionType.RESUBMIT, {}, 1))
+        self.printJ(self.send_submission_action(SubmissionActionType.REJECT, {}, 1))
+
+        self.printJ(self.send_submission_action(SubmissionActionType.APPROVE, {}, 1))
+        self.printJ(self.get_submissions_inbox())
+        self.printJ(self.send_submission_action(SubmissionActionType.APPROVE, {}, 1))
+
+        self.client.force_authenticate(self.u1)
+        self.printJ(self.get_my_submissions())
+
+        self.client.force_authenticate(self.u3)
+        self.printJ(self.get_submissions_inbox())
+        self.printJ(self.send_submission_action(SubmissionActionType.SUBMIT, {}, 1))
+        self.printJ(self.send_submission_action(SubmissionActionType.REJECT, {"message":"boba loves trump"}, 1))
+        self.printJ(self.get_submissions_inbox())
+
+        self.client.force_authenticate(self.u4)
+        self.printJ(self.get_submissions_inbox())
+        self.client.force_authenticate(self.u2)
+        self.printJ(self.get_submissions_inbox())
+        self.printJ(self.send_submission_action(SubmissionActionType.REJECT, {"message": "kmkh"}, 1))
+        self.printJ(self.get_submissions_inbox())
+
+        self.client.force_authenticate(self.u1)
+        self.printJ(self.get_submissions_inbox())
+
+        self.printJ(self.send_submission_action(SubmissionActionType.RESUBMIT, {
+                "title": "KMKH",
+                "description": "KMKH",
+                "complainant_national_ids" : ["2222222222", "2222222222", "   4444444444  ", "  555555 5"]
+            }, 1))
+        
+        self.printJ(self.send_submission_action(SubmissionActionType.RESUBMIT, {
+                "title": "KMKH",
+                "description": "KMKH",
+                "complainant_national_ids" : ["2222222222", "2222222222", "   2222222222  "]
+            }, 1))
+
+
         # self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         # self.assertEqual(sorted(res.json()["complainants"]), sorted([self.creator.pk]))
 

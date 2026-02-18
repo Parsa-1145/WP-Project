@@ -1,14 +1,17 @@
 from rest_framework import generics
 from django.http import HttpRequest
-from .serializers.classes import SubmissionSerializer
+from .serializers.classes import SubmissionSerializer, SubmissionActionSerializer, Submission, SubmissionAction, SubmissionStatus, SubmissionStage
 from rest_framework.permissions import IsAuthenticated
 from submissions.submissiontypes.registry import SUBMISSION_TYPES
 from drf_spectacular.utils import extend_schema_view ,extend_schema, OpenApiExample, inline_serializer, PolymorphicProxySerializer
 from rest_framework import serializers
 from . import models
-from django.db.models import Q, F
+from django.db.models import Exists, OuterRef, F, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from submissions.submissiontypes.registry import get_submission_type
+from django.db import transaction
 
 def submission_create_request_schema():
     variants = []
@@ -81,11 +84,7 @@ class SubmissionListCreateView(generics.ListCreateAPIView):
 
         return (
             models.Submission.objects.filter(
-                Q(stages__order=F("current_stage")) &
-                (
-                    Q(stages__target_user=user) |
-                    Q(stages__target_permission__in=user_perms)
-                )
+                created_by=user
             )
             .distinct()
         )
@@ -99,17 +98,19 @@ class SubmissionInboxListView(generics.ListAPIView):
         user = self.request.user
         user_perms = list(user.get_all_permissions())
 
-        return (
-            models.Submission.objects.filter(
-                Q(stages__order=F("current_stage")) &
-                (
-                    Q(stages__target_user=user) |
-                    Q(stages__target_permission__in=user_perms)
-                )
-            )
-            .distinct()
+        current_stage_match = SubmissionStage.objects.filter(
+            submission_id=OuterRef("pk"),
+            order=OuterRef("current_stage"),
+        ).filter(
+            Q(target_user=user) | Q(target_permission__in=user_perms)
         )
 
+        return (
+            Submission.objects
+            .filter(status=SubmissionStatus.PENDING)
+            .annotate(can_see=Exists(current_stage_match))
+            .filter(can_see=True)
+        )
 class SubmissionTypeListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -120,7 +121,18 @@ class SubmissionTypeListView(APIView):
                 out.append({"key": cls.type_key, "name": cls.display_name})
         return Response(out)
 
+class SubmissionActionCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubmissionActionSerializer
 
-class SubmittionEventCreateView(generics.CreateAPIView):
-    permission_classes=[IsAuthenticated]
-    serializer_class=SubmissionSerializer
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["submission"] = get_object_or_404(Submission, pk=self.kwargs["pk"])
+        return ctx
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        submission:Submission = self.get_serializer_context()["submission"]
+        action: SubmissionAction = serializer.save(submission=submission, created_by=self.request.user)
+
+        get_submission_type(submission.submission_type).handle_submission_action(submission, action, context={"request": self.request})

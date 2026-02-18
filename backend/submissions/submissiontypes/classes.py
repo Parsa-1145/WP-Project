@@ -3,6 +3,8 @@ from rest_framework.serializers import Serializer
 from django.db.models import Model
 from typing import ClassVar, Generic, Type, TypeVar
 from accounts.models import User
+from submissions.models import Submission, SubmissionAction
+
 TModel = TypeVar("TModel", bound=Model)
 
 
@@ -31,15 +33,14 @@ class BaseSubmissionType(Generic[TModel]):
         return serializer
 
     @classmethod
-    def handle_submission_event(cls, submission_obj, event: str, **kwargs):
+    def on_submit(cls, submission: Submission) -> None:
+        pass
+
+    @classmethod
+    def handle_submission_action(cls, submission_obj, action: SubmissionAction, context, **kwargs):
         pass
 
     @classmethod
     def get_object(cls, object_id) -> TModel:
         return cls.model_class._default_manager.get(pk=object_id)
     
-    @classmethod
-    def on_submit(cls, submission) -> None:
-        pass
-
-

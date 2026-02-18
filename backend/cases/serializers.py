@@ -28,6 +28,24 @@ class ComplaintSerializer(serializers.ModelSerializer):
         complaint.complainants.set(users)
 
         return complaint
+    
+    def update(self, instance, validated_data):
+        national_ids = validated_data.pop("complainant_national_ids", None)
+
+        for attr in ("title", "description"):
+            if attr in validated_data:
+                setattr(instance, attr, validated_data[attr])
+        instance.save()
+
+        creator:User = self.context["request"].user
+
+        users = list(User.objects.filter(national_id__in=national_ids))
+        if creator.national_id not in national_ids:
+            users.append(creator)
+
+        instance.complainants.set(users)
+
+        return instance
 
 class WitnessItemSerializer(serializers.Serializer):
     phone_number = PhoneNumberField()
@@ -61,3 +79,7 @@ class CrimeSceneSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return super().create(validated_data)
+    
+
+
+
