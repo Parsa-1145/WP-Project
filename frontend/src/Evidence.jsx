@@ -19,6 +19,10 @@ const evi_fields = {
 		['text', 'Plate Number', 'plate_number'],
 		['text', 'Serial Number', 'serial_number'],
 	],
+	identity: [
+		['text', 'Full Name', 'full_name'],
+		['keyvalue', 'Details', 'details'],
+	],
 	bio: [
 		['files', 'Images', 'uploaded_images'],
 	],
@@ -50,6 +54,13 @@ export function EvidenceSubmitForm({ returnTo }) {
 				data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
 			else
 				data2[name] = [...data[name], e];
+		} else if (type === 'keyvalue') {
+			if (typeof e === 'number')
+				data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
+			else {
+				data2[name] = [...data[name]];
+				data2[name][e[0]] = [e[1], e[2]];
+			}
 		} else {
 			if (name === 'type')
 				data2.media_file = '';
@@ -61,18 +72,28 @@ export function EvidenceSubmitForm({ returnTo }) {
 	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
-		setMsg('Awaiting response...');
-		setPost(true);
-
 		const formData = new FormData();
 		formData.append('type', data.type);
 		for (const ents of [evi_fields_common, evi_fields[data.type]]) for (const ent of ents) {
-			const id = ent[2];
-			if (Array.isArray(data[id]))
+			const [type,, id] = ent;
+			if (type === 'keyvalue') {
+				const res = {};
+				for (const kv of data[id]) {
+					if (res[kv[0]] !== undefined) {
+						setMsg('Duplicate key in key-value pairs');
+						return;
+					}
+					res[kv[0]] = kv[1];
+				}
+				formData.append(id, JSON.stringify(res));
+			} else if (type === 'files')
 				data[id].forEach(v => formData.append(id, v));
 			else
 				formData.append(id, data[id]);
 		}
+
+		setPost(true);
+		setMsg('Awaiting response...');
 
 		session.post('/api/evidence/', formData)
 			.then(res => {
@@ -128,6 +149,27 @@ export function EvidenceSubmitForm({ returnTo }) {
 								<button onClick={() => onChange(i)}>Remove</button>
 							</div>
 						))}
+					</div>
+				</div>
+			);
+		else if (type === 'keyvalue')
+			return (
+				<div key={id} style={{ display: 'flex', flexDirection: 'row' }}>
+					<label htmlFor={id}>{name}: </label>
+
+					<div id={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+						{value && Object.entries(value).map((ent, i) => (
+							<div
+								key={i}
+								style={{ display: 'flex', flexDirection: 'row' }}
+							>
+								<input value={value[i][0]} placeholder='Key' type='text' onChange={e => onChange([i, e.target.value, value[i][1]])}/>
+								<input value={value[i][1]} placeholder='Value' type='text' onChange={e => onChange([i, value[i][0], e.target.value])} style={{ flex: 1 }}/>
+								<button onClick={() => onChange(i)}>Remove</button>
+							</div>
+						))}
+
+						<button onClick={() => onChange([value.length, '', ''])}>New</button>
 					</div>
 				</div>
 			);
