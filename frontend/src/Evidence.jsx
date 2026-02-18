@@ -13,6 +13,12 @@ const evi_fields = {
 		['textarea', 'Transcript', 'transcript'],
 		['file', 'Media', 'media_file'],
 	],
+	vehicle: [
+		['text', 'Model', 'model_name'],
+		['text', 'Color', 'color'],
+		['text', 'Plate Number', 'plate_number'],
+		['text', 'Serial Number', 'serial_number'],
+	],
 	bio: [
 		['files', 'Images', 'uploaded_images'],
 	],
@@ -22,14 +28,15 @@ const evi_fields = {
 const evi_types = [...Object.keys(evi_fields)];
 
 export function EvidenceSubmitForm({ returnTo }) {
-	const [data, setData] = useState(() => {
+	const defaultData = () => {
 		const obj = {type: evi_types[0]};
 		for (const ent of evi_fields_common)
 			obj[ent[2]] = '';
 		for (const type of evi_types) for (const ent of evi_fields[type])
 			obj[ent[2]] = '';
 		return obj;
-	});
+	};
+	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
 	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
@@ -70,6 +77,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 		session.post('/api/evidence/', formData)
 			.then(res => {
 				setMsg('Submit successful');
+				setData(defaultData());
 				if (returnTo) navigate(returnTo);
 			})
 			.catch(err => {
@@ -133,7 +141,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 		<h1>Evidence Submission</h1>
 		{msgs.map((x, i) => <p key={i}>{x}</p>)}
 		<div style={{ display: 'flex', flexDirection: 'column' }}>
-			<select onChange={changeFn('text', 'type')}>
+			<select value={data.type} onChange={changeFn('text', 'type')}>
 				{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
 			</select>
 			{evi_fields_common.map(ent => FieldArr(ent))}
