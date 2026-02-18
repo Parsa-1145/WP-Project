@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, extend_schema_view, PolymorphicProxySerializer
+from drf_spectacular.utils import extend_schema, extend_schema_view, PolymorphicProxySerializer, OpenApiExample
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from .serializers import *
@@ -26,6 +26,81 @@ evidence_response_schema = PolymorphicProxySerializer(
     resource_type_field_name='resource_type',
 )
 
+evidence_examples = [
+    OpenApiExample(
+        "Witness Example",
+        summary="Witness Evidence Example",
+        value={
+            'type': 'witness',
+            'title': 'string',
+            'description': 'string',
+            'case': 1,
+            'media_file': 'file',
+            'transcript': 'string'
+        },
+        media_type='multipart/form-data',
+        request_only=True
+    ),
+    OpenApiExample(
+        "Vehicle Example",
+        summary="Vehicle Evidence Example",
+        value={
+            'type': 'vehicle',
+            'title': 'string',
+            'description': 'string',
+            'case': 1,
+            'model_name': 'string',
+            'color': 'string',
+            'plate_number': 'one of plate or serial must be provided',
+            'serial_number': 'one of plate or serial must be provided'
+        },
+        media_type='multipart/form-data',
+        request_only=True
+    ),
+    OpenApiExample(
+        "Identity Example",
+        summary="Identity Evidence Example",
+        description="Identity evidence can include details about a person relevant to the case. The 'details' field can be a JSON string containing key-value pairs of information such as date of birth, address, or any other pertinent details.",
+        value={
+            'type': 'identity',
+            'title': 'string',
+            'description': 'string',
+            'case': 1,
+            'full_name': 'string',
+            'details': "{'key': 'value','another_key': 'another_value'}"
+        },
+        media_type='multipart/form-data',
+        request_only=True
+    ),
+    OpenApiExample(
+        "Bio Example",
+        summary="Biological Evidence Example",
+        value={
+            'type': 'bio',
+            'title': 'string',
+            'description': 'string',
+            'case': 1,
+            'uploaded_images': [
+                '(Binary Image File 1)',
+                '(Binary Image File 2)'
+            ]
+        },
+        media_type='multipart/form-data',
+        request_only=True
+    ),
+    OpenApiExample(
+        "Other Example",
+        summary="Other Evidence Example",
+        value={
+            'type': 'other',
+            'title': 'string',
+            'description': 'string',
+            'case': 1,
+        },
+        media_type='multipart/form-data',
+        request_only=True
+    )
+]
 
 @extend_schema_view(
     list=extend_schema(
@@ -65,7 +140,9 @@ class EvidenceViewSet(viewsets.ReadOnlyModelViewSet):
             component_name="EvidenceCreateRequest",
             serializers=serializers_map,
             resource_type_field_name="type"
-        )},
+        )
+        },
+        examples=evidence_examples,
         responses={201: evidence_response_schema},
         description="Create new evidence. The request must include a 'type' field indicating the evidence type (witness, bio, vehicle, identity, other)."
     )

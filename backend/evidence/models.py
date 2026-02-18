@@ -66,6 +66,9 @@ class BioEvidence(Evidence):
     """
     # Removed the single 'image' field from here.
     
+    # TODO: should approve by Coroner 
+    # should fix this
+
     coroner_result = models.TextField(
         null=True, 
         blank=True
@@ -76,7 +79,7 @@ class BioEvidence(Evidence):
     )
 
 
-class BioEvidenceImage(models.Model): # TODO: should approve by Coroner 
+class BioEvidenceImage(models.Model): 
     """
     Allows multiple images for a single BioEvidence record.
     """

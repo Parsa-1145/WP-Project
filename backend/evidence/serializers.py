@@ -29,7 +29,7 @@ class BioEvidenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BioEvidence
         fields = "__all__"
-        read_only_fields = ['recorder']
+        read_only_fields = ['recorder', 'coroner_result', 'is_verified']
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop('uploaded_images', [])
