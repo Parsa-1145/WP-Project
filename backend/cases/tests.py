@@ -122,6 +122,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   2222222222  "],
             },
         )
@@ -132,6 +133,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   3333333333  "],
             },
         )
@@ -142,6 +144,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   4444444444  "],
             },
         )
@@ -152,6 +155,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "complainant_national_ids": ["2222222222", "2222222222", "   4444444444  ", "  555555 5"],
             },
         )
@@ -181,6 +185,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "witnesses": [
                     {"phone_number": "989112405786", "national_id": "   2222222222   "},
                     {"phone_number": "989112405786", "national_id": "   3333333333   "},
@@ -194,6 +199,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "witnesses": [
                     {"phone_number": "989112405786", "national_id": "2222222222"},
                     {"phone_number": "989112405786", "national_id": "2222232222"},
@@ -209,6 +215,7 @@ class AuthFlowTests(APITestCase):
             payload={
                 "title": "KMKH",
                 "description": "KMKH",
+                "crime_datetime": "2026-02-17T21:35:00Z",
                 "witnesses": [
                     {"phone_number": "989112405786", "national_id": "2222222222"},
                     {"phone_number": "989112405786", "national_id": "2222232222"},

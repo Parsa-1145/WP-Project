@@ -16,7 +16,6 @@ class Case(models.Model):
 
     title = models.CharField(max_length=255)
     description = models.TextField()
-    
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         related_name='filed_cases'
@@ -34,14 +33,15 @@ class Case(models.Model):
         related_name='assigned_cases'
     )
     witnesses = models.JSONField(
-        blank=True
+        blank=True,
+        default=list
     )
     status = models.CharField(
         max_length=20, 
         choices=Status.choices, 
         default=Status.OPEN_INVESTIGATION
     )
-    crime_date = models.DateTimeField()
+    crime_datetime = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Complaint(models.Model):
@@ -50,13 +50,23 @@ class Complaint(models.Model):
             ("first_complaint_review", "Can approve complaint submissions"),
             ("final_complaint_review", "Can approve the approval of a complaint submissions"),
         ]
-    title = models.CharField()
-    description = models.TextField()
-    creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="created_complaints",
+
+    title = models.CharField(
+        blank=False,
+        null=False,
+        default="Title"
     )
+    description = models.TextField(
+        blank=False,
+        null=False,
+        default="Title"
+    )
+    crime_datetime = models.DateTimeField(
+        auto_now=False,
+        blank=False,
+        null=False
+    )
+    
     complainants = models.ManyToManyField(
         settings.AUTH_USER_MODEL
     )
@@ -69,9 +79,22 @@ class CrimeScene(models.Model):
             ("approve_crime_scene", "Can approve crime scene")
         ]
 
-    title = models.CharField(max_length=10)
-    description = models.TextField(max_length=10)
-    crime_datetime = models.DateTimeField(auto_now=False, blank=False, null=False)
+    title = models.CharField(
+        blank=False,
+        null=False,
+        default="Title"
+    )
+    description = models.TextField(
+        blank=False,
+        null=False,
+        default="Title"
+    )
+    crime_datetime = models.DateTimeField(
+        auto_now=False,
+        blank=False,
+        null=False
+    )
     witnesses = models.JSONField(
-        blank=True
+        blank=True,
+        default=list
     )
