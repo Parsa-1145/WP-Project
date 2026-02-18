@@ -26,7 +26,7 @@ evidence_response_schema = PolymorphicProxySerializer(
     resource_type_field_name='resource_type',
 )
 
-evidence_examples = [
+request_examples = [
     OpenApiExample(
         "Witness Example",
         summary="Witness Evidence Example",
@@ -102,15 +102,97 @@ evidence_examples = [
     )
 ]
 
+response_examples = [
+    OpenApiExample(
+        "Witness Response",
+        summary="Witness Evidence Response",
+        value={
+            "id": 1,
+            "media_file": "http://127.0.0.1:8000/media/evidence/witness/image.png",
+            "title": "string",
+            "description": "string",
+            "created_at": "2026-02-18T14:01:51.213174+03:30",
+            "transcript": "string",
+            "case": 1,
+            "recorder": 1,
+            "resource_type": "WitnessEvidence"
+        },
+        response_only=True,
+        status_codes=[200, 201]
+    ),
+    OpenApiExample(
+        "Vehicle Response",
+        summary="Vehicle Evidence Response",
+        value={
+        "id": 3,
+        "title": "string",
+        "description": "string",
+        "created_at": "2026-02-18T14:39:44.795085+03:30",
+        "model_name": "string",
+        "color": "string",
+        "plate_number": "string",
+        "serial_number": None,
+        "case": 1,
+        "recorder": 1,
+        "resource_type": "VehicleEvidence"
+        },
+        response_only=True,
+        status_codes=[200, 201]
+    ),
+    OpenApiExample(
+        "Identity Response",
+        value={
+        "id": 4,
+        "title": "string",
+        "description": "string",
+        "created_at": "2026-02-18T14:40:35.345465+03:30",
+        "full_name": "string",
+        "details": {
+            "key": "value",
+            "key2": "value2"
+        },
+        "case": 1,
+        "recorder": 1,
+        "resource_type": "IdentityEvidence"
+        },
+    ),
+     OpenApiExample(
+        "Bio Response",
+        summary="Bio Evidence Response",
+        value={
+        "id": 5,
+        "title": "string",
+        "description": "string",
+        "created_at": "2026-02-18T14:41:15.297780+03:30",
+        "coroner_result": "string",
+        "images": [
+            {
+                "id": 1,
+                "image": "http://127.0.0.1:8000/media/evidence/bio/image.jpg",
+                "uploaded_at": "2026-02-18T14:41:29.854313+03:30"
+            }
+        ],
+        "is_verified": True,
+        "case": 1,
+        "recorder": 1,
+        "resource_type": "BioEvidence"
+        },
+        response_only=True,
+        status_codes=[200, 201]
+    ),
+]
+
 @extend_schema_view(
     list=extend_schema(
         summary="List all evidence",
-        responses={200: evidence_response_schema}
+        responses={200: evidence_response_schema},
+        examples=response_examples
     ),
     retrieve=extend_schema(
         summary="Retrieve a specific evidence by ID",
         responses={200: evidence_response_schema},
-    )
+        examples=response_examples
+    ),
 )
 class EvidenceViewSet(viewsets.ModelViewSet):    
 
@@ -142,7 +224,7 @@ class EvidenceViewSet(viewsets.ModelViewSet):
             resource_type_field_name="type"
         )
         },
-        examples=evidence_examples,
+        examples=request_examples + response_examples,
         responses={201: evidence_response_schema},
         description="Create new evidence. The request must include a 'type' field indicating the evidence type (witness, bio, vehicle, identity, other)."
     )
@@ -170,13 +252,16 @@ class EvidenceViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     @extend_schema(
-        request=PolymorphicProxySerializer(
-            component_name="EvidenceUpdateRequest",
-            serializers=serializers_map,
-            resource_type_field_name="type"
-        ),
+        request={
+            'multipart/form-data': PolymorphicProxySerializer(
+                component_name="EvidenceUpdateRequest",
+                serializers=serializers_map,
+                resource_type_field_name="type"
+            )
+        },
+        examples=request_examples + response_examples,
         responses={200: evidence_response_schema},
-        description="Update existing evidence. The request must include a 'type' field indicating the evidence type (witness, bio, vehicle, identity, other). Only the recorder of the evidence can update it."
+        description="Update existing evidence. Only the recorder of the evidence can update it."
     )
     def update(self, request, *args, **kwargs):
         instance = self.get_object()

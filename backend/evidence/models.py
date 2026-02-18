@@ -56,6 +56,9 @@ class WitnessEvidence(Evidence):
         null=True, 
         blank=True
     )
+    class Meta:
+        verbose_name = ("Witness Evidence")
+        verbose_name_plural = ("Witness Evidences")
 
 
 
@@ -66,9 +69,6 @@ class BioEvidence(Evidence):
     """
     # Removed the single 'image' field from here.
     
-    # TODO: should approve by Coroner 
-    # should fix this
-
     coroner_result = models.TextField(
         null=True, 
         blank=True
@@ -77,9 +77,12 @@ class BioEvidence(Evidence):
     is_verified = models.BooleanField(
         default=False
     )
+    class Meta:
+        verbose_name = ("Biological Evidence")
+        verbose_name_plural = ("Biological Evidences")
 
 
-class BioEvidenceImage(models.Model): 
+class BioEvidenceImage(models.Model): # TODO: should approve by Coroner 
     """
     Allows multiple images for a single BioEvidence record.
     """
@@ -100,6 +103,10 @@ class BioEvidenceImage(models.Model):
     )
 
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = ("Bio Evidence Image")
+        verbose_name_plural = ("Bio Evidence Images")
 
 
 class VehicleEvidence(Evidence):
@@ -165,4 +172,6 @@ class IdentityEvidence(Evidence):
         verbose_name_plural = ("Identity Evidences")
 
 class OtherEvidence(Evidence):
-    pass
+    class Meta:
+        verbose_name = ("Other Evidence")
+        verbose_name_plural = ("Other Evidences")
