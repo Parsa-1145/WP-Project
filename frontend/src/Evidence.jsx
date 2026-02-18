@@ -13,7 +13,11 @@ const evi_fields = {
 		['textarea', 'Transcript', 'transcript'],
 		['file', 'Media', 'media_file'],
 	],
-	other: [],
+	bio: [
+		['files', 'Images', 'uploaded_images'],
+	],
+	other: [
+	],
 };
 const evi_types = [...Object.keys(evi_fields)];
 
@@ -32,12 +36,21 @@ export function EvidenceSubmitForm({ returnTo }) {
 
 	const changeFn = (type, name) => e => {
 		const data2 = {...data};
-		if (type === 'file')
+		if (type === 'file') {
 			data2[name] = e.target.files[0];
-		else
+		} else if (type === 'files') {
+			if (typeof e === 'number')
+				data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
+			else
+				data2[name] = [...data[name], e];
+		} else {
+			if (name === 'type')
+				data2.media_file = '';
 			data2[name] = e.target.value;
+		}
 		setData(data2);
 	}
+	const chain = (...fns) => () => fns.forEach(fn => fn());
 	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
@@ -46,8 +59,13 @@ export function EvidenceSubmitForm({ returnTo }) {
 
 		const formData = new FormData();
 		formData.append('type', data.type);
-		for (const ents of [evi_fields_common, evi_fields[data.type]]) for (const ent of ents)
-			formData.append(ent[2], data[ent[2]]);
+		for (const ents of [evi_fields_common, evi_fields[data.type]]) for (const ent of ents) {
+			const id = ent[2];
+			if (Array.isArray(data[id]))
+				data[id].forEach(v => formData.append(id, v));
+			else
+				formData.append(id, data[id]);
+		}
 
 		session.post('/api/evidence/', formData)
 			.then(res => {
@@ -76,6 +94,35 @@ export function EvidenceSubmitForm({ returnTo }) {
 		);
 		if (type === 'textarea')
 			return Simple((<textarea id={id} value={value} onChange={onChange}/>));
+		else if (type === 'file')
+			return Simple((<input id={id} type={'file'} onChange={onChange}/>));
+		else if (type === 'files')
+			return (
+				<div key={id} style={{ display: 'flex', flexDirection: 'row' }}>
+					<label htmlFor={id}>{name}: </label>
+
+					<input
+						id={id}
+						type={'file'}
+						style={{ display: 'none' }}
+						onChange={e => e.target.files && onChange(e.target.files[0])}
+					/>
+
+					<div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+						<button onClick={() => document.getElementById(id).click()}>Add</button>
+
+						{value && value.map((file, i) => (
+							<div
+								key={i}
+								style={{ display: 'flex', flexDirection: 'row' }}
+							>
+								<p style={{ flex: 1 }}>{file.name}</p>
+								<button onClick={() => onChange(i)}>Remove</button>
+							</div>
+						))}
+					</div>
+				</div>
+			);
 		else
 			return Simple((<input id={id} type={type} value={value} onChange={onChange}/>));
 	};
