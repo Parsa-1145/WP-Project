@@ -112,7 +112,7 @@ evidence_examples = [
         responses={200: evidence_response_schema},
     )
 )
-class EvidenceViewSet(viewsets.ReadOnlyModelViewSet):    
+class EvidenceViewSet(viewsets.ModelViewSet):    
 
     queryset = Evidence.objects.all().select_related(
         "witnessevidence",
