@@ -6,7 +6,7 @@ import session from './session'
 // type, name, id
 const evi_fields_auto = [
 	['number', 'PK', 'id'],
-	['date', 'Created at', 'created_at'],
+	['datetime', 'Created at', 'created_at'],
 	['number', 'Recorder PK', 'recorder'],
 ];
 const evi_fields_common = [

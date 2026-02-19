@@ -48,6 +48,14 @@ export const FormInputField = (type, name, value, onChange, { id, key }) => {
 			</div>
 		);
 
+	else if (type === 'datetime') {
+		// TODO: determine timezone
+		// 2026-02-18T17:51:45.491058+03:30
+		// 2026-02-19T02:12
+		const value_small = value.split(':').slice(0, 2).join(':');
+		return Simple((<div><input id={id} type={'datetime-local'} value={value_small} onChange={onChange}/>UTC+03:30</div>));
+	}
+
 	else if (is_list(type)) {
 		const eles = type.split(' ').slice(1);
 		return (
@@ -91,6 +99,13 @@ export const FormInputChangeFn = (data, setData, type, name) => e => {
 			data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
 		else
 			data2[name] = [...data[name], e];
+	}
+
+	else if (type === 'datetime') {
+		// TODO: determine timezone
+		// 2026-02-18T17:51:45.491058+03:30
+		// 2026-02-19T02:12
+		data2[name] = e.target.value + ":00+03:30";
 	}
 
 	else if (is_list(type)) {
