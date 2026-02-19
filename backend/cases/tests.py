@@ -47,11 +47,13 @@ class AuthFlowTests(APITestCase):
 
         self.submission_type_list_url = reverse("submission-type-list")
         self.submission_inbox_list_url = reverse("submission-inbox-list")
-        self.submission_mine_list_create_url = reverse("submission-mine-list-create")
+        self.submission_mine_list_url = reverse("submission-mine-list")
+        self.submission_create_url = reverse("submission-create")
+
 
     def send_submission(self, submission_type, payload) -> HttpResponse:
         return self.client.post(
-            self.submission_mine_list_create_url,
+            self.submission_create_url,
             data={"submission_type": submission_type, "payload": payload},
             format="json",
         )
@@ -74,6 +76,10 @@ class AuthFlowTests(APITestCase):
 
     def get_submission_action_types(self, submission_id):
         url = reverse("submission-action-type", kwargs={"pk": submission_id})
+        return self.client.get(url, format="json")
+    
+    def get_submission(self, submission_id):
+        url = reverse("submission-get", kwargs={"pk": submission_id})
         return self.client.get(url, format="json")
 
     def assert_type_keys(self, user, expected_keys):
@@ -260,3 +266,62 @@ class AuthFlowTests(APITestCase):
         auto_approved_submission = Submission.objects.get(pk=response.json()["id"])
         self.assertEqual(auto_approved_submission.status, SubmissionStatus.APPROVED)
         self.assertEqual(Case.objects.count(), initial_case_count + 2)
+
+    def test_submission_get_authorization(self):
+        complaint_payload = {
+            "title": "KMKH",
+            "description": "KMKH",
+            "crime_datetime": "2026-02-17T21:35:00Z",
+            "complainant_national_ids": ["2222222222"],
+        }
+
+        outsider = User.objects.create_user(
+            username="outsider",
+            password="pass12345",
+            national_id="4444444444",
+            phone_number="+989121234570",
+        )
+
+        self.client.force_authenticate(self.u1)
+        response = self.send_submission("COMPLAINT", complaint_payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        submission_id = response.json()["id"]
+
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["id"], submission_id)
+
+        self.client.force_authenticate(None)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.force_authenticate(outsider)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.u2)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.u4)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.u3)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.u2)
+        response = self.send_submission_action(SubmissionActionType.APPROVE, {}, submission_id)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.u3)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.u1)
+        response = self.get_submission(submission_id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

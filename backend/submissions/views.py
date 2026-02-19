@@ -36,7 +36,6 @@ def submission_create_request_schema():
         serializers=variants,
         resource_type_field_name="submission_type",
     )
-
 def submission_create_examples():
     examples = []
     for type_key, st_cls in SUBMISSION_TYPES.items():
@@ -54,22 +53,57 @@ def submission_create_examples():
         )
     return examples
 
-@extend_schema_view(
-    post=extend_schema(
-        request=submission_create_request_schema(),
-        responses=SubmissionSerializer,
-        examples=submission_create_examples(),
-        description="Create a submission with a type.",
-        summary="Create submission"
-    ),
-    get=extend_schema(
-        description=(
-            "Get the submissions of the user"
-        ),
-        summary="Get submissions",
-    )
+
+@extend_schema(
+    request=submission_create_request_schema(),
+    responses=SubmissionSerializer,
+    examples=submission_create_examples(),
+    description="Create a submission with a type.",
+    summary="Create submission"
 )
-class SubmissionListCreateView(generics.ListCreateAPIView):
+class SubmissionCreateView(generics.CreateAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=SubmissionSerializer
+    queryset = models.Submission.objects.all()
+
+@extend_schema(
+    description=(
+        "Retrieve a single submission by ID. "
+        "Visible to the creator and users assigned to the submission's current stage "
+        "(either by `target_user` or required stage permission)."
+    ),
+    summary="Get submission",
+)
+class SubmissionGetView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubmissionSerializer
+    queryset = models.Submission.objects.all()
+
+    def get_queryset(self):
+        user = self.request.user
+        user_perms = list(user.get_all_permissions())
+
+        current_stage_match = SubmissionStage.objects.filter(
+            submission_id=OuterRef("pk"),
+            order=OuterRef("current_stage"),
+        ).filter(
+            Q(target_user=user) | Q(target_permission__in=user_perms)
+        )
+
+        return (
+            Submission.objects
+            .annotate(can_see=Exists(current_stage_match))
+            .filter(Q(created_by=user) | Q(can_see=True))
+            .distinct()
+        )
+    
+@extend_schema(
+        description=(
+            "Get the submissions created by the user"
+        ),
+        summary="Get user submissions",
+    )
+class SubmissionMineListView(generics.ListAPIView):
     permission_classes=[IsAuthenticated]
     serializer_class=SubmissionSerializer
     queryset = models.Submission.objects.all()
@@ -84,10 +118,11 @@ class SubmissionListCreateView(generics.ListCreateAPIView):
             )
             .distinct()
         )
-
 @extend_schema(
     description=(
-        "Get the submission which the current user should do an action on. For example, after a complaint was filled, all cadets will have that complaint in their inbox"
+        "Returns pending submissions currently assigned to the authenticated user. "
+        "A submission appears in the inbox when the user is the target user for the current stage "
+        "or has the required permission for that stage."
     ),
     summary="Get submissions in the inbox",
 )
@@ -116,7 +151,7 @@ class SubmissionInboxListView(generics.ListAPIView):
     
 @extend_schema(
     description="Gets the submission types available to the authenticated user.",
-    summary="Get available submission types",
+    summary="Get available submission types to create",
     responses={
         200: inline_serializer(
             name="SubmissionAllowedTypes",
@@ -222,9 +257,9 @@ class SubmissionTypeListView(APIView):
     ),
     get=extend_schema(
         description=(
-            "Get an specific submission action"
+            "Get action the history of the submission"
         ),
-        summary="Get submission action",
+        summary="Get action history",
     )
 )
 class SubmissionActionListCreateView(generics.ListCreateAPIView):
@@ -263,7 +298,7 @@ class SubmissionActionListCreateView(generics.ListCreateAPIView):
 
 @extend_schema(
     description="Gets the actions available to this submission. Returns 403 if not authorized.",
-    summary="Get available actions",
+    summary="Get available actions to perform",
     responses={
         200: inline_serializer(
             name="SubmissionAllowedActions",
