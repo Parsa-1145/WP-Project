@@ -114,21 +114,25 @@ export function EvidenceSubmitForm({ returnTo }) {
 			.finally(() => setPost(false));
 	}
 
-	const Field5 = (type, name, id, value, onChange) => {
-		const Simple = body => (
-			<div key={id}>
-				<label htmlFor={id}>{name}: </label>
-				{body}
+	const SimplePair = ({ name, children, id }) => (
+		<div style={{ position: 'relative' }}>
+			<label style={{ position: 'absolute', left: 0 }} htmlFor={id}>{name}: </label>
+			<div style={{ marginLeft: '25%', textAlign: 'left' }}>
+				{children}
 			</div>
-		);
+		</div>
+	);
+
+	const Field5 = (type, name, id, value, onChange) => {
+		const Simple = body => (<SimplePair name={name} key={id} id={id}>{body}</SimplePair>);
 		if (type === 'textarea')
 			return Simple((<textarea id={id} value={value} onChange={onChange}/>));
 		else if (type === 'file')
 			return Simple((<input id={id} type={'file'} onChange={onChange}/>));
 		else if (type === 'files')
 			return (
-				<div key={id} style={{ display: 'flex', flexDirection: 'row' }}>
-					<label htmlFor={id}>{name}: </label>
+				<div key={id} style={{ position: 'relative' }}>
+					<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
 
 					<input
 						id={id}
@@ -137,7 +141,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 						onChange={e => e.target.files && onChange(e.target.files[0])}
 					/>
 
-					<div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+					<div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left', marginLeft: '25%' }}>
 						<button onClick={() => document.getElementById(id).click()}>Add</button>
 
 						{value && value.map((file, i) => (
@@ -154,10 +158,10 @@ export function EvidenceSubmitForm({ returnTo }) {
 			);
 		else if (type === 'keyvalue')
 			return (
-				<div key={id} style={{ display: 'flex', flexDirection: 'row' }}>
-					<label htmlFor={id}>{name}: </label>
+				<div key={id} style={{ position: 'relative' }}>
+					<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
 
-					<div id={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+					<div id={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left', marginLeft: '25%' }}>
 						{value && Object.entries(value).map((ent, i) => (
 							<div
 								key={i}
@@ -181,14 +185,16 @@ export function EvidenceSubmitForm({ returnTo }) {
 
 	return (<>
 		<h1>Evidence Submission</h1>
-		{msgs.map((x, i) => <p key={i}>{x}</p>)}
-		<div style={{ display: 'flex', flexDirection: 'column' }}>
-			<select value={data.type} onChange={changeFn('text', 'type')}>
-				{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
-			</select>
+		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
+		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
+			<SimplePair name='Type' id='type'>
+				<select value={data.type} onChange={changeFn('text', 'type')}>
+					{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
+				</select>
+			</SimplePair>
 			{evi_fields_common.map(ent => FieldArr(ent))}
 			{evi_fields[data.type].map(ent => FieldArr(ent))}
-			<button onClick={submit} disabled={post}>Submit</button>
+			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
 		</div>
 	</>)
 }
