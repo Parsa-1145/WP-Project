@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
 import session from './session'
 
 // type, name, id
@@ -93,5 +93,78 @@ function SubmissionSubmitForm({ type, returnTo }) {
 
 export const ComplaintSubmitForm = props => SubmissionSubmitForm({ ...props, type: 'COMPLAINT' });
 export const CrimeSubmitForm = props => SubmissionSubmitForm({ ...props, type: 'CRIME_SCENE' });
+
+export function SubmissionFrame({ subm, compact, ...props }) {
+	const meta_fields = [
+		['text', 'Type', 'submission_type'],
+		['text', 'Status', 'status'],
+		['number', 'Stage', 'current_stage'],
+		['datetime', 'Created at', 'created_at'],
+	];
+	const type = subm.submission_type;
+
+	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
+	const ProcessArr = data => (ent) => Process(data)(...ent);
+	return (
+		<div {...props} className='item'>
+			{meta_fields.map(ProcessArr(subm))}
+			{subm_fields_common.map(ProcessArr(subm.target))}
+			{subm_fields[type].map(ProcessArr(subm.target))}
+		</div>
+	);
+}
+
+export function SubmissionList({ title, path }) {
+	const [str, setStr] = useState('Retrieving...')
+	const [phase, setPhase] = useState(0);
+	const [compact, setCompact] = useState(true);
+	const [subm_list, set_subm_list] = useState([]);
+
+	const req = () => {
+		setPhase(1);
+		session.get(path)
+			.then(res => {
+				const arr = res.data;
+				for (const subm of arr) {
+					const type = subm.submission_type;
+					if (type === 'COMPLAINT' && subm.target.complainant_national_ids === undefined)
+						subm.target.complainant_national_ids = subm.target.complainants;
+					if (type === 'COMPLAINT')
+						subm.target.complainant_national_ids = subm.target.complainant_national_ids.map(x => [x]);
+					if (type === 'CRIME_SCENE')
+						subm.target.witnesses = subm.target.witnesses.map(obj => [obj.phone_number, obj.national_id]);
+				}
+				setStr('Retrieved successfuly')
+				set_subm_list(arr);
+			})
+			.catch(err => {
+				if (err.response)
+					setStr('ERR: ' + err.status);
+				else
+					setStr('Failed: ' + err.message);
+			})
+			.finally(() => setPhase(2));
+	}
+
+	if (phase === 0)
+		req();
+
+	const eleWidth = compact? 450: 550;
+	return (<>
+		<h1>{title}</h1>
+		<p style={{ textAlign: 'center' }}>{str}</p>
+		<button disabled={phase !== 2} onClick={() => { setStr('Retrying...'); req(); }}>Retry</button>
+		<label>
+			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
+			Compact View
+		</label>
+		<ResponsiveGrid eleWidth={eleWidth}>
+			{subm_list.map((subm, i) => (<SubmissionFrame style={{ maxWidth: eleWidth }} key={i} compact={compact} subm={subm}/>))}
+		</ResponsiveGrid>
+	</>)
+}
+
+export const MySubmissions = props => SubmissionList({ ...props, title: 'My Submissions', path: '/api/submission/mine/' })
+export const InboxSubmissions = props => SubmissionList({ ...props, title: 'Inbox Submissions', path: '/api/submission/inbox/' })
 
 export default SubmissionSubmitForm

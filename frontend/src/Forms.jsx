@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+
 export const SimpleField = (name, body, { id, key }) => (
 	<div key={key === undefined? id: key} style={{ position: 'relative' }}>
 		<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
@@ -142,15 +144,16 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			const enames = type.split(' ').slice(1);
 			return (
 				<div key={key}>
-					<p>{name}</p>
-					<div key={i} style={{ display: 'flex', flexDirection: 'row' }}>
-						{enames.map((ename, j) => (<h6 key={j} style={{ flex: 1, textAlign: 'left' }}>{ename}</h6>))}
+					<div>{name}</div>
+					<div style={{ display: 'flex', flexDirection: 'row' }}>
+						{enames.map((ename, j) => (<div key={j} style={{ flex: 1, textAlign: 'left' }}><strong>{ename}</strong></div>))}
 					</div>
 					{value.map((ent, i) => (
 						<div key={i} style={{ display: 'flex', flexDirection: 'row' }}>
-							{ent.map((ele, j) => (<p key={j} style={{ flex: 1, textAlign: 'left' }}>{ele || '<empty>'}</p>))}
+							{ent.map((ele, j) => (<div key={j} style={{ flex: 1, textAlign: 'left' }}>{ele || '<empty>'}</div>))}
 						</div>
 					))}
+					<p></p>
 				</div>
 			);
 		}
@@ -171,12 +174,33 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 		else if (type === 'list Key Value')
 			return (<div key={key}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<div>{kv[1]||'<empty>'}</div>), { key: i }))}</div>);
 
-		// else if (is_list(type))
-		// 	TODO
+		else if (is_list(type))
+			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n')}</pre>), { id, key });
 
 		else
 			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key });
 	}
+}
+
+export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
+	const [width, setWidth] = useState(window.innerWidth);
+	useEffect(() => {
+		const handle = () => setWidth(window.innerWidth);
+		window.addEventListener('resize', handle);
+		return () => window.removeEventListener('resize', handle);
+	}, []);
+	const rowSize = Math.max(1, Math.floor(width * 0.9 / eleWidth));
+	const divWidth = eleWidth * rowSize;
+	return (
+		<div style={{
+			display: 'grid',
+			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
+			gridTemplateRows: 'auto',
+			width: divWidth,
+		}}>
+			{children}
+		</div>
+	);
 }
 
 export default FormField
