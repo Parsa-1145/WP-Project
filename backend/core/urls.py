@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path, include
+from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from . import settings
 
@@ -20,3 +21,6 @@ urlpatterns = [
     path('api/submission/', include("submissions.urls")),
     path(settings.ADMIN_URL, admin.site.urls),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
