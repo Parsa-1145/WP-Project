@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import session from './session.jsx'
 
 // type, name, id
+const evi_fields_auto = [
+	['number', 'PK', 'id'],
+	['date', 'Created at', 'created_at'],
+	['number', 'Recorder PK', 'recorder'],
+];
 const evi_fields_common = [
 	['number', 'Case PK', 'case'],
 	['text', 'Title', 'title'],
@@ -29,7 +34,23 @@ const evi_fields = {
 	other: [
 	],
 };
+const evi_field_info = {
+	witness: { res_type: 'WitnessEvidence' },
+	vehicle: { res_type: 'VehicleEvidence' },
+	identity: { res_type: 'IdentityEvidence' },
+	bio: { res_type: 'BioEvidence' },
+	other: { res_type: 'OtherEvidence' },
+}
 const evi_types = [...Object.keys(evi_fields)];
+
+const SimplePair = (name, id, body, nonIdKey) => (
+	<div key={nonIdKey === undefined? id: nonIdKey} style={{ position: 'relative' }}>
+		<label style={{ position: 'absolute', left: 0 }} htmlFor={id}>{name}: </label>
+		<div style={{ marginLeft: '180px', textAlign: 'left' }}>
+			{body}
+		</div>
+	</div>
+);
 
 export function EvidenceSubmitForm({ returnTo }) {
 	const defaultData = () => {
@@ -114,15 +135,6 @@ export function EvidenceSubmitForm({ returnTo }) {
 			.finally(() => setPost(false));
 	}
 
-	const SimplePair = (name, id, body) => (
-		<div key={id} style={{ position: 'relative' }}>
-			<label style={{ position: 'absolute', left: 0 }} htmlFor={id}>{name}: </label>
-			<div style={{ marginLeft: '25%', textAlign: 'left' }}>
-				{body}
-			</div>
-		</div>
-	);
-
 	const Field5 = (type, name, id, value, onChange) => {
 		const Simple = body => SimplePair(name, id, body);
 		if (type === 'textarea')
@@ -199,4 +211,102 @@ export function EvidenceSubmitForm({ returnTo }) {
 	</>)
 }
 
-export default EvidenceSubmitForm
+export function EvidenceFrame({ evi, compact, ...props }) {
+	const Process = (type, name, id) => {
+		if (!compact) {
+			const imgStyle = { margin: '0 auto', maxWidth: '500px' };
+			if (type === 'file') // image
+				return (<img key={id} src={evi[id]} style={imgStyle}/>);
+			else if (type === 'files') // images
+				return (<div key={id}>{evi[id].map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
+			else if (type === 'keyvalue')
+				return (<div key={id}>{Object.entries(evi[id]).map((kv, i) => SimplePair(kv[0], undefined, (<p>{kv[1]||'<empty>'}</p>), i))}</div>);
+			else
+				return SimplePair(name, id, (<p>{evi[id]||'<empty>'}</p>));
+		} else {
+			const imgStyle = { margin: 0, maxWidth: '400px', maxHeight: '300px' };
+			if (type === 'file') // image
+				return (<img key={id} src={evi[id]} style={imgStyle}/>);
+			else if (type === 'files') // images
+				return (<div key={id}>{evi[id].map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
+			else if (type === 'keyvalue')
+				return (<div key={id}>{Object.entries(evi[id]).map((kv, i) => SimplePair(kv[0], undefined, (<div>{kv[1]||'<empty>'}</div>), i))}</div>);
+			else
+				return SimplePair(name, id, (<div>{evi[id]||'<empty>'}</div>));
+		}
+	}
+	const ProcessArr = (ent) => Process(...ent);
+	return (
+		<div {...props} className='item'>
+			{Process('text', 'Type', 'type')}
+			{!compact && evi_fields_auto.map(ProcessArr)}
+			{evi_fields_common.map(ProcessArr)}
+			{evi_fields[evi.type].map(ProcessArr)}
+		</div>
+	)
+}
+
+export function EvidenceList({}) {
+	const [str, setStr] = useState('Retrieving...')
+	const [phase, setPhase] = useState(0);
+	const [compact, setCompact] = useState(true);
+	const [evi_list, set_evi_list] = useState([]);
+
+	const req = () => {
+		setPhase(1);
+		session.get('/api/evidence/')
+			.then(res => {
+				try {
+					const arr = res.data;
+					for (const evi of arr) for (const info of Object.entries(evi_field_info)) {
+						if (evi.resource_type == info[1].res_type)
+							evi.type = info[0];
+					}
+					setStr('Retrieved successfuly')
+					set_evi_list(arr);
+				} catch (e) {
+					setStr('Exception: ' + e.toString());
+				}
+			})
+			.catch(err => {
+				if (err.response)
+					setStr('ERR: ' + err.status);
+				else
+					setStr('Failed: ' + err.message);
+			})
+			.finally(() => setPhase(2));
+	}
+
+	if (phase === 0)
+		req();
+
+	const [width, setWidth] = useState(window.innerWidth);
+	useEffect(() => {
+		const handle = () => setWidth(window.innerWidth);
+		window.addEventListener('resize', handle);
+		return () => window.removeEventListener('resize', handle);
+	}, []);
+	const eviWidth = compact? 450: 550;
+	const rowSize = Math.max(1, Math.floor(width * 0.9 / eviWidth));
+	const divWidth = eviWidth * rowSize;
+
+	return (<>
+		<h1>Evidence List</h1>
+		<p style={{ textAlign: 'center' }}>{str}</p>
+		<button disabled={phase !== 2} onClick={() => { setStr('Retrying...'); req(); }}>Retry</button>
+		<label>
+			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
+			Compact View
+		</label>
+		<div style={{
+			display: 'grid',
+			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
+			gridTemplateRows: 'auto',
+			width: divWidth,
+		}}>
+			{evi_list.map((evi, i) => (<EvidenceFrame key={i} compact={compact} evi={evi}/>))}
+		</div>
+	</>)
+}
+
+export default EvidenceList

@@ -4,7 +4,7 @@ import './App.css'
 import Health from './Health'
 import { Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
-import EvidenceSubmitForm from './Evidence'
+import { EvidenceList, EvidenceSubmitForm } from './Evidence'
 import session from './session'
 
 const Home = () => {
@@ -31,7 +31,8 @@ const App = () => {
 			<Route path="/login" exact element={<Login/>}/>
 			<Route path="/signup" exact element={<Signup/>}/>
 			<Route path="/board" exact element={<DetectiveBoard/>}/>
-			<Route path="/evidence" exact element={<EvidenceSubmitForm/>}/>
+			<Route path="/evidence/submit" exact element={<EvidenceSubmitForm/>}/>
+			<Route path="/evidence/list" exact element={<EvidenceList/>}/>
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);
