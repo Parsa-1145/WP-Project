@@ -8,7 +8,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.ListField(
         child=NationalIDField(should_exist=True),
         write_only=True,
-        required=False,   # allow partial updates without sending this field
+        required=True,   # Fuck ai i guess
     )
 
     class Meta:
