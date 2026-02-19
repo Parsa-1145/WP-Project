@@ -1,38 +1,40 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { FormInputField, FormInputChangeFn } from './Forms'
 import session from './session.jsx'
 
 export function Signup() {
-	const [data, setData] = useState({
-		username: '',
-		first_name: '',
-		last_name: '',
-		email: '',
-		phone_number: '',
-		national_id: '',
-		password: '',
-	});
-	const [pass2, setPass2] = useState('');
+	const fields = [
+		['text', 'Username', 'username'],
+		['text', 'First Name', 'first_name'],
+		['text', 'Last Name', 'last_name'],
+		['text', 'Email', 'email'],
+		['text', 'Phone Number', 'phone_number'],
+		['text', 'National ID', 'national_id'],
+		['password', 'Password', 'password'],
+		['password', 'Confirm', 'pass2'],
+	];
+	const defaultData = () => {
+		const obj = {};
+		fields.forEach(e => obj[e[2]] = '');
+		return obj;
+	}
+	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
 	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
 
-	const changeFn = name => e => {
-		const data2 = {...data};
-		data2[name] = e.target.value;
-		setData(data2);
-	}
 	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
-		if (data.password !== pass2) {
+		if (data.password !== data.pass2) {
 			setMsg("ERR: Passwords don't match");
 			return;
 		}
 		setMsg('Awaiting response...');
 		setPost(true);
 
-		session.post('/api/auth/signup/', data)
+		session.post('/api/auth/signup/', { ...data, pass2: undefined })
 			.then(res => {
 				setMsg('Signup successful');
 				navigate('/login');
@@ -46,25 +48,16 @@ export function Signup() {
 			.finally(() => setPost(false));
 	}
 
-	const Field5 = (type, name, id, value, onChange) => (<>
-		<label htmlFor={id}>{name}: </label>
-		<input id={id} type={type} value={value} onChange={onChange}/>
-	</>);
-	const Field = (type, name, id) => Field5(type, name, id, data[id], changeFn(id));
+	const ChangeFn = name => FormInputChangeFn(data, setData, 'text', name);
+	const Field = (type, name, id) => FormInputField(type, name, data[id], ChangeFn(id), { id: id });
+	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
 		<h1>Signup Page</h1>
 		{msgs.map((x, i) => <p key={i}>{x}</p>)}
-		<div style={{ display: 'flex', flexDirection: 'column' }}>
-			{Field('text', 'Username', 'username')}
-			{Field('text', 'First Name', 'first_name')}
-			{Field('text', 'Last Name', 'last_name')}
-			{Field('text', 'Email', 'email')}
-			{Field('text', 'Phone Number', 'phone_number')}
-			{Field('text', 'National ID', 'national_id')}
-			{Field('password', 'Password', 'password')}
-			{Field5('password', 'Confirm Password', 'pass2', pass2, e => setPass2(e.target.value))}
-			<button onClick={submit} disabled={post}>Submit</button>
+		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
+			{fields.map(FieldArr)}
+			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
 		</div>
 	</>)
 }

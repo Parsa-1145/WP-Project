@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import session from './session.jsx'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField } from './Forms'
+import session from './session'
 
 // type, name, id
 const evi_fields_auto = [
@@ -26,7 +27,7 @@ const evi_fields = {
 	],
 	identity: [
 		['text', 'Full Name', 'full_name'],
-		['keyvalue', 'Details', 'details'],
+		['list Key Value', 'Details', 'details'],
 	],
 	bio: [
 		['files', 'Images', 'uploaded_images'],
@@ -43,15 +44,6 @@ const evi_field_info = {
 }
 const evi_types = [...Object.keys(evi_fields)];
 
-const SimplePair = (name, id, body, nonIdKey) => (
-	<div key={nonIdKey === undefined? id: nonIdKey} style={{ position: 'relative' }}>
-		<label style={{ position: 'absolute', left: 0 }} htmlFor={id}>{name}: </label>
-		<div style={{ marginLeft: '180px', textAlign: 'left' }}>
-			{body}
-		</div>
-	</div>
-);
-
 export function EvidenceSubmitForm({ returnTo }) {
 	const defaultData = () => {
 		const obj = {type: evi_types[0]};
@@ -65,31 +57,6 @@ export function EvidenceSubmitForm({ returnTo }) {
 	const [post, setPost] = useState(false);
 	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
-
-	const changeFn = (type, name) => e => {
-		const data2 = {...data};
-		if (type === 'file') {
-			data2[name] = e.target.files[0];
-		} else if (type === 'files') {
-			if (typeof e === 'number')
-				data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
-			else
-				data2[name] = [...data[name], e];
-		} else if (type === 'keyvalue') {
-			if (typeof e === 'number')
-				data2[name] = [].concat(data[name].slice(0, e), data[name].slice(e + 1));
-			else {
-				data2[name] = [...data[name]];
-				data2[name][e[0]] = [e[1], e[2]];
-			}
-		} else {
-			if (name === 'type')
-				data2.media_file = '';
-			data2[name] = e.target.value;
-		}
-		setData(data2);
-	}
-	const chain = (...fns) => () => fns.forEach(fn => fn());
 	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
@@ -97,7 +64,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 		formData.append('type', data.type);
 		for (const ents of [evi_fields_common, evi_fields[data.type]]) for (const ent of ents) {
 			const [type,, id] = ent;
-			if (type === 'keyvalue') {
+			if (type === 'list Key Value') {
 				const res = {};
 				for (const kv of data[id]) {
 					if (res[kv[0]] !== undefined) {
@@ -135,75 +102,23 @@ export function EvidenceSubmitForm({ returnTo }) {
 			.finally(() => setPost(false));
 	}
 
-	const Field5 = (type, name, id, value, onChange) => {
-		const Simple = body => SimplePair(name, id, body);
-		if (type === 'textarea')
-			return Simple((<textarea id={id} value={value} onChange={onChange}/>));
-		else if (type === 'file')
-			return Simple((<input id={id} type={'file'} onChange={onChange}/>));
-		else if (type === 'files')
-			return (
-				<div key={id} style={{ position: 'relative' }}>
-					<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
-
-					<input
-						id={id}
-						type={'file'}
-						style={{ display: 'none' }}
-						onChange={e => e.target.files && onChange(e.target.files[0])}
-					/>
-
-					<div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left', marginLeft: '25%' }}>
-						<button onClick={() => document.getElementById(id).click()}>Add</button>
-
-						{value && value.map((file, i) => (
-							<div
-								key={i}
-								style={{ display: 'flex', flexDirection: 'row' }}
-							>
-								<p style={{ flex: 1 }}>{file.name}</p>
-								<button onClick={() => onChange(i)}>Remove</button>
-							</div>
-						))}
-					</div>
-				</div>
-			);
-		else if (type === 'keyvalue')
-			return (
-				<div key={id} style={{ position: 'relative' }}>
-					<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
-
-					<div id={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left', marginLeft: '25%' }}>
-						{value && Object.entries(value).map((ent, i) => (
-							<div
-								key={i}
-								style={{ display: 'flex', flexDirection: 'row' }}
-							>
-								<input value={value[i][0]} placeholder='Key' type='text' onChange={e => onChange([i, e.target.value, value[i][1]])}/>
-								<input value={value[i][1]} placeholder='Value' type='text' onChange={e => onChange([i, value[i][0], e.target.value])} style={{ flex: 1 }}/>
-								<button onClick={() => onChange(i)}>Remove</button>
-							</div>
-						))}
-
-						<button onClick={() => onChange([value.length, '', ''])}>New</button>
-					</div>
-				</div>
-			);
-		else
-			return Simple((<input id={id} type={type} value={value} onChange={onChange}/>));
-	};
-	const Field = (type, name, id) => Field5(type, name, id, data[id], changeFn(type, id));
+	const ChangeFn = (type, id) => e => {
+		if (id === 'type')
+			data.media_file = ''; // kinda a hack
+		FormInputChangeFn(data, setData, type, id)(e);
+	}
+	const Field = (type, name, id) => FormInputField(type, name, data[id], ChangeFn(type, id), { id: id });
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
 		<h1>Evidence Submission</h1>
 		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
-			{SimplePair('Type', 'type', (
-				<select value={data.type} onChange={changeFn('text', 'type')}>
+			{SimpleField('Type', (
+				<select value={data.type} onChange={ChangeFn('text', 'type')}>
 					{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
 				</select>
-			))}
+			), { id: 'type' })}
 			{evi_fields_common.map(ent => FieldArr(ent))}
 			{evi_fields[data.type].map(ent => FieldArr(ent))}
 			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
@@ -212,29 +127,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 }
 
 export function EvidenceFrame({ evi, compact, ...props }) {
-	const Process = (type, name, id) => {
-		if (!compact) {
-			const imgStyle = { margin: '0 auto', maxWidth: '500px' };
-			if (type === 'file') // image
-				return (<img key={id} src={evi[id]} style={imgStyle}/>);
-			else if (type === 'files') // images
-				return (<div key={id}>{evi[id].map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
-			else if (type === 'keyvalue')
-				return (<div key={id}>{Object.entries(evi[id]).map((kv, i) => SimplePair(kv[0], undefined, (<p>{kv[1]||'<empty>'}</p>), i))}</div>);
-			else
-				return SimplePair(name, id, (<p>{evi[id]||'<empty>'}</p>));
-		} else {
-			const imgStyle = { margin: 0, maxWidth: '400px', maxHeight: '300px' };
-			if (type === 'file') // image
-				return (<img key={id} src={evi[id]} style={imgStyle}/>);
-			else if (type === 'files') // images
-				return (<div key={id}>{evi[id].map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
-			else if (type === 'keyvalue')
-				return (<div key={id}>{Object.entries(evi[id]).map((kv, i) => SimplePair(kv[0], undefined, (<div>{kv[1]||'<empty>'}</div>), i))}</div>);
-			else
-				return SimplePair(name, id, (<div>{evi[id]||'<empty>'}</div>));
-		}
-	}
+	const Process = (type, name, id) => FormField(type, name, evi[id], { key: id, compact });
 	const ProcessArr = (ent) => Process(...ent);
 	return (
 		<div {...props} className='item'>
@@ -258,9 +151,11 @@ export function EvidenceList({}) {
 			.then(res => {
 				try {
 					const arr = res.data;
-					for (const evi of arr) for (const info of Object.entries(evi_field_info)) {
-						if (evi.resource_type == info[1].res_type)
+					for (const evi of arr) {
+						for (const info of Object.entries(evi_field_info)) if (evi.resource_type == info[1].res_type)
 							evi.type = info[0];
+						if (evi.type === 'bio')
+							evi.uploaded_images = evi.images.map(ent => ent.image);
 					}
 					setStr('Retrieved successfuly')
 					set_evi_list(arr);
