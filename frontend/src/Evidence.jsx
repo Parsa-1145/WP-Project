@@ -114,17 +114,17 @@ export function EvidenceSubmitForm({ returnTo }) {
 			.finally(() => setPost(false));
 	}
 
-	const SimplePair = ({ name, children, id }) => (
-		<div style={{ position: 'relative' }}>
+	const SimplePair = (name, id, body) => (
+		<div key={id} style={{ position: 'relative' }}>
 			<label style={{ position: 'absolute', left: 0 }} htmlFor={id}>{name}: </label>
 			<div style={{ marginLeft: '25%', textAlign: 'left' }}>
-				{children}
+				{body}
 			</div>
 		</div>
 	);
 
 	const Field5 = (type, name, id, value, onChange) => {
-		const Simple = body => (<SimplePair name={name} key={id} id={id}>{body}</SimplePair>);
+		const Simple = body => SimplePair(name, id, body);
 		if (type === 'textarea')
 			return Simple((<textarea id={id} value={value} onChange={onChange}/>));
 		else if (type === 'file')
@@ -187,11 +187,11 @@ export function EvidenceSubmitForm({ returnTo }) {
 		<h1>Evidence Submission</h1>
 		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
-			<SimplePair name='Type' id='type'>
+			{SimplePair('Type', 'type', (
 				<select value={data.type} onChange={changeFn('text', 'type')}>
 					{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
 				</select>
-			</SimplePair>
+			))}
 			{evi_fields_common.map(ent => FieldArr(ent))}
 			{evi_fields[data.type].map(ent => FieldArr(ent))}
 			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
