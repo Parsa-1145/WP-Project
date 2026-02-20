@@ -1,11 +1,11 @@
-import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate } from 'react-router'
-import { useReducer } from 'react'
+import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useReducer, useState } from 'react'
 import './App.css'
 import Health from './Health'
 import { Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm } from './Evidence'
-import { ComplaintSubmitForm, CrimeSubmitForm, MySubmissions, InboxSubmissions } from './Submission'
+import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, MySubmissions, InboxSubmissions } from './Submission'
 import session from './session'
 
 const Home = () => {
@@ -23,6 +23,41 @@ const Home = () => {
 	</>)
 }
 
+const ParamWrap = ({ fn }) => {
+	const params = useParams();
+	const [searchParams] = useSearchParams();
+	return fn(params, searchParams);
+}
+const RetrieveThen = ({ msg, path, fn }) => {
+	const [str, setStr] = useState(`Retrieving ${msg}...`)
+	const [phase, setPhase] = useState(0);
+	const [res, setRes] = useState(null);
+
+	const req = () => {
+		setPhase(1);
+		session.get(path)
+			.then(r => {setRes(r.data); setPhase(3);})
+			.catch(err => {
+				if (err.response)
+					setStr('ERR: ' + err.status);
+				else
+					setStr('Failed: ' + err.message);
+				setPhase(2);
+			})
+	};
+
+	if (phase === 3)
+		return fn(res);
+	if (phase === 0)
+		req();
+
+	return (<>
+		<p>{str}</p>
+		<button disabled={phase !== 2} onClick={() => { setStr('Retrying...'); req(); }}>Retry</button>
+	</>)
+}
+
+
 const App = () => {
 	return (<BrowserRouter>
 		<Link to='/home' style={{ position: 'absolute', left: 0, top: 0 }}>Home</Link>
@@ -38,6 +73,16 @@ const App = () => {
 			<Route path="/submission/crime" exact element={<CrimeSubmitForm/>}/>
 			<Route path="/submission/mine" exact element={<MySubmissions/>}/>
 			<Route path="/submission/inbox" exact element={<InboxSubmissions/>}/>
+
+			<Route path="/submission/:id/edit" exact element={
+				<ParamWrap fn={(ps, qs) => (
+					<RetrieveThen
+						msg="submission"
+						path={`/api/submission/${ps.id}/`}
+						fn={subm => (<SubmissionSubmitForm subm0={subm.target} resubmit={subm.id} type={subm.submission_type} returnTo={qs.get('redir')}/>)}
+					/>
+				)}/>
+			}/>
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);

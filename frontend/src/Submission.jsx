@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useLocation } from 'react-router'
 import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
 import session from './session'
 
@@ -25,8 +25,9 @@ const subm_fields = {
 };
 const subm_types = [...Object.keys(subm_fields)];
 
-function SubmissionSubmitForm({ type, returnTo }) {
+export function SubmissionSubmitForm({ subm0, resubmit, type, returnTo }) {
 	const defaultData = () => {
+		if (subm0) return { ...subm0, complainant_national_ids: subm0.complainant_national_ids.map(x => [x]) };
 		const obj = {}
 		for (const ent of subm_fields_common)
 			obj[ent[2]] = '';
@@ -41,7 +42,9 @@ function SubmissionSubmitForm({ type, returnTo }) {
 	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
-		const payload = {...data};
+		const payload = {};
+		for (const fields of [subm_fields_common, subm_fields[type]]) for (const [,,id] of fields)
+			payload[id] = data[id];
 		if (payload.witnesses)
 			payload.witnesses = payload.witnesses.map(ent => ({ phone_number: ent[0], national_id: ent[1] }))
 		if (payload.complainant_national_ids)
@@ -49,7 +52,7 @@ function SubmissionSubmitForm({ type, returnTo }) {
 		for (const id in payload)
 			if (payload[id] === '')
 				payload[id] = undefined;
-		const req = { submission_type: type, payload };
+		const req = resubmit !== undefined ? { action_type: 'RESUBMIT', payload }: { submission_type: type, payload };
 
 		setPost(true);
 		setMsg('Awaiting response...');
@@ -63,7 +66,8 @@ function SubmissionSubmitForm({ type, returnTo }) {
 				list.push(pre + o);
 		}
 
-		session.post('/api/submission/', req)
+		const path = resubmit !== undefined? `/api/submission/${resubmit}/actions/`: '/api/submission/';
+		session.post(path, req)
 			.then(res => {
 				setMsg('Submit successful');
 				setData(defaultData());
@@ -164,6 +168,9 @@ export function SubmissionList({ title, path }) {
 	if (phase === 0)
 		req();
 
+	const navigate = useNavigate();
+	const location = useLocation();
+
 	const onAction = id => (act, msg) => {
 		if (phase !== 2)
 			return;
@@ -180,6 +187,9 @@ export function SubmissionList({ title, path }) {
 					req();
 				})
 				.catch(e => { errCatch(e); setPhase(2); });
+		} else if (act === 'RESUBMIT') {
+			const params = new URLSearchParams({ redir: location.pathname }).toString();
+			navigate(`/submission/${id}/edit?${params}`);
 		} else {
 			alert('Unimplemented: ' + act);
 		}
