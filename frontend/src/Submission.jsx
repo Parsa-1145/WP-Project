@@ -106,6 +106,7 @@ export function SubmissionFrame({ subm, compact, onAction, ...props }) {
 		['text', 'Status', 'status'],
 		['datetime', 'Created at', 'created_at'],
 	];
+	const [rejMsg, setRejMsg] = useState('');
 	const type = subm.submission_type;
 	const actions = subm.available_actions;
 
@@ -117,7 +118,8 @@ export function SubmissionFrame({ subm, compact, onAction, ...props }) {
 				{meta_fields.map(ProcessArr(subm))}
 				{subm_fields_common.map(ProcessArr(subm.target))}
 				{subm_fields[type].map(ProcessArr(subm.target))}
-				{actions.map((act, idx) => (<button key={idx} onClick={() => onAction(act)}>{act}</button>))}
+				{actions.map((act, idx) => (<button key={idx} onClick={() => onAction(act, rejMsg)}>{act}</button>))}
+				{actions.includes('REJECT') && FormInputField('textarea', 'Reject Msg', rejMsg, e => setRejMsg(e.target.value), {})}
 			</div>
 		</div>
 	);
@@ -162,14 +164,17 @@ export function SubmissionList({ title, path }) {
 	if (phase === 0)
 		req();
 
-	const onAction = id => act => {
+	const onAction = id => (act, msg) => {
 		if (phase !== 2)
 			return;
 		window.scrollTo(0, 0);
-		if (act === 'ACCEPT' || act === 'APPROVE') {
+		if (act === 'ACCEPT' || act === 'APPROVE' || act === 'REJECT') {
+			const payload = {};
+			if (act === 'REJECT') payload.message = msg;
+
 			setPhase(3);
 			setStr('Awaiting response...')
-			session.post(`/api/submission/${id}/actions/`, { action_type: act, payload: {} })
+			session.post(`/api/submission/${id}/actions/`, { action_type: act, payload })
 				.then(res => {
 					setStr('Successful. Reloading...');
 					req();
