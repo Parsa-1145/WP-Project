@@ -15,7 +15,13 @@ const subm_fields = {
 	],
 	COMPLAINT: [
 		['list ID', 'Complainants', 'complainant_national_ids'],
-	]
+	],
+	CASE_STAFFING: [
+		['text', 'Level', 'crime_level'],
+		['text', 'Lead Detective', 'lead_detective'],
+		['text', 'Supervisor', 'supervisor'],
+		['text', 'Origin PK', 'origin_submission_id'],
+	],
 };
 const subm_types = [...Object.keys(subm_fields)];
 
@@ -94,14 +100,14 @@ function SubmissionSubmitForm({ type, returnTo }) {
 export const ComplaintSubmitForm = props => SubmissionSubmitForm({ ...props, type: 'COMPLAINT' });
 export const CrimeSubmitForm = props => SubmissionSubmitForm({ ...props, type: 'CRIME_SCENE' });
 
-export function SubmissionFrame({ subm, compact, ...props }) {
+export function SubmissionFrame({ subm, compact, onAction, ...props }) {
 	const meta_fields = [
 		['text', 'Type', 'submission_type'],
 		['text', 'Status', 'status'],
-		['number', 'Stage', 'current_stage'],
 		['datetime', 'Created at', 'created_at'],
 	];
 	const type = subm.submission_type;
+	const actions = subm.available_actions;
 
 	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
 	const ProcessArr = data => (ent) => Process(data)(...ent);
@@ -111,6 +117,7 @@ export function SubmissionFrame({ subm, compact, ...props }) {
 				{meta_fields.map(ProcessArr(subm))}
 				{subm_fields_common.map(ProcessArr(subm.target))}
 				{subm_fields[type].map(ProcessArr(subm.target))}
+				{actions.map((act, idx) => (<button key={idx} onClick={() => onAction(act)}>{act}</button>))}
 			</div>
 		</div>
 	);
@@ -121,6 +128,15 @@ export function SubmissionList({ title, path }) {
 	const [phase, setPhase] = useState(0);
 	const [compact, setCompact] = useState(true);
 	const [subm_list, set_subm_list] = useState([]);
+
+	const errCatch = err => {
+		if (err.response && err.response.data && err.response.data.detail)
+			setStr('ERR: ' + err.status + ' - ' + err.response.data.detail);
+		else if (err.response)
+			setStr('ERR: ' + err.status);
+		else
+			setStr('Failed: ' + err.message);
+	};
 
 	const req = () => {
 		setPhase(1);
@@ -139,29 +155,42 @@ export function SubmissionList({ title, path }) {
 				setStr('Retrieved successfuly')
 				set_subm_list(arr);
 			})
-			.catch(err => {
-				if (err.response)
-					setStr('ERR: ' + err.status);
-				else
-					setStr('Failed: ' + err.message);
-			})
+			.catch(errCatch)
 			.finally(() => setPhase(2));
 	}
 
 	if (phase === 0)
 		req();
 
+	const onAction = id => act => {
+		if (phase !== 2)
+			return;
+		window.scrollTo(0, 0);
+		if (act === 'ACCEPT' || act === 'APPROVE') {
+			setPhase(3);
+			setStr('Awaiting response...')
+			session.post(`/api/submission/${id}/actions/`, { action_type: act, payload: {} })
+				.then(res => {
+					setStr('Successful. Reloading...');
+					req();
+				})
+				.catch(e => { errCatch(e); setPhase(2); });
+		} else {
+			alert('Unimplemented: ' + act);
+		}
+	};
+
 	const eleWidth = compact? 450: 550;
 	return (<>
 		<h1>{title}</h1>
 		<p style={{ textAlign: 'center' }}>{str}</p>
-		<button disabled={phase !== 2} onClick={() => { setStr('Retrying...'); req(); }}>Retry</button>
+		<button disabled={phase !== 2} onClick={() => { setStr('Reloading...'); req(); }}>Reload</button>
 		<label>
 			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
 			Compact View
 		</label>
 		<ResponsiveGrid eleWidth={eleWidth}>
-			{subm_list.map((subm, i) => (<SubmissionFrame style={{ width: eleWidth }} key={i} compact={compact} subm={subm}/>))}
+			{subm_list.map((subm, i) => (<SubmissionFrame style={{ width: eleWidth }} key={i} compact={compact} subm={subm} onAction={onAction(subm.id)}/>))}
 		</ResponsiveGrid>
 	</>)
 }
