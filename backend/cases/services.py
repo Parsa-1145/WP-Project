@@ -14,7 +14,7 @@ def create_case_from_complaint(complaint: Complaint) -> Case:
     case.complainants.set(complaint.complainants.all())
     case.status = Case.Status.AWAITING_INVESTIGATOR_ACCEPTANCE
     submission = create_submission(
-        submission_type_cls=submissiontypes.CaseAcceptanceSubmissionType,
+        submission_type_cls=submissiontypes.CaseStaffingSubmissionType,
         target=case
         )
     attach_submission_to_case(
@@ -36,7 +36,7 @@ def create_case_from_crime_scene(crime_scene: CrimeScene) -> Case:
     case.status = Case.Status.AWAITING_INVESTIGATOR_ACCEPTANCE
 
     submission = create_submission(
-        submission_type_cls=submissiontypes.CaseAcceptanceSubmissionType,
+        submission_type_cls=submissiontypes.CaseStaffingSubmissionType,
          target= case)
     attach_submission_to_case(
         submission=submission,

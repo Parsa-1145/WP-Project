@@ -3,7 +3,7 @@ from rest_framework.serializers import Serializer, DictField
 from django.db.models import Model
 from typing import ClassVar, Generic, Type, TypeVar
 from accounts.models import User
-from submissions.models import Submission, SubmissionAction
+from submissions.models import Submission, SubmissionAction, SubmissionStage
 from drf_spectacular.utils import inline_serializer, OpenApiExample
 from rest_framework.exceptions import ValidationError
 
@@ -11,21 +11,33 @@ TModel = TypeVar("TModel", bound=Model)
 
 
 class BaseSubmissionType(Generic[TModel]):
-    type_key:               ClassVar[str]
-    display_name:           ClassVar[str]
-    serializer_class:       ClassVar[Type[Serializer] | None]  
-    model_class:            ClassVar[Type[TModel]]
-    create_permissions:     ClassVar[list[str]]                = []
-    api_schema:             ClassVar[Type[Serializer] | None]  = DictField(required=True)
-    api_payload_example:    ClassVar[dict | None]              = {}                          
+    type_key:                       ClassVar[str]
+    display_name:                   ClassVar[str]
+    serializer_class:               ClassVar[Type[Serializer]]  
+    model_class:                    ClassVar[Type[TModel]]
+    create_permissions:             ClassVar[list[str]]                = []
+    api_schema:                     ClassVar[Type[Serializer] | None]  = DictField(required=True)
+    api_request_payload_example:    ClassVar[dict | None]              = {} 
+    api_response_target_example:    ClassVar[dict | None]              = {} 
+    can_be_created_from_request:    ClassVar[bool]                     = True         
 
     @classmethod
-    def does_user_have_access(cls, user: User) -> bool:
+    def can_user_submit(cls, user: User) -> bool:
+        if not cls.can_be_created_from_request:
+            return False
         if not user or not user.is_authenticated:
             return False
         if not cls.create_permissions:
             return True
         return user.has_perms(cls.create_permissions)
+    
+    @classmethod
+    def can_user_do_action(cls, submission: Submission, user: User) -> bool:
+        stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
+        if not stage:
+            return True
+        
+        return (stage.target_user and stage.target_user == user) or (stage.target_permission and user.has_perm(stage.target_permission))
 
     @classmethod
     def validate_submission_data(cls, data, context) -> Serializer:

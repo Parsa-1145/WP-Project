@@ -185,6 +185,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API for the Web Programming Project",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True
 }
 
 SIMPLE_JWT = {

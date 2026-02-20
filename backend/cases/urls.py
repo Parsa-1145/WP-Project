@@ -1,7 +1,10 @@
 from django.urls import path
-from .views import ComplaintCreateView, CrimeSceneCreateView
+from . import views
 
 urlpatterns = [
-    path("complaint/", ComplaintCreateView.as_view(), name="complaint"),
-    path("crime-scene/", CrimeSceneCreateView.as_view(), name="crime-scene"),
+    path("", views.CaseListView.as_view(), name="case-list"),
+    path("complainant/", views.ComplainantCaseListView.as_view(), name="case-complainant-list"),
+    path("<int:pk>/evidences/", views.CaseEvidenceListView.as_view(), name="case-evidence-list"),
+    path("<int:pk>/submissions/", views.CaseSubmissionListView.as_view(), name="case-submission-list"),
+    path("<int:pk>/", views.CaseUpdateView.as_view(), name="case-update"),
 ]

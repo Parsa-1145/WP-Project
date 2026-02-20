@@ -9,6 +9,7 @@ class Case(models.Model):
             ("view_all_cases", "Can view all cases"),
             ("investigate_on_case", "Can investigate on a case"),
             ("supervise_case", "Can supervise a case"),
+            ("add_case_acceptance_submission", "Can add a submission to find a lead_detective and a supervisor for a case"),
             
         ]
     class CrimeLevel(models.TextChoices):
@@ -77,7 +78,7 @@ class Case(models.Model):
         related_name='assigned_supervisions'
     )
     status = models.CharField(
-        max_length=64, 
+        max_length=64,
         choices=Status.choices, 
         default=Status.OPEN_INVESTIGATION
     )
@@ -131,17 +132,18 @@ class Complaint(models.Model):
     title = models.CharField(
         blank=False,
         null=False,
-        default="Title"
+        help_text="Short title of the complaint.",
     )
     description = models.TextField(
         blank=False,
         null=False,
-        default="Title"
+        help_text="Detailed description of the complaint.",
     )
     crime_datetime = models.DateTimeField(
         auto_now=False,
         blank=False,
-        null=False
+        null=False,
+        help_text="Date and time when the reported crime occurred.",
     )
     
     complainants = models.ManyToManyField(
@@ -158,19 +160,21 @@ class CrimeScene(models.Model):
     title = models.CharField(
         blank=False,
         null=False,
-        default="Title"
+        help_text="Short title of the crime scene report.",
     )
     description = models.TextField(
         blank=False,
         null=False,
-        default="Title"
+        help_text="Detailed description of the reported crime scene.",
     )
     crime_datetime = models.DateTimeField(
         auto_now=False,
         blank=False,
-        null=False
+        null=False,
+        help_text="Date and time when the incident at this crime scene occurred.",
     )
     witnesses = models.JSONField(
         blank=True,
-        default=list
+        default=list,
+        help_text="List of witness entries attached to this crime scene.",
     )

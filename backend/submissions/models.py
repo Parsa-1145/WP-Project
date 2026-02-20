@@ -178,6 +178,14 @@ class SubmissionStage(models.Model):
         help_text="List of action type strings permitted at this stage (e.g., ['APPROVE', 'REJECT']).",
     )
 
+    prompt = models.TextField(
+        default="",
+        blank=True,
+        null=False,
+        verbose_name="Stage prompt",
+        help_text="The prompt to be shown to the user",
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

@@ -36,23 +36,113 @@ def submission_create_request_schema():
         serializers=variants,
         resource_type_field_name="submission_type",
     )
+
+
+def _submission_response_example(type_key, st_cls):
+    if st_cls.can_be_created_from_request:
+        actions_history = [
+            {
+                "id": 1,
+                "submission": 1,
+                "action_type": "SUBMIT",
+                "payload": {},
+                "created_by": 1,
+                "created_at": "2026-02-19T00:00:00Z",
+            }
+        ]
+        created_by = 1
+    else:
+        # System-created submission types usually have no creator and submit action.
+        actions_history = []
+        created_by = None
+
+    return {
+        "id": 1,
+        "submission_type": type_key,
+        "status": SubmissionStatus.PENDING,
+        "target": st_cls.api_response_target_example,
+        "actions_history": actions_history,
+        "available_actions": [],
+        "action_prompt": "",
+        "created_by": created_by,
+        "created_at": "2026-02-19T00:00:00Z",
+    }
+
+
 def submission_create_examples():
     examples = []
     for type_key, st_cls in SUBMISSION_TYPES.items():
-        if not st_cls.api_payload_example:
-            continue
-        examples.append(
-            OpenApiExample(
-                name=st_cls.display_name,
-                value={
-                    "submission_type": type_key,
-                    "payload": st_cls.api_payload_example,
-                },
-                request_only=True,
+        if st_cls.can_be_created_from_request and st_cls.api_request_payload_example:
+            examples.append(
+                OpenApiExample(
+                    name=f"{st_cls.display_name} request",
+                    value={
+                        "submission_type": type_key,
+                        "payload": st_cls.api_request_payload_example,
+                    },
+                    request_only=True,
+                )
             )
-        )
+
+        if st_cls.can_be_created_from_request and st_cls.api_response_target_example:
+            examples.append(
+                OpenApiExample(
+                    name=f"{st_cls.display_name} response",
+                    value=_submission_response_example(type_key, st_cls),
+                    response_only=True,
+                    status_codes=["201"],
+                )
+            )
     return examples
 
+
+def submission_get_examples(*, include_system: bool = True):
+    examples = []
+    for type_key, st_cls in SUBMISSION_TYPES.items():
+        if not include_system and not st_cls.can_be_created_from_request:
+            continue
+        if st_cls.api_response_target_example:
+            examples.append(
+                OpenApiExample(
+                    name=f"{st_cls.display_name} response",
+                    value=_submission_response_example(type_key, st_cls),
+                    response_only=True,
+                    status_codes=["200"],
+                )
+            )
+    return examples
+
+
+def submission_mine_examples():
+    examples = []
+    for type_key, st_cls in SUBMISSION_TYPES.items():
+        if not st_cls.can_be_created_from_request:
+            continue
+        if st_cls.api_response_target_example:
+            examples.append(
+                OpenApiExample(
+                    name=f"Mine {st_cls.display_name}",
+                    value=_submission_response_example(type_key, st_cls),
+                    response_only=True,
+                    status_codes=["200"],
+                )
+            )
+    return examples
+
+
+def submission_inbox_examples():
+    examples = []
+    for type_key, st_cls in SUBMISSION_TYPES.items():
+        if st_cls.api_response_target_example:
+            examples.append(
+                OpenApiExample(
+                    name=f"Inbox {st_cls.display_name}",
+                    value=_submission_response_example(type_key, st_cls),
+                    response_only=True,
+                    status_codes=["200"],
+                )
+            )
+    return examples
 
 @extend_schema(
     request=submission_create_request_schema(),
@@ -73,6 +163,12 @@ class SubmissionCreateView(generics.CreateAPIView):
         "(either by `target_user` or required stage permission)."
     ),
     summary="Get submission",
+    responses={
+        200: SubmissionSerializer,
+        403: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+    },
+    examples=submission_get_examples(include_system=True),
 )
 class SubmissionGetView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -102,6 +198,8 @@ class SubmissionGetView(generics.RetrieveAPIView):
             "Get the submissions created by the user"
         ),
         summary="Get user submissions",
+        responses=SubmissionSerializer(many=True),
+        examples=submission_mine_examples(),
     )
 class SubmissionMineListView(generics.ListAPIView):
     permission_classes=[IsAuthenticated]
@@ -125,6 +223,8 @@ class SubmissionMineListView(generics.ListAPIView):
         "or has the required permission for that stage."
     ),
     summary="Get submissions in the inbox",
+    responses=SubmissionSerializer(many=True),
+    examples=submission_inbox_examples(),
 )
 class SubmissionInboxListView(generics.ListAPIView):
     permission_classes=[IsAuthenticated]
@@ -191,7 +291,7 @@ class SubmissionTypeListView(APIView):
     def get(self, request):
         out = []
         for cls in SUBMISSION_TYPES.values():
-            if cls.does_user_have_access(request.user):
+            if cls.can_user_submit(request.user):
                 out.append({"key": cls.type_key, "name": cls.display_name})
         return Response({"types":out})
 
@@ -225,6 +325,13 @@ class SubmissionTypeListView(APIView):
                         name="Approve",
                         fields={
                             "action_type": serializers.ChoiceField(choices=["APPROVE"]),
+                            "payload": serializers.DictField(required=False, default=dict),
+                        },
+                    ),
+                    inline_serializer(
+                        name="Accept",
+                        fields={
+                            "action_type": serializers.ChoiceField(choices=["Accept"]),
                             "payload": serializers.DictField(required=False, default=dict),
                         },
                     ),
@@ -336,4 +443,4 @@ class SubmissionActionTypeGetView(APIView):
             return Response([])
 
         actions = list(stage.allowed_actions) if stage.allowed_actions is not None else []
-        return Response({"actions": actions})
+        return Response({"actions": actions, "prompt": stage.prompt})

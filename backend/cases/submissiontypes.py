@@ -1,6 +1,11 @@
 from submissions.submissiontypes.classes import BaseSubmissionType
 from cases.models import Complaint, CrimeScene, CaseSubmissionLink
-from cases.serializers import ComplaintSerializer, CrimeSceneSerializer
+from cases.serializers import (
+    ComplaintSerializer,
+    ComplaintPayloadSerializer,
+    CrimeSceneSerializer,
+    CaseStaffingSubmissionPayloadSerializer,
+)
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from cases.models import Case
@@ -13,15 +18,22 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     serializer_class     = ComplaintSerializer
     create_permissions   = []
     model_class          = Complaint
-    api_schema           = ComplaintSerializer()
-    api_payload_example  = {
+    api_schema           = ComplaintPayloadSerializer()
+    api_request_payload_example  = {
         "title":"title",
         "description":"description",
         "crime_datetime": "2026-02-17T21:35:00Z",
-        "complainants":[
+        "complainant_national_ids":[
             "2581801910",
             "  2591892340"
         ]
+    }
+    api_response_target_example = {
+        "id": 1,
+        "title": "KMKH",
+        "description": "KMKH",
+        "crime_datetime": "2026-02-18T01:05:00+03:30",
+        "complainant_national_ids": ["1111111111", "2222222222"],
     }
 
     @classmethod
@@ -41,7 +53,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
             if action.action_type != SubmissionActionType.RESUBMIT:
                 return
             
-            ser = ComplaintSerializer(
+            ser = ComplaintPayloadSerializer(
                 instance=target,
                 data=action.payload or {},
                 partial=True,
@@ -80,6 +92,12 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                     submission=submission,
                     relation_type=CaseSubmissionLink.RelationType.ORIGIN
                 )
+
+    @classmethod
+    def validate_submission_data(cls, data, context):
+        serializer = ComplaintPayloadSerializer(data=data, context=context)
+        serializer.is_valid(raise_exception=True)
+        return serializer
     
     @classmethod
     def on_submit(cls, submission): 
@@ -110,13 +128,29 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
     display_name        = "Crime Scene"
     serializer_class    = CrimeSceneSerializer
     create_permissions  = ["cases.add_crimescene"]
-    model_class         =CrimeScene
-    api_payload_example ={
+    model_class         = CrimeScene
+    api_request_payload_example = {
             "title" : "KMKH",
             "description" : "KMKH",
             "crime_datetime": "2026-02-17T21:35:00Z",
             "witnesses" : [{"phone_number": "989112405786", "national_id": "2222222222"}, {"phone_number": "989112405786", "national_id": "   3333333333   "}]
         }
+    api_response_target_example =  {
+        "id": 1,
+        "title": "Crime Scene A",
+        "description": "desc",
+        "witnesses": [
+        {
+            "phone_number": "+989112405786",
+            "national_id": "2222222222"
+        },
+        {
+            "phone_number": "+989112405787",
+            "national_id": "3333333333"
+        }
+        ],
+        "crime_datetime": "2026-02-18T01:05:00+03:30"
+    }
     api_schema = CrimeSceneSerializer()
 
     @classmethod
@@ -169,13 +203,25 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
             relation_type=CaseSubmissionLink.RelationType.ORIGIN
         )
 
-class CaseAcceptanceSubmissionType(BaseSubmissionType["Case"]):
-    type_key             = "CASE_ACCEPTANCE"
-    display_name         = "Case Acceptance"
-    create_permissions   = []
-    model_class          =Complaint
-    serializer_class     = None
-    api_payload_example  = None
+class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
+    type_key             = "CASE_STAFFING"
+    display_name         = "Case Staffing"
+    create_permissions   = ["case.add_case_acceptance_submission"]
+    model_class          = Case
+    serializer_class     = CaseStaffingSubmissionPayloadSerializer
+    can_be_created_from_request = False
+    api_request_payload_example = None
+    api_response_target_example = {
+      "id": 1,
+      "title": "Test Title",
+      "description": "test description",
+      "crime_datetime": "2026-02-18T01:05:00+03:30",
+      "crime_level": "L3",
+      "lead_detective": "Not Assigned",
+      "supervisor": "Not Assigned",
+      "origin_submission_id": 1
+    }
+    api_schema           = None
     api_schema           = None
 
     @classmethod
@@ -203,8 +249,11 @@ class CaseAcceptanceSubmissionType(BaseSubmissionType["Case"]):
 
         if stage.order == 0:
             if action.action_type == SubmissionActionType.ACCEPT:
+                if target.complainants.contains(context["request"].user):
+                    raise PermissionDenied("A complainant of the case cannot be the lead detective")
                 target.lead_detective = context["request"].user
                 target.status = target.Status.AWAITING_SUPERVISOR_ACCEPTANCE
+                target.save()
 
                 submission.current_stage = 1
                 submission.save()
@@ -212,8 +261,12 @@ class CaseAcceptanceSubmissionType(BaseSubmissionType["Case"]):
             if action.action_type == SubmissionActionType.ACCEPT:
                 if target.lead_detective == context["request"].user:
                     raise PermissionDenied("Lead detective cannot approve as supervisor.")
+                if target.complainants.contains(context["request"].user):
+                    raise PermissionDenied("A complainant of the case cannot be the supervisor")
                 target.supervisor = context["request"].user
                 target.status = Case.Status.OPEN_INVESTIGATION
+                target.save()
+
 
                 submission.status = SubmissionStatus.ACCEPTED
                 submission.save()

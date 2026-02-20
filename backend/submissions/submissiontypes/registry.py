@@ -1,8 +1,9 @@
-from cases.submissiontypes import ComplaintSubmissionType, CrimeSceneSubmissionType, BaseSubmissionType
+from cases.submissiontypes import ComplaintSubmissionType, CrimeSceneSubmissionType, BaseSubmissionType, CaseStaffingSubmissionType
 
 SUBMISSION_TYPES: dict[str, type[BaseSubmissionType]] = {
     ComplaintSubmissionType.type_key: ComplaintSubmissionType,
     CrimeSceneSubmissionType.type_key: CrimeSceneSubmissionType,
+    CaseStaffingSubmissionType.type_key: CaseStaffingSubmissionType
 }
 
 

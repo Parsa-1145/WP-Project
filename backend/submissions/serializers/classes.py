@@ -6,9 +6,9 @@ from submissions.models import Submission, SubmissionStatus, SubmissionAction, S
 from submissions.submissiontypes.classes import BaseSubmissionType
 from submissions.submissiontypes.registry import get_submission_type
 from accounts.models import User
-from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import extend_schema_serializer, extend_schema_field, PolymorphicProxySerializer
 from submissions.service import create_submission
-
+from submissions.submissiontypes.registry import SUBMISSION_TYPES
 
 # ---------------------------------------------------------------------
 # SubmissionActionSerializer
@@ -74,6 +74,8 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "payload": e.message
                 })
+            
+        
 
         attrs["created_by"] = user
         attrs["submission"] = submission
@@ -86,24 +88,34 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
 class SubmissionStageSerializer(serializers.ModelSerializer):
     class Meta:
         model=SubmissionStage
-        fields=["id", "target_permission", "target_user", "order", "allowed_actions"]
+        fields=["allowed_actions", "prompt"]
 
 # ---------------------------------------------------------------------
 # SubmissionSerializer
 # ---------------------------------------------------------------------
-
+def submission_target_schema():
+    return PolymorphicProxySerializer(
+        component_name="SubmissionTarget",
+        serializers=[
+            st_cls.serializer_class
+            for st_cls in SUBMISSION_TYPES.values()
+            if st_cls.serializer_class is not None
+        ],
+        resource_type_field_name=None,
+    )
 @extend_schema_serializer(
     component_name="Submission",
     description="Request / Response body for creating a submission action."
 )
 class SubmissionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model=models.Submission
         fields = [
             "id", "submission_type", "payload", "status",
-            "target", "actions_history", "current_stage", "stages", "created_by", "created_at"
+            "target", "actions_history", "available_actions", "action_prompt", "created_by", "created_at"
         ]
-        read_only_fields = ["status", "target", "actions_history", "current_stage", "stages", "created_by", "created_at"]
+        read_only_fields = ["status", "target", "actions_history", "available_actions", "action_prompt", "created_by", "created_at"]
 
     payload = serializers.JSONField(
         write_only=True,
@@ -111,22 +123,28 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "Submission data. Shape depends on `submission_type` and is validated dynamically."
         ),
     )
+
+
     target = serializers.SerializerMethodField(
         read_only=True,
         help_text="Resolved target object (serialized) created/linked by this submission type. For example the created Complaint object",
     )
+
     actions_history = SubmissionActionSerializer(
         many=True,
         read_only=True,
         help_text="List of actions performed on this submission."
     )
-    stages = SubmissionStageSerializer(
-        many=True,
+    available_actions = serializers.SerializerMethodField(
         read_only=True,
-        help_text="Workflow stages for this submission."
+        help_text="The available actions for the user to do"
+    )
+    action_prompt = serializers.SerializerMethodField(
+        read_only=True,
+        help_text="The prompt to be shown to the user"
     )
 
-
+    @extend_schema_field(submission_target_schema())
     def get_target(self, obj):
         submission_type_cls = get_submission_type(obj.submission_type)
         try:
@@ -134,6 +152,25 @@ class SubmissionSerializer(serializers.ModelSerializer):
         except submission_type_cls.model_class.DoesNotExist:
             return None
         return submission_type_cls.serializer_class(target_obj, context=self.context).data
+    
+    def get_available_actions(self, obj:Submission):
+        if not get_submission_type(obj.submission_type).can_user_do_action(obj, user=self.context["request"].user):
+            return []
+        
+        
+        stage = SubmissionStage.objects.filter(submission=obj, order=obj.current_stage).first()
+        if stage is None:
+            return []
+        return [action for action in stage.allowed_actions]
+    
+    def get_action_prompt(self, obj:Submission):
+        if not get_submission_type(obj.submission_type).can_user_do_action(obj, user=self.context["request"].user):
+            return ""
+        
+        stage = SubmissionStage.objects.filter(submission=obj, order=obj.current_stage).first()
+        if stage is None:
+            return ""
+        return stage.prompt
 
     def validate(self, attrs):
         type_key = attrs.get("submission_type")
@@ -145,7 +182,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise ValidationError({"submission_type": "Unsupported submission type: " + type_key})
         
         user = self.context["request"].user
-        if not submission_type_cls.does_user_have_access(user):
+        if not submission_type_cls.can_user_submit(user):
             raise PermissionDenied()
         
         if not submission_type_cls.serializer_class:
