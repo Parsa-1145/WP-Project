@@ -5,12 +5,15 @@ from cases.serializers import (
     ComplaintPayloadSerializer,
     CrimeSceneSerializer,
     CaseStaffingSubmissionPayloadSerializer,
+    InvestigationResultsApprovalPayloadSerializer,
+    InvestigationResultsApprovalTargetSerializer,
 )
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework import serializers
 from cases.models import Case
-from drf_spectacular.utils import OpenApiExample
-
+from drf_spectacular.utils import OpenApiExample, inline_serializer
+from accounts.models import User
 
 class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     type_key             = "COMPLAINT"
@@ -18,7 +21,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     serializer_class     = ComplaintSerializer
     create_permissions   = []
     model_class          = Complaint
-    api_schema           = ComplaintPayloadSerializer()
+    api_request_schema   = ComplaintPayloadSerializer
     api_request_payload_example  = {
         "title":"title",
         "description":"description",
@@ -151,7 +154,7 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
         ],
         "crime_datetime": "2026-02-18T01:05:00+03:30"
     }
-    api_schema = CrimeSceneSerializer()
+    api_request_schema = CrimeSceneSerializer
 
     @classmethod
     def on_submit(cls, submission: Submission):
@@ -222,7 +225,7 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
       "supervisor": "Not Assigned",
       "origin_submission_id": 1
     }
-    api_schema           = None
+    api_request_schema           = None
 
     @classmethod
     def on_submit(cls, submission):
@@ -269,3 +272,58 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
 
                 submission.status = SubmissionStatus.ACCEPTED
                 submission.save()
+
+class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
+    type_key             = "INVESTIGATION_APPROVAL"
+    display_name         = "Investigation Approval"
+    create_permissions   = ["case.investigate_on_case"]
+    model_class          = Case
+    serializer_class     = InvestigationResultsApprovalTargetSerializer
+    api_request_payload_example = {
+        "case_id": 1
+    }
+    api_response_target_example = {
+      "id": 1,
+      "title": "Test Title",
+      "description": "test description",
+      "crime_datetime": "2026-02-18T01:05:00+03:30",
+      "crime_level": "L3",
+      "suspects" : [
+          {
+              "name" : "parsa zamiri",
+              "national_id" : "1234567890",
+              "criminal_record" : [
+                  {
+              "case_id" : 1,
+              "title"   : "Case",
+              "description" : "description",
+              "crime_datetime" : "2026-02-18T01:05:00+03:30",
+              "status"         : "closed"
+                  }
+              ]
+          }
+      ]
+    }
+    api_request_schema           = InvestigationResultsApprovalPayloadSerializer
+
+    @classmethod
+    def validate_submission_data(cls, data, context):
+        case_id = data.get("case_id")
+        if case_id is None:
+            raise ValidationError({"case_id":"this field is required"})
+        
+        case = Case.objects.get(pk=case_id)
+
+        if case is None:
+            raise ValidationError({"case_id":"case doesnt exist"})
+        
+        user:User = context["request"].user
+
+        if case.lead_detective != user:
+            raise PermissionDenied("only the lead detective can make this request")
+            
+    @classmethod
+    def create_object(cls, payload, context):
+        case_id = payload.get("case_id")
+        
+        return Case.objects.get(pk=case_id)

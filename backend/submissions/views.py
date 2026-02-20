@@ -19,14 +19,14 @@ def submission_create_request_schema():
     variants = []
 
     for type_key, st_cls in SUBMISSION_TYPES.items():
-        if not st_cls.api_schema:
+        if not st_cls.api_request_schema:
             continue
         variants.append(
             inline_serializer(
                 name=f"{st_cls.__name__}CreateRequest",
                 fields={
                     "submission_type": serializers.ChoiceField(choices=[(type_key, st_cls.display_name)]),
-                    "payload": st_cls.api_schema,
+                    "payload": st_cls.api_request_schema(),
                 },
             )
         )

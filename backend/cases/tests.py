@@ -117,6 +117,12 @@ class CaseCreationTest(APITestCase):
     def get_submission(self, submission_id):
         url = reverse("submission-get", kwargs={"pk": submission_id})
         return self.client.get(url, format="json")
+    
+    def get_cases(self):
+        return self.client.get(reverse("case-list"), format="json")
+    
+    def get_complainant_cases(self):
+        return self.client.get(reverse("case-complainant-list"), format="json")
 
     def assert_type_keys(self, user, expected_keys):
         self.client.force_authenticate(user)
@@ -530,6 +536,10 @@ class CaseListAccessTest(APITestCase):
             user.user_permissions.add(Permission.objects.get(codename=codename))
 
     @classmethod
+    def printJ(self, data):
+        print(json.dumps(data.json(), indent=2))
+
+    @classmethod
     def setUpTestData(cls):
         base_dt = timezone.now()
 
@@ -594,6 +604,7 @@ class CaseListAccessTest(APITestCase):
             witnesses=[{"phone_number": "+989120000000", "national_id": cls.complainant.national_id}],
         )
         cls.case_assigned.complainants.set([cls.complainant])
+        cls.case_assigned.suspects.set([cls.complainant])
 
         cls.case_general = Case.objects.create(
             title="General Case",
@@ -666,6 +677,8 @@ class CaseListAccessTest(APITestCase):
             {item["id"] for item in response.json()},
             {self.case_assigned.id, self.case_general.id, self.case_complainant_all.id},
         )
+
+
 
         self.client.force_authenticate(self.outsider)
         response = self.client.get(full_url, format="json")

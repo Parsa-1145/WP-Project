@@ -16,7 +16,7 @@ class BaseSubmissionType(Generic[TModel]):
     serializer_class:               ClassVar[Type[Serializer]]  
     model_class:                    ClassVar[Type[TModel]]
     create_permissions:             ClassVar[list[str]]                = []
-    api_schema:                     ClassVar[Type[Serializer] | None]  = DictField(required=True)
+    api_request_schema:             ClassVar[Type[Serializer] | None]  = DictField(required=True)
     api_request_payload_example:    ClassVar[dict | None]              = {} 
     api_response_target_example:    ClassVar[dict | None]              = {} 
     can_be_created_from_request:    ClassVar[bool]                     = True         
@@ -87,3 +87,15 @@ class BaseSubmissionType(Generic[TModel]):
         """
         return cls.model_class._default_manager.get(pk=object_id)
     
+    @classmethod
+    def create_object(cls, payload, context):
+        """
+        Create the submission target object from the payload
+        """
+
+        serializer = cls.serializer_class(
+            data=payload,
+            context=context
+        )
+
+        serializer.save()

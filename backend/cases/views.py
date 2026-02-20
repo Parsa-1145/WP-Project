@@ -7,10 +7,9 @@ from drf_spectacular.utils import extend_schema, OpenApiExample
 from rest_framework import serializers
 
 from .models import Case, CaseSubmissionLink
-from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer
+from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer, CaseLinkedSubmissionSerializer
 from evidence.models import Evidence
 from evidence.serializers import EvidencePolymorphicSerializer
-from submissions.serializers.classes import SubmissionSerializer
 
 
 @extend_schema(
@@ -39,6 +38,7 @@ from submissions.serializers.classes import SubmissionSerializer
                 "lead_detective": "Alex Carter",
                 "supervisor": "Sam Lee",
                 "complainant_national_ids": ["1111111111", "2222222222"],
+                "suspects_national_ids": ["1111111111", "2222222222"],
             },
         ),
     ],
@@ -85,6 +85,7 @@ class CaseListView(generics.ListAPIView):
                 "title": "Street Assault",
                 "crime_datetime": "2026-02-18T19:15:00Z",
                 "status": "awaiting_investigator",
+                "complainant_national_ids": ["1111111111", "2222222222"]
             },
         ),
     ],
@@ -119,13 +120,7 @@ class AssignedCaseAccessMixin:
         return case
 
 
-class CaseLinkedSubmissionSerializer(serializers.ModelSerializer):
-    relation = serializers.CharField(source="relation_type", read_only=True)
-    submission = SubmissionSerializer(read_only=True)
 
-    class Meta:
-        model = CaseSubmissionLink
-        fields = ["relation", "submission"]
 
 
 @extend_schema(
@@ -144,6 +139,7 @@ class CaseLinkedSubmissionSerializer(serializers.ModelSerializer):
                 "title": "Updated Case Title",
                 "description": "Updated summary",
                 "complainant_national_ids": ["1111111111", "2222222222"],
+                "suspects_national_ids": ["1111111111", "2222222222"],
                 "witnesses": [
                     {"phone_number": "+989121234567", "national_id": "3333333333"},
                 ],

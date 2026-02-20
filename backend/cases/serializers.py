@@ -156,11 +156,51 @@ class CaseStaffingSubmissionPayloadSerializer(serializers.ModelSerializer):
         return link.submission.id
 
 
+class InvestigationResultsApprovalPayloadSerializer(serializers.Serializer):
+    case_id = serializers.IntegerField(min_value=1, required=True)
+
+
+class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
+    case_id = serializers.IntegerField(source="id", read_only=True)
+
+    class Meta:
+        model = Case
+        fields = ["case_id", "title", "description", "crime_datetime", "status"]
+        read_only_fields = fields
+
+
+class InvestigationSuspectSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    criminal_record = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["name", "national_id", "criminal_record"]
+        read_only_fields = fields
+
+    def get_name(self, obj: User) -> str:
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_criminal_record(self, obj: User):
+        cases = obj.suspect_cases.all().order_by("id")
+        return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
+
+
+class InvestigationResultsApprovalTargetSerializer(serializers.ModelSerializer):
+    suspects = InvestigationSuspectSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Case
+        fields = ["id", "title", "description", "crime_datetime", "crime_level", "suspects"]
+        read_only_fields = fields
+
+
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
     supervisor = serializers.SerializerMethodField()
     complainant_national_ids = serializers.SerializerMethodField()
-
+    suspects_national_ids = serializers.SerializerMethodField()
+    
     class Meta:
         model = Case
         fields = [
@@ -174,23 +214,27 @@ class CaseListSerializer(serializers.ModelSerializer):
             "lead_detective",
             "supervisor",
             "complainant_national_ids",
+            "suspects_national_ids"
         ]
 
     def get_lead_detective(self, obj) -> str | None:
         if obj.lead_detective is None:
-            return None
+            return "Not Assigned"
         return f"{obj.lead_detective.first_name} {obj.lead_detective.last_name}".strip()
 
     def get_supervisor(self, obj) -> str | None:
         if obj.supervisor is None:
-            return None
+            return "Not Assigned"
         return f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip()
 
     def get_complainant_national_ids(self, obj) -> list[str]:
         return list(obj.complainants.values_list("national_id", flat=True))
-
+    def get_suspects_national_ids(self, obj:Case) -> list[str]:
+        return list(obj.suspects.values_list("national_id", flat=True))
 
 class ComplainantCaseListSerializer(serializers.ModelSerializer):
+    complainant_national_ids = serializers.SerializerMethodField()
+
     class Meta:
         model = Case
         fields = [
@@ -198,19 +242,22 @@ class ComplainantCaseListSerializer(serializers.ModelSerializer):
             "title",
             "crime_datetime",
             "status",
+            "complainant_national_ids"
         ]
 
-
-class ComplainantNationalIDsField(serializers.ListField):
-    def get_attribute(self, instance):
-        return list(instance.complainants.values_list("national_id", flat=True))
-
+    def get_complainant_national_ids(self, obj) -> list[str]:
+        return list(obj.complainants.values_list("national_id", flat=True))
 
 class CaseUpdateSerializer(serializers.ModelSerializer):
-    complainant_national_ids = ComplainantNationalIDsField(
+    complainant_national_ids = serializers.ListField(
         child=NationalIDField(should_exist=True),
         required=False,
-        help_text="List of complainants' national IDs.",
+        help_text="List of complainants national IDs.",
+    )
+    suspects_national_ids = serializers.ListField(
+        child=NationalIDField(should_exist=True),
+        required=False,
+        help_text="List of suspects national IDs.",
     )
     witnesses = WitnessItemSerializer(
         many=True,
@@ -225,12 +272,32 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "complainant_national_ids",
+            "suspects_national_ids",
             "witnesses",
         ]
         read_only_fields = ["id"]
 
+    def get_complainant_national_ids(self, obj):
+        return list(obj.complainants.values_list("national_id", flat=True))
+    def get_suspects_national_ids(self, obj):
+        return list(obj.suspects.values_list("national_id", flat=True))
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["complainant_national_ids"] = self.get_complainant_national_ids(instance)
+        data["suspects_national_ids"] = self.get_suspects_national_ids(instance)
+        return data
+
     def validate_complainant_national_ids(self, national_ids):
-        # Dedupe while preserving order.
+        seen = set()
+        deduped = []
+        for nid in national_ids:
+            if nid not in seen:
+                seen.add(nid)
+                deduped.append(nid)
+        return deduped
+    
+    def validate_suspects_national_ids(self, national_ids):
         seen = set()
         deduped = []
         for nid in national_ids:
@@ -260,6 +327,7 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         complainant_national_ids = validated_data.pop("complainant_national_ids", None)
+        suspects_national_ids = validated_data.pop("suspects_national_ids", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -273,4 +341,25 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             ordered_users = [users_by_nid[nid] for nid in complainant_national_ids if nid in users_by_nid]
             instance.complainants.set(ordered_users)
 
+        if suspects_national_ids is not None:
+            users_by_nid = {
+                user.national_id: user
+                for user in User.objects.filter(national_id__in=suspects_national_ids)
+            }
+            ordered_users = [users_by_nid[nid] for nid in suspects_national_ids if nid in users_by_nid]
+            instance.suspects.set(ordered_users)
+
         return instance
+
+
+class CaseLinkedSubmissionSerializer(serializers.ModelSerializer):
+    relation = serializers.CharField(source="relation_type", read_only=True)
+    submission = serializers.SerializerMethodField()
+
+    def get_submission(self, obj):
+        from submissions.serializers.classes import SubmissionSerializer
+        return SubmissionSerializer(obj.submission, context=self.context).data
+
+    class Meta:
+        model = CaseSubmissionLink
+        fields = ["relation", "submission"]

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from core import settings
 from submissions.models import Submission
+from accounts.models import User
 
 class Case(models.Model):
     class Meta:
@@ -22,6 +23,7 @@ class Case(models.Model):
         OPEN_INVESTIGATION = 'open'
         AWAITING_INVESTIGATOR_ACCEPTANCE = "awaiting_investigator", "Awaiting Investigator Acceptance"
         AWAITING_SUPERVISOR_ACCEPTANCE = "awaiting_supervisor", "Awaiting Supervisor Acceptance"
+        AWAITING_SUSPECTS_ARREST = "awaiting_arrest", "Awaiting Suspects Arrest"
         SOLVED = 'solved'
         CLOSED = 'closed'
 
@@ -80,7 +82,14 @@ class Case(models.Model):
     status = models.CharField(
         max_length=64,
         choices=Status.choices, 
-        default=Status.OPEN_INVESTIGATION
+        default=Status.AWAITING_INVESTIGATOR_ACCEPTANCE
+    )
+
+    suspects = models.ManyToManyField(
+        User,
+        through="CaseSuspectLink",
+        related_name="suspect_cases",
+        blank=True
     )
 
     def __str__(self):
@@ -99,6 +108,28 @@ class Case(models.Model):
             f"    complainants: {complainants_str}\n"
             f"    witnesses_count: {len(self.witnesses or [])}\n"
         )
+
+class CaseSuspectLink(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="case_suspect_links",
+    )
+    case = models.ForeignKey(
+        Case,
+        on_delete=models.CASCADE,
+        related_name="suspect_links",
+    )
+    supervisor_score = models.PositiveSmallIntegerField(
+        blank=True,
+        null=False,
+        default=0
+    )
+    detective_score  = models.PositiveSmallIntegerField(
+        blank=True,
+        null=False,
+        default=0
+    )
 
 class CaseSubmissionLink(models.Model):
     class RelationType(models.TextChoices):

@@ -8,7 +8,6 @@ from submissions.submissiontypes.registry import get_submission_type
 from accounts.models import User
 from drf_spectacular.utils import extend_schema_serializer, extend_schema_field, PolymorphicProxySerializer
 from submissions.service import create_submission
-from submissions.submissiontypes.registry import SUBMISSION_TYPES
 
 # ---------------------------------------------------------------------
 # SubmissionActionSerializer
@@ -94,6 +93,8 @@ class SubmissionStageSerializer(serializers.ModelSerializer):
 # SubmissionSerializer
 # ---------------------------------------------------------------------
 def submission_target_schema():
+    from submissions.submissiontypes.registry import SUBMISSION_TYPES
+
     return PolymorphicProxySerializer(
         component_name="SubmissionTarget",
         serializers=[
@@ -189,23 +190,25 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise ValidationError({"submission_type": "Unsupported submission type: " + type_key})
 
         try:
-            payload_serializer = submission_type_cls.validate_submission_data(
+            submission_type_cls.validate_submission_data(
                 data=payload,
                 context=self.context,
             )
-        except Exception as e:
-            raise serializers.ValidationError({"payload": [e.detail]}) # TODO dog shit
+        except serializers.ValidationError as e:
+            raise serializers.ValidationError({"payload": e.detail})
+        except ValidationError as e:
+            if hasattr(e, "message_dict"):
+                raise serializers.ValidationError({"payload": e.message_dict})
+            raise serializers.ValidationError({"payload": e.messages})
 
         attrs["_submission_type_cls"] = submission_type_cls
-        attrs["_payload_serializer"] = payload_serializer
         attrs["creator"] = user
         return attrs
     
     def create(self, validated_data):
         submission_type_cls:BaseSubmissionType = validated_data.pop("_submission_type_cls")
-        payload_serializer = validated_data.pop("_payload_serializer")
 
-        target_obj = payload_serializer.save()
+        target_obj = submission_type_cls.create_object(validated_data.pop("payload"))
 
         submission = create_submission(
             submission_type_cls=submission_type_cls,
