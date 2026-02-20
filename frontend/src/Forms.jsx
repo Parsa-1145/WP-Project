@@ -177,8 +177,11 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 		else if (is_list(type))
 			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n')}</pre>), { id, key });
 
-		else
+		else {
+			if (type === 'datetime')
+				value = value.replace(/\:\d{2}(\.\d+)?(?=[+-]|$)/, '').replace(/T/g, ' ');
 			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key });
+		}
 	}
 }
 

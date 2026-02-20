@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
 import session from './session'
 
 // type, name, id
@@ -130,11 +130,13 @@ export function EvidenceFrame({ evi, compact, ...props }) {
 	const Process = (type, name, id) => FormField(type, name, evi[id], { key: id, compact });
 	const ProcessArr = (ent) => Process(...ent);
 	return (
-		<div {...props} className='item'>
-			{Process('text', 'Type', 'type')}
-			{!compact && evi_fields_auto.map(ProcessArr)}
-			{evi_fields_common.map(ProcessArr)}
-			{evi_fields[evi.type].map(ProcessArr)}
+		<div {...props}>
+			<div className='item'>
+				{Process('text', 'Type', 'type')}
+				{!compact && evi_fields_auto.map(ProcessArr)}
+				{evi_fields_common.map(ProcessArr)}
+				{evi_fields[evi.type].map(ProcessArr)}
+			</div>
 		</div>
 	)
 }
@@ -175,15 +177,7 @@ export function EvidenceList({}) {
 	if (phase === 0)
 		req();
 
-	const [width, setWidth] = useState(window.innerWidth);
-	useEffect(() => {
-		const handle = () => setWidth(window.innerWidth);
-		window.addEventListener('resize', handle);
-		return () => window.removeEventListener('resize', handle);
-	}, []);
 	const eviWidth = compact? 450: 550;
-	const rowSize = Math.max(1, Math.floor(width * 0.9 / eviWidth));
-	const divWidth = eviWidth * rowSize;
 
 	return (<>
 		<h1>Evidence List</h1>
@@ -193,14 +187,9 @@ export function EvidenceList({}) {
 			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
 			Compact View
 		</label>
-		<div style={{
-			display: 'grid',
-			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
-			gridTemplateRows: 'auto',
-			width: divWidth,
-		}}>
-			{evi_list.map((evi, i) => (<EvidenceFrame key={i} compact={compact} evi={evi}/>))}
-		</div>
+		<ResponsiveGrid eleWidth={eviWidth}>
+			{evi_list.map((evi, i) => (<EvidenceFrame style={{ width: eviWidth }} key={i} compact={compact} evi={evi}/>))}
+		</ResponsiveGrid>
 	</>)
 }
 

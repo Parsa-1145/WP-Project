@@ -106,10 +106,12 @@ export function SubmissionFrame({ subm, compact, ...props }) {
 	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
 	const ProcessArr = data => (ent) => Process(data)(...ent);
 	return (
-		<div {...props} className='item'>
-			{meta_fields.map(ProcessArr(subm))}
-			{subm_fields_common.map(ProcessArr(subm.target))}
-			{subm_fields[type].map(ProcessArr(subm.target))}
+		<div {...props}>
+			<div className='item'>
+				{meta_fields.map(ProcessArr(subm))}
+				{subm_fields_common.map(ProcessArr(subm.target))}
+				{subm_fields[type].map(ProcessArr(subm.target))}
+			</div>
 		</div>
 	);
 }
@@ -159,7 +161,7 @@ export function SubmissionList({ title, path }) {
 			Compact View
 		</label>
 		<ResponsiveGrid eleWidth={eleWidth}>
-			{subm_list.map((subm, i) => (<SubmissionFrame style={{ maxWidth: eleWidth }} key={i} compact={compact} subm={subm}/>))}
+			{subm_list.map((subm, i) => (<SubmissionFrame style={{ width: eleWidth }} key={i} compact={compact} subm={subm}/>))}
 		</ResponsiveGrid>
 	</>)
 }
