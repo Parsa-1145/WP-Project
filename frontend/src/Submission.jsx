@@ -113,6 +113,7 @@ export function SubmissionFrame({ subm, compact, onAction, ...props }) {
 	const [rejMsg, setRejMsg] = useState('');
 	const type = subm.submission_type;
 	const actions = subm.available_actions;
+	const last_action = subm.actions_history[0];
 
 	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
 	const ProcessArr = data => (ent) => Process(data)(...ent);
@@ -123,7 +124,8 @@ export function SubmissionFrame({ subm, compact, onAction, ...props }) {
 				{subm_fields_common.map(ProcessArr(subm.target))}
 				{subm_fields[type].map(ProcessArr(subm.target))}
 				{actions.map((act, idx) => (<button key={idx} onClick={() => onAction(act, rejMsg)}>{act}</button>))}
-				{actions.includes('REJECT') && FormInputField('textarea', 'Reject Msg', rejMsg, e => setRejMsg(e.target.value), {})}
+				{last_action && last_action.action_type === 'REJECT' && FormField('text', 'Last Message', last_action.payload.message, { compact })}
+				{actions.includes('REJECT') && FormInputField('textarea', 'Rejection Message', rejMsg, e => setRejMsg(e.target.value), {})}
 			</div>
 		</div>
 	);
