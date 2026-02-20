@@ -38,7 +38,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
 
     @classmethod
     def handle_submission_action(cls, submission: Submission, action: SubmissionAction, context, **kwargs):
-        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
+        from .services import attach_submission_to_case, create_case_from_complaint
         context = context or {}
         stage = SubmissionStage.objects.filter(
             submission=submission,
@@ -195,7 +195,8 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
 
     @classmethod
     def create_case(cls, submission: Submission, crime_scene: CrimeScene):
-        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
+        from .services import attach_submission_to_case, create_case_from_crime_scene
+
         case = create_case_from_crime_scene(crime_scene=crime_scene)
         attach_submission_to_case(
             case=case,
@@ -222,7 +223,6 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
       "origin_submission_id": 1
     }
     api_schema           = None
-    api_schema           = None
 
     @classmethod
     def on_submit(cls, submission):
@@ -242,7 +242,6 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
 
     @classmethod
     def handle_submission_action(cls, submission, action, context, **kwargs):
-        from .services import attach_submission_to_case, create_case_from_crime_scene, create_case_from_complaint
         stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
 
         target = cls.get_object(submission.object_id)
