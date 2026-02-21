@@ -5,6 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from rest_framework import serializers
+from evidence.serializers import EvidencePolymorphicSerializer
+from .models import Case
+from evidence.models import Evidence  
 
 from .models import Case, CaseSubmissionLink
 from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer, CaseLinkedSubmissionSerializer
@@ -182,24 +185,29 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.UpdateAPIView):
         )
     ],
 )
-class CaseEvidenceListView(AssignedCaseAccessMixin, generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = EvidencePolymorphicSerializer
+class CaseEvidenceListView(generics.ListAPIView):
+    permission_classes=[IsAuthenticated]
+    serializer_class=EvidencePolymorphicSerializer
 
     def get_queryset(self):
-        case = self.get_case()
-        return (
-            Evidence.objects
-            .filter(case_id=case.id)
-            .select_related(
-                "witnessevidence",
-                "bioevidence",
-                "vehicleevidence",
-                "identityevidence",
-                "otherevidence",
-            )
-            .order_by("-created_at")
+        pk = self.kwargs.get('pk')
+
+        case = get_object_or_404(Case, id=pk)
+    
+        user = self.request.user
+        
+
+        if not user.has_perm('cases.view_case') and not case.complainants.filter(id=user.id).exists():
+            raise PermissionDenied("You do not have permission to view this case's evidence.")
+        
+        return Evidence.objects.filter(case_id=pk).select_related(
+            "witnessevidence",
+            "bioevidence",
+            "vehicleevidence",
+            "identityevidence",
+            "otherevidence"
         )
+
 
 
 @extend_schema(

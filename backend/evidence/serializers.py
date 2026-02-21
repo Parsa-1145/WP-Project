@@ -1,7 +1,29 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import *
+from cases.models import Case
 
-class WitnessEvidenceSerializer(serializers.ModelSerializer):
+
+
+
+class BaseEvidenceSerializer(serializers.ModelSerializer):
+    def validate_case(self, value):
+        request = self.context.get('request')
+
+        if request and not request.user and not request.user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        
+        user = request.user
+
+        if user.has_perm('cases.view_case', value):
+            return value
+        
+        if Case.objects.filter(id=value.id, complainants__in=[user]).exists():
+            return value
+        raise PermissionDenied("You do not have permission to this case.")
+
+
+class WitnessEvidenceSerializer(BaseEvidenceSerializer):
     media_file = serializers.FileField(required=False)
     class Meta:
         model = WitnessEvidence
@@ -17,7 +39,7 @@ class BioEvidenceImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'uploaded_at']
         
 
-class BioEvidenceSerializer(serializers.ModelSerializer):
+class BioEvidenceSerializer(BaseEvidenceSerializer):
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
         write_only=True,
@@ -33,22 +55,22 @@ class BioEvidenceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop('uploaded_images', [])
-        bio_evidence = BioEvidence.objects.create(**validated_data)
+        bio_evidence = super().create(validated_data)
 
         for image in uploaded_images:
             BioEvidenceImage.objects.create(evidence=bio_evidence, image=image)
 
         return bio_evidence
 
-class VehicleEvidenceSerializer(serializers.ModelSerializer):
+class VehicleEvidenceSerializer(BaseEvidenceSerializer):
     class Meta:
         model = VehicleEvidence
         fields = "__all__"
         read_only_fields = ['recorder']
     
     def validate(self, data):
-        plate = data.get('plate_number')
-        serial = data.get('serial_number')
+        plate = data.get('plate_number', getattr(self.instance, 'plate_number', None))
+        serial = data.get('serial_number', getattr(self.instance, 'serial_number', None))
 
         if plate and serial:
             raise serializers.ValidationError("A vehicle cannot have both a license plate and a serial number.")
@@ -58,14 +80,22 @@ class VehicleEvidenceSerializer(serializers.ModelSerializer):
     
 
 
+class IdentityEvidenceSerializer(BaseEvidenceSerializer):
+    class Meta:
+        model = IdentityEvidence
+        fields = "__all__"
+        read_only_fields = ['recorder']
+
+class OtherEvidenceSerializer(BaseEvidenceSerializer):
+    class Meta:
+        model = OtherEvidence
+        fields = "__all__"
+        read_only_fields = ['recorder']
+
+
 class EvidencePolymorphicSerializer(serializers.Serializer):
     resource_type = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Evidence
-        fields = "__all__"
-        read_only_fields = ['recorder']
-    
     def get_resource_type(self, obj):
         return obj.__class__.__name__
 
@@ -96,15 +126,3 @@ class EvidencePolymorphicSerializer(serializers.Serializer):
             return data
 
         return super().to_representation(instance)
-
-class IdentityEvidenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = IdentityEvidence
-        fields = "__all__"
-        read_only_fields = ['recorder']
-
-class OtherEvidenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OtherEvidence
-        fields = "__all__"
-        read_only_fields = ['recorder']

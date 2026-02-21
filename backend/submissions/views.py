@@ -26,7 +26,7 @@ def submission_create_request_schema():
                 name=f"{st_cls.__name__}CreateRequest",
                 fields={
                     "submission_type": serializers.ChoiceField(choices=[(type_key, st_cls.display_name)]),
-                    "payload": st_cls.api_request_schema(),
+                    "payload": st_cls.api_request_schema,
                 },
             )
         )

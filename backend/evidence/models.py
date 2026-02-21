@@ -67,8 +67,7 @@ class BioEvidence(Evidence):
     Implements Section 2.3.4: Biological evidence.
     Refactored to support multiple images via BioEvidenceImage model.
     """
-    # Removed the single 'image' field from here.
-    
+
     coroner_result = models.TextField(
         null=True, 
         blank=True
@@ -80,6 +79,9 @@ class BioEvidence(Evidence):
     class Meta:
         verbose_name = ("Biological Evidence")
         verbose_name_plural = ("Biological Evidences")
+        permissions = [
+            ("can_approve_bioevidence", "Can Approve bio evidence")
+        ]
 
 
 class BioEvidenceImage(models.Model): # TODO: should approve by Coroner 
