@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
-import session from './session'
+import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
 const evi_fields_auto = [
@@ -89,16 +89,7 @@ export function EvidenceSubmitForm({ returnTo }) {
 				setData(defaultData());
 				if (returnTo) navigate(returnTo);
 			})
-			.catch(err => {
-				if (err.response) {
-					if (typeof err.response.data === 'object')
-						setMsgs(Object.entries(err.response.data).map(xy => 'ERR: ' + xy[0] + ' - ' + xy[1]));
-					else
-						setMsg('ERR: ' + err.response.data);
-				} else {
-					setMsg('ERR: ' + err.message);
-				}
-			})
+			.catch(err => setMsgs(error_msg_list(err)))
 			.finally(() => setPost(false));
 	}
 
@@ -165,12 +156,7 @@ export function EvidenceList({}) {
 					setStr('Exception: ' + e.toString());
 				}
 			})
-			.catch(err => {
-				if (err.response)
-					setStr('ERR: ' + err.status);
-				else
-					setStr('Failed: ' + err.message);
-			})
+			.catch(err => setStr(error_msg(err)))
 			.finally(() => setPhase(2));
 	}
 

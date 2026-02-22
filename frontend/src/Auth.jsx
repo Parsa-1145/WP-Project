@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FormInputField, FormInputChangeFn } from './Forms'
-import session from './session.jsx'
+import { session, error_msg_list, error_msg } from './session.jsx'
 
 export function Signup() {
 	const fields = [
@@ -39,12 +39,7 @@ export function Signup() {
 				setMsg('Signup successful');
 				navigate('/login');
 			})
-			.catch(err => {
-				if (err.response)
-					setMsgs(Object.entries(err.response.data).map(xy => 'ERR: ' + xy[0] + ' - ' + xy[1]));
-				else
-					setMsg('ERR: ' + err.message);
-			})
+			.catch(err => setMsgs(error_msg_list(err)))
 			.finally(() => setPost(false));
 	}
 
@@ -65,12 +60,12 @@ export function Signup() {
 export function Login() {
 	const [user, setUser] = useState('');
 	const [pass, setPass] = useState('');
-	const [msg, setMsg] = useState('');
+	const [str, setStr] = useState('');
 	const [post, setPost] = useState(false);
 	const navigate = useNavigate();
 
 	const submit = () => {
-		setMsg('Awaiting response...');
+		setStr('Awaiting response...');
 		setPost(true);
 
 		const req_body = {
@@ -80,17 +75,17 @@ export function Login() {
 
 		session.post('/api/auth/login/', req_body)
 			.then(res => {
-				setMsg('Login successful');
+				setStr('Login successful');
 				session.set_creds(user, res.data.access);
 				navigate('/home');
 			})
-			.catch(err => setMsg('ERR: ' + (err.response? err.response.data.detail: err.message)))
+			.catch(err => setStr(error_msg(err)))
 			.finally(() => setPost(false));
 	}
 
 	return (<>
 		<h1>Login Page</h1>
-		{msg && <p>{msg}</p>}
+		{str && <p>{str}</p>}
 		<div style={{ display: 'flex', flexDirection: 'column' }}>
 			<input type="text" placeholder="Username" value={user} onChange={e => setUser(e.target.value)} />
 			<input type="password" placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} />

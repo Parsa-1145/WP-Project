@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router'
 import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
-import session from './session'
+import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
 const subm_fields_common = [
@@ -57,15 +57,6 @@ export function SubmissionSubmitForm({ subm0, resubmit, type, returnTo }) {
 		setPost(true);
 		setMsg('Awaiting response...');
 
-		const obj_dfs = (list, pre, o) => {
-			if (Array.isArray(o))
-				o.forEach(v => obj_dfs(list, pre, v));
-			else if (typeof o === 'object')
-				Object.entries(o).forEach(([str, v]) => obj_dfs(list, pre + str + ' - ', v))
-			else
-				list.push(pre + o);
-		}
-
 		const path = resubmit !== undefined? `/api/submission/${resubmit}/actions/`: '/api/submission/';
 		session.post(path, req)
 			.then(res => {
@@ -73,15 +64,7 @@ export function SubmissionSubmitForm({ subm0, resubmit, type, returnTo }) {
 				setData(defaultData());
 				if (returnTo) navigate(returnTo);
 			})
-			.catch(err => {
-				if (err.response) {
-					const list = [];
-					obj_dfs(list, 'ERR: ', err.response.data);
-					setMsgs(list);
-				} else {
-					setMsg('ERR: ' + err.message);
-				}
-			})
+			.catch(err => setMsgs(error_msg_list(err)))
 			.finally(() => setPost(false));
 	}
 
@@ -137,15 +120,6 @@ export function SubmissionList({ title, path }) {
 	const [compact, setCompact] = useState(true);
 	const [subm_list, set_subm_list] = useState([]);
 
-	const errCatch = err => {
-		if (err.response && err.response.data && err.response.data.detail)
-			setStr('ERR: ' + err.status + ' - ' + err.response.data.detail);
-		else if (err.response)
-			setStr('ERR: ' + err.status);
-		else
-			setStr('Failed: ' + err.message);
-	};
-
 	const req = () => {
 		setPhase(1);
 		session.get(path)
@@ -163,7 +137,7 @@ export function SubmissionList({ title, path }) {
 				setStr('Retrieved successfuly')
 				set_subm_list(arr);
 			})
-			.catch(errCatch)
+			.catch(err => setStr(error_msg(err)))
 			.finally(() => setPhase(2));
 	}
 
@@ -188,7 +162,7 @@ export function SubmissionList({ title, path }) {
 					setStr('Successful. Reloading...');
 					req();
 				})
-				.catch(e => { errCatch(e); setPhase(2); });
+				.catch(e => { setStr(error_msg(e)); setPhase(2); });
 		} else if (act === 'RESUBMIT') {
 			const params = new URLSearchParams({ redir: location.pathname }).toString();
 			navigate(`/submission/${id}/edit?${params}`);

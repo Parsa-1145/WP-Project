@@ -31,7 +31,32 @@ class Session {
 	post(path, body, config) { return axios.post(import.meta.env.VITE_BACKEND_URL + path, body, this._add_auth(config)); }
 }
 
-const session = new Session;
+export const error_msg_list = err => {
+	const obj_dfs = (list, pre, o) => {
+		if (Array.isArray(o))
+			o.forEach(v => obj_dfs(list, pre, v));
+		else if (typeof o === 'object')
+			Object.entries(o).forEach(([str, v]) => obj_dfs(list, pre + str + ' - ', v))
+		else
+			list.push(pre + o);
+	}
+	if (err.response) {
+		const list = ['Error ' + err.status];
+		obj_dfs(list, '-- ', err.response.data);
+		return list;
+	}
+	return ['Failed: ' + err.message];
+}
+export const error_msg = err => {
+	if (err.response && err.response.data && err.response.data.detail)
+		return 'Error ' + err.status + ': ' + err.response.data.detail;
+	else if (err.response)
+		return 'Error ' + err.status;
+	else
+		return 'Failed: ' + err.message;
+};
+
+export const session = new Session;
 
 const auth_data = JSON.parse(localStorage.getItem('auth-data'));
 if (auth_data)

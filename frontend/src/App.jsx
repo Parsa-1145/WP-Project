@@ -7,7 +7,7 @@ import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm } from './Evidence'
 import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, MySubmissions, InboxSubmissions } from './Submission'
 import { CaseList, case_decode } from './Cases'
-import session from './session'
+import { session, error_msg } from './session'
 
 const Home = () => {
 	const [, forced_update] = useReducer(c => c + 1, 0);
@@ -38,13 +38,7 @@ const Retrieve = ({ msg, path, then }) => {
 		setPhase(1);
 		session.get(path)
 			.then(r => {setRes(r.data); setPhase(3);})
-			.catch(err => {
-				if (err.response)
-					setStr('ERR: ' + err.status);
-				else
-					setStr('Failed: ' + err.message);
-				setPhase(2);
-			})
+			.catch(err => { setStr(error_msg(err)); setPhase(2); })
 	};
 
 	if (phase === 3)
