@@ -214,11 +214,33 @@ class InvestigationResultsApprovalTargetSerializer(serializers.ModelSerializer):
 # Case list
 # ---------------------------------------------------------------------
 
+class UserBriefInfoSerializer(serializers.ModelSerializer):
+    second_name = serializers.CharField(source="last_name", read_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "first_name", "second_name", "national_id"]
+        read_only_fields = fields
+
+
+class SuspectInfoSerializer(UserBriefInfoSerializer):
+    id = serializers.IntegerField(source="user.id", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    second_name = serializers.CharField(source="user.last_name", read_only=True)
+    national_id = serializers.CharField(source="user.national_id", read_only=True)
+    suspect_link = serializers.IntegerField(source="id", read_only=True)
+
+    class Meta:
+        model = CaseSuspectLink
+        fields = ["id", "first_name", "second_name", "national_id", "suspect_link"]
+        read_only_fields = fields
+
+
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
     supervisor = serializers.SerializerMethodField()
-    complainant_national_ids = serializers.SerializerMethodField()
-    suspects_national_ids = serializers.SerializerMethodField()
+    complainants = UserBriefInfoSerializer(many=True, read_only=True)
+    suspects = SuspectInfoSerializer(source="suspect_links", many=True, read_only=True)
     
     class Meta:
         model = Case
@@ -232,8 +254,8 @@ class CaseListSerializer(serializers.ModelSerializer):
             "witnesses",
             "lead_detective",
             "supervisor",
-            "complainant_national_ids",
-            "suspects_national_ids"
+            "complainants",
+            "suspects"
         ]
 
     def get_lead_detective(self, obj) -> str | None:
@@ -245,11 +267,6 @@ class CaseListSerializer(serializers.ModelSerializer):
         if obj.supervisor is None:
             return "Not Assigned"
         return f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip()
-
-    def get_complainant_national_ids(self, obj) -> list[str]:
-        return list(obj.complainants.values_list("national_id", flat=True))
-    def get_suspects_national_ids(self, obj:Case) -> list[str]:
-        return list(obj.suspects.values_list("national_id", flat=True))
 
 # ---------------------------------------------------------------------
 # Complainant cases

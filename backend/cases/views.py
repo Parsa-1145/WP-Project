@@ -46,8 +46,23 @@ from accounts.models import User
                 ],
                 "lead_detective": "Alex Carter",
                 "supervisor": "Sam Lee",
-                "complainant_national_ids": ["1111111111", "2222222222"],
-                "suspects_national_ids": ["1111111111", "2222222222"],
+                "complainants": [
+                    {
+                        "id": 1,
+                        "first_name": "P",
+                        "second_name": "Q",
+                        "national_id": "1111111111",
+                    }
+                ],
+                "suspects": [
+                    {
+                        "id": 2,
+                        "first_name": "S",
+                        "second_name": "T",
+                        "national_id": "2222222222",
+                        "suspect_link": 9,
+                    }
+                ],
             },
         ),
     ],

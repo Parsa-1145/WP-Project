@@ -785,11 +785,51 @@ class CaseListAccessTest(APITestCase):
 
     def test_full_case_list_visibility(self):
         full_url = reverse("case-list")
+        assigned_suspect_link = self.case_assigned.suspect_links.get(user=self.complainant)
 
         self.client.force_authenticate(self.detective)
         response = self.client.get(full_url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned.id})
+        self.assertSetEqual(
+            set(response.json()[0].keys()),
+            {
+                "id",
+                "title",
+                "description",
+                "crime_datetime",
+                "crime_level",
+                "status",
+                "witnesses",
+                "lead_detective",
+                "supervisor",
+                "complainants",
+                "suspects",
+            },
+        )
+        self.assertEqual(
+            response.json()[0]["complainants"],
+            [
+                {
+                    "id": self.complainant.id,
+                    "first_name": self.complainant.first_name,
+                    "second_name": self.complainant.last_name,
+                    "national_id": self.complainant.national_id,
+                }
+            ],
+        )
+        self.assertEqual(
+            response.json()[0]["suspects"],
+            [
+                {
+                    "id": self.complainant.id,
+                    "first_name": self.complainant.first_name,
+                    "second_name": self.complainant.last_name,
+                    "national_id": self.complainant.national_id,
+                    "suspect_link": assigned_suspect_link.id,
+                }
+            ],
+        )
 
         self.client.force_authenticate(self.supervisor)
         response = self.client.get(full_url, format="json")
@@ -844,10 +884,27 @@ class CaseListAccessTest(APITestCase):
                 "witnesses",
                 "lead_detective",
                 "supervisor",
-                "complainant_national_ids",
-                "suspects_national_ids",
+                "complainants",
+                "suspects",
             },
         )
+        self.assertEqual(
+            response.json()["complainants"],
+            [
+                {
+                    "id": self.complainant.id,
+                    "first_name": self.complainant.first_name,
+                    "second_name": self.complainant.last_name,
+                    "national_id": self.complainant.national_id,
+                }
+            ],
+        )
+        self.assertEqual(len(response.json()["suspects"]), 1)
+        self.assertEqual(response.json()["suspects"][0]["id"], self.complainant.id)
+        self.assertEqual(response.json()["suspects"][0]["first_name"], self.complainant.first_name)
+        self.assertEqual(response.json()["suspects"][0]["second_name"], self.complainant.last_name)
+        self.assertEqual(response.json()["suspects"][0]["national_id"], self.complainant.national_id)
+        self.assertIn("suspect_link", response.json()["suspects"][0])
 
         self.client.force_authenticate(self.supervisor)
         response = self.client.get(assigned_url, format="json")
