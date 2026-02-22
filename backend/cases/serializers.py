@@ -1,7 +1,12 @@
 from rest_framework import serializers
-from .models import Complaint, CrimeScene, Case, CaseSubmissionLink
+from .models import Complaint, CrimeScene, Case, CaseSubmissionLink, CaseSuspectLink
 from accounts.models import User
 from accounts.serializers.fields import NationalIDField, PhoneNumberField
+from rest_framework.exceptions import PermissionDenied
+
+# ---------------------------------------------------------------------
+# complaint
+# ---------------------------------------------------------------------
 
 class ComplaintSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.SerializerMethodField(
@@ -74,6 +79,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class ComplaintPayloadSerializer(ComplaintSerializer):
     complainant_national_ids = serializers.ListField(
         child=NationalIDField(should_exist=True),
@@ -83,6 +89,10 @@ class ComplaintPayloadSerializer(ComplaintSerializer):
             "If omitted, the authenticated user is added as a complainant."
         ),
     )
+
+# ---------------------------------------------------------------------
+# Crime scene
+# ---------------------------------------------------------------------
 
 class WitnessItemSerializer(serializers.Serializer):
     phone_number = PhoneNumberField(
@@ -125,7 +135,10 @@ class CrimeSceneSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return super().create(validated_data)
-    
+
+# ---------------------------------------------------------------------
+# Case staffing
+# ---------------------------------------------------------------------
 
 class CaseStaffingSubmissionPayloadSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
@@ -155,10 +168,12 @@ class CaseStaffingSubmissionPayloadSerializer(serializers.ModelSerializer):
 
         return link.submission.id
 
+# ---------------------------------------------------------------------
+# Investigation results
+# ---------------------------------------------------------------------
 
 class InvestigationResultsApprovalPayloadSerializer(serializers.Serializer):
     case_id = serializers.IntegerField(min_value=1, required=True)
-
 
 class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
     case_id = serializers.IntegerField(source="id", read_only=True)
@@ -186,6 +201,7 @@ class InvestigationSuspectSerializer(serializers.ModelSerializer):
         return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
 
 
+
 class InvestigationResultsApprovalTargetSerializer(serializers.ModelSerializer):
     suspects = InvestigationSuspectSerializer(many=True, read_only=True)
 
@@ -194,6 +210,9 @@ class InvestigationResultsApprovalTargetSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "description", "crime_datetime", "crime_level", "suspects"]
         read_only_fields = fields
 
+# ---------------------------------------------------------------------
+# Case list
+# ---------------------------------------------------------------------
 
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
@@ -232,6 +251,10 @@ class CaseListSerializer(serializers.ModelSerializer):
     def get_suspects_national_ids(self, obj:Case) -> list[str]:
         return list(obj.suspects.values_list("national_id", flat=True))
 
+# ---------------------------------------------------------------------
+# Complainant cases
+# ---------------------------------------------------------------------
+
 class ComplainantCaseListSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.SerializerMethodField()
 
@@ -247,6 +270,10 @@ class ComplainantCaseListSerializer(serializers.ModelSerializer):
 
     def get_complainant_national_ids(self, obj) -> list[str]:
         return list(obj.complainants.values_list("national_id", flat=True))
+
+# ---------------------------------------------------------------------
+# Case update
+# ---------------------------------------------------------------------
 
 class CaseUpdateSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.ListField(
@@ -273,7 +300,7 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             "description",
             "complainant_national_ids",
             "suspects_national_ids",
-            "witnesses",
+            "witnesses"
         ]
         read_only_fields = ["id"]
 
@@ -351,6 +378,9 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
 
         return instance
 
+# ---------------------------------------------------------------------
+# Case submisions
+# ---------------------------------------------------------------------
 
 class CaseLinkedSubmissionSerializer(serializers.ModelSerializer):
     relation = serializers.CharField(source="relation_type", read_only=True)

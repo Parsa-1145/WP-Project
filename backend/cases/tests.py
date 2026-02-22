@@ -86,7 +86,6 @@ class CaseCreationTest(APITestCase):
         cls.submission_mine_list_url = reverse("submission-mine-list")
         cls.submission_create_url = reverse("submission-create")
 
-
     def send_submission(self, submission_type, payload) -> HttpResponse:
         return self.client.post(
             self.submission_create_url,
@@ -123,7 +122,11 @@ class CaseCreationTest(APITestCase):
     
     def get_complainant_cases(self):
         return self.client.get(reverse("case-complainant-list"), format="json")
-
+    
+    def update_case(self, case_id, data):
+        url = reverse("case-update", kwargs={"pk": case_id})
+        return self.client.patch(url, data=data, format="json")
+    
     def assert_type_keys(self, user, expected_keys):
         self.client.force_authenticate(user)
         response = self.client.get(self.submission_type_list_url, format="json")
@@ -167,7 +170,7 @@ class CaseCreationTest(APITestCase):
         }
         response = self.send_submission("COMPLAINT", invalid_complaint_payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        national_id_errors = response.json()["payload"][0]["complainant_national_ids"]
+        national_id_errors = response.json()["payload"]["complainant_national_ids"]
         self.assertIn("2", national_id_errors)
         self.assertIn("3", national_id_errors)
 
@@ -528,6 +531,109 @@ class CaseCreationTest(APITestCase):
 
         # now u5 is the detective for both cases and u6 is their supervisor
 
+        self.client.force_authenticate(self.u5)
+        res = self.update_case(
+            crime_scene_case.pk,
+            {
+                "suspects_national_ids": ["2222222222", "2222222222", "3333333333"],
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertSetEqual(
+            set(res.json()["suspects_national_ids"]),
+            {"2222222222", "3333333333"},
+        )
+        crime_scene_case.refresh_from_db()
+        self.assertSetEqual(
+            set(crime_scene_case.suspects.values_list("national_id", flat=True)),
+            {"2222222222", "3333333333"},
+        )
+
+        self.client.force_authenticate(self.u6)
+        res = self.update_case(
+            crime_scene_case.pk,
+            {
+                "suspects_national_ids": ["1111111111"],
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        crime_scene_case.refresh_from_db()
+        self.assertSetEqual(
+            set(crime_scene_case.suspects.values_list("national_id", flat=True)),
+            {"2222222222", "3333333333"},
+        )
+
+        self.client.force_authenticate(self.u5)
+        res = self.update_case(
+            crime_scene_case.pk,
+            {
+                "suspects_national_ids": ["1111111111", "  555555 5  ", "7777777777"],
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        suspect_errors = res.json()["suspects_national_ids"]
+        self.assertIn("1", suspect_errors)
+        self.assertIn("2", suspect_errors)
+        crime_scene_case.refresh_from_db()
+        self.assertSetEqual(
+            set(crime_scene_case.suspects.values_list("national_id", flat=True)),
+            {"2222222222", "3333333333"},
+        )
+
+        self.client.force_authenticate(self.u2)
+        res = self.update_case(
+            crime_scene_case.pk,
+            {
+                "suspects_national_ids": ["2222222222"],
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.u5)
+        res = self.send_submission("INVESTIGATION_APPROVAL", {"case_id": crime_scene_case.pk})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        crime_scene_investigation_approval_submission = Submission.objects.get(pk=res.json()["id"])
+        self.client.force_authenticate(self.u6)
+        res = self.get_submissions_inbox()
+        self.assertIn(crime_scene_investigation_approval_submission.pk, [s["id"] for s in res.json()])
+
+        self.assertEqual(
+            next(s for s in res.json() if s["id"] == crime_scene_investigation_approval_submission.pk)["available_actions"],
+              [SubmissionActionType.APPROVE, SubmissionActionType.REJECT])
+
+        res = self.send_submission_action(SubmissionActionType.REJECT, {"message" : "damn"}, crime_scene_investigation_approval_submission.pk)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        res = self.get_submissions_inbox()
+        self.assertNotIn(crime_scene_investigation_approval_submission.pk, [s["id"] for s in res.json()])
+        crime_scene_investigation_approval_submission.refresh_from_db()
+        self.assertEqual(crime_scene_investigation_approval_submission.status, SubmissionStatus.REJECTED)
+
+        # The second time
+
+        self.client.force_authenticate(self.u5)
+        res = self.send_submission("INVESTIGATION_APPROVAL", {"case_id": crime_scene_case.pk})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        crime_scene_investigation_approval_submission = Submission.objects.get(pk=res.json()["id"])
+        self.client.force_authenticate(self.u6)
+        res = self.get_submissions_inbox()
+        self.assertIn(crime_scene_investigation_approval_submission.pk, [s["id"] for s in res.json()])
+
+        self.assertEqual(
+            next(s for s in res.json() if s["id"] == crime_scene_investigation_approval_submission.pk)["available_actions"],
+              [SubmissionActionType.APPROVE, SubmissionActionType.REJECT])
+
+        res = self.send_submission_action(SubmissionActionType.APPROVE, {}, crime_scene_investigation_approval_submission.pk)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        res = self.get_submissions_inbox()
+        self.assertNotIn(crime_scene_investigation_approval_submission.pk, [s["id"] for s in res.json()])
+        crime_scene_investigation_approval_submission.refresh_from_db()
+        self.assertEqual(crime_scene_investigation_approval_submission.status, SubmissionStatus.APPROVED)
+        crime_scene_case.refresh_from_db()
+        self.assertEqual(crime_scene_case.status, crime_scene_case.Status.AWAITING_SUSPECTS_ARREST)
 
 class CaseListAccessTest(APITestCase):
     @classmethod
@@ -695,10 +801,10 @@ class CaseListAccessTest(APITestCase):
         self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned.id})
         self.assertSetEqual(
             set(response.json()[0].keys()),
-            {"id", "title", "crime_datetime", "status"},
+            {"id", "title", "crime_datetime", "status", "complainant_national_ids"},
         )
 
-    def test_case_update_allowed_for_detective_and_supervisor(self):
+    def test_case_update_allowed_for_detective_only(self):
         update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
         payload = {
             "title": "Updated Assigned Case",
@@ -733,13 +839,17 @@ class CaseListAccessTest(APITestCase):
             {"description": "Updated by supervisor"},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.case_assigned.refresh_from_db()
-        self.assertEqual(self.case_assigned.description, "Updated by supervisor")
+        self.assertEqual(self.case_assigned.description, payload["description"])
 
     def test_case_update_forbidden_for_non_assignees(self):
         update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
         payload = {"title": "Unauthorized update"}
+
+        self.client.force_authenticate(self.supervisor)
+        response = self.client.patch(update_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         self.client.force_authenticate(self.viewer)
         response = self.client.patch(update_url, payload, format="json")

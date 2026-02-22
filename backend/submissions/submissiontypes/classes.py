@@ -88,14 +88,8 @@ class BaseSubmissionType(Generic[TModel]):
         return cls.model_class._default_manager.get(pk=object_id)
     
     @classmethod
-    def create_object(cls, payload, context):
+    def create_object(cls, payload, serializer, context):
         """
         Create the submission target object from the payload
         """
-
-        serializer = cls.serializer_class(
-            data=payload,
-            context=context
-        )
-
-        serializer.save()
+        return serializer.save()

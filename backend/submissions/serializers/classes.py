@@ -190,7 +190,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise ValidationError({"submission_type": "Unsupported submission type: " + type_key})
 
         try:
-            submission_type_cls.validate_submission_data(
+            serializer = submission_type_cls.validate_submission_data(
                 data=payload,
                 context=self.context,
             )
@@ -202,18 +202,22 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"payload": e.messages})
 
         attrs["_submission_type_cls"] = submission_type_cls
-        attrs["creator"] = user
+        attrs["_submission_payload_serializer"] = serializer
         return attrs
     
     def create(self, validated_data):
         submission_type_cls:BaseSubmissionType = validated_data.pop("_submission_type_cls")
 
-        target_obj = submission_type_cls.create_object(validated_data.pop("payload"))
+        target_obj = submission_type_cls.create_object(
+            validated_data.pop("payload"),
+            validated_data.pop("_submission_payload_serializer"),
+            context=self.context
+        )
 
         submission = create_submission(
             submission_type_cls=submission_type_cls,
             target=target_obj,
-            created_by=validated_data["creator"]
+            created_by=self.context["request"].user
         )
 
         return submission

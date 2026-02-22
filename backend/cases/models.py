@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from core import settings
 from submissions.models import Submission
 from accounts.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Case(models.Model):
     class Meta:
@@ -120,15 +121,17 @@ class CaseSuspectLink(models.Model):
         on_delete=models.CASCADE,
         related_name="suspect_links",
     )
-    supervisor_score = models.PositiveSmallIntegerField(
+    arrested = models.BooleanField(
         blank=True,
-        null=False,
-        default=0
+        default=False
     )
-    detective_score  = models.PositiveSmallIntegerField(
-        blank=True,
-        null=False,
-        default=0
+    supervisor_score = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(10)]
+    )
+    detective_score  = models.PositiveIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
 
 class CaseSubmissionLink(models.Model):

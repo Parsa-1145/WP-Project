@@ -276,7 +276,7 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
 class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
     type_key             = "INVESTIGATION_APPROVAL"
     display_name         = "Investigation Approval"
-    create_permissions   = ["case.investigate_on_case"]
+    create_permissions   = ["cases.investigate_on_case"]
     model_class          = Case
     serializer_class     = InvestigationResultsApprovalTargetSerializer
     api_request_payload_example = {
@@ -323,7 +323,36 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
             raise PermissionDenied("only the lead detective can make this request")
             
     @classmethod
-    def create_object(cls, payload, context):
+    def create_object(cls, payload, serializer, context):
         case_id = payload.get("case_id")
         
         return Case.objects.get(pk=case_id)
+    
+    @classmethod
+    def on_submit(cls, submission):
+        target = cls.get_object(submission.object_id)
+        
+        SubmissionStage.objects.create(
+            submission=submission,
+            target_user=target.supervisor,
+            order=0,
+            allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT]
+        )
+
+    @classmethod
+    def handle_submission_action(cls, submission, action, context, **kwargs):
+        target = cls.get_object(submission.object_id)
+
+        if action.action_type == SubmissionActionType.APPROVE:
+            target.status = target.Status.AWAITING_SUSPECTS_ARREST
+            target.save()
+
+            submission.status = SubmissionStatus.APPROVED
+
+        if action.action_type == SubmissionActionType.REJECT:
+            submission.status = SubmissionStatus.REJECTED
+
+        submission.save()
+    @classmethod
+    def can_user_submit(cls, user):
+        return super().can_user_submit(user) and Case.objects.filter(lead_detective=user).exists()

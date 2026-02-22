@@ -9,7 +9,7 @@ from evidence.serializers import EvidencePolymorphicSerializer
 from .models import Case
 from evidence.models import Evidence  
 
-from .models import Case, CaseSubmissionLink
+from .models import Case, CaseSubmissionLink, CaseSuspectLink
 from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer, CaseLinkedSubmissionSerializer
 from evidence.models import Evidence
 from evidence.serializers import EvidencePolymorphicSerializer
@@ -134,7 +134,7 @@ class AssignedCaseAccessMixin:
     summary="Update case",
     description=(
         "Partially update a case. "
-        "Only the assigned lead detective or supervisor can update case data."
+        "Only the assigned lead detective can update case data."
     ),
     request=CaseUpdateSerializer,
     responses=CaseUpdateSerializer,
@@ -165,7 +165,10 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.UpdateAPIView):
     http_method_names = ["patch"]
 
     def get_object(self):
-        return self.get_case()
+        case = self.get_case()
+        if case.lead_detective_id != self.request.user.id:
+            raise PermissionDenied("Only the assigned lead detective can update this case.")
+        return case
 
 
 @extend_schema(
