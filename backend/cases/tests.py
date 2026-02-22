@@ -73,7 +73,7 @@ class CaseCreationTest(APITestCase):
             phone_number="+989121234569",
         )
 
-        cls.add_perms(cls.u1, "investigate_on_case", "supervise_case")
+        cls.add_perms(cls.u1, "investigate_on_case", "supervise_case", "can_approve_bioevidence")
         cls.add_perms(cls.u2, "complaint_initial_approve")
         cls.add_perms(cls.u3, "complaint_final_approve", "add_crimescene", "approve_crime_scene")
         cls.add_perms(cls.u4, "complaint_initial_approve", "add_crimescene")
@@ -136,14 +136,18 @@ class CaseCreationTest(APITestCase):
             set(expected_keys),
         )
 
+    def get_front_modules(self):
+        url = reverse("front-modules-get")
+        return self.client.get(url, format="json")
+
     def printJ(self, data):
         print(json.dumps(data.json(), indent=2))
 
     def test_complaint_creation(self):
         initial_case_count = Case.objects.count()
-        self.assert_type_keys(self.u1, {"COMPLAINT"})
-        self.assert_type_keys(self.u2, {"COMPLAINT"})
-        self.assert_type_keys(self.u3, {"COMPLAINT", "CRIME_SCENE"})
+        self.assert_type_keys(self.u1, {"COMPLAINT", "BIO_EVIDENCE"})
+        self.assert_type_keys(self.u2, {"COMPLAINT", "BIO_EVIDENCE"})
+        self.assert_type_keys(self.u3, {"COMPLAINT", "CRIME_SCENE", "BIO_EVIDENCE"})
 
         self.client.force_authenticate(self.u1)
         complaint_payload = {
@@ -635,6 +639,22 @@ class CaseCreationTest(APITestCase):
         crime_scene_case.refresh_from_db()
         self.assertEqual(crime_scene_case.status, crime_scene_case.Status.AWAITING_SUSPECTS_ARREST)
 
+    def test_front_modules(self):
+        expected_modules_by_user = [
+            (self.u1, ["ASSIGNED_CASES", "AUTOPSY", "COMPLAINANT_CASES"]),
+            (self.u2, ["COMPLAINANT_CASES"]),
+            (self.u3, ["COMPLAINANT_CASES"]),
+            (self.u4, ["COMPLAINANT_CASES"]),
+            (self.u5, ["ASSIGNED_CASES", "COMPLAINANT_CASES"]),
+            (self.u6, ["ASSIGNED_CASES", "COMPLAINANT_CASES"]),
+        ]
+
+        for user, expected_modules in expected_modules_by_user:
+            with self.subTest(user=user.username):
+                self.client.force_authenticate(user)
+                res = self.get_front_modules()
+                self.assertEqual(res.status_code, status.HTTP_200_OK)
+                self.assertEqual(res.json(), {"modules": expected_modules})
 class CaseListAccessTest(APITestCase):
     @classmethod
     def add_perms(cls, user: User, *codenames):

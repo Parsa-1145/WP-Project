@@ -194,27 +194,23 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.UpdateAPIView):
         )
     ],
 )
-class CaseEvidenceListView(generics.ListAPIView):
-    permission_classes=[IsAuthenticated]
-    serializer_class=EvidencePolymorphicSerializer
+class CaseEvidenceListView(AssignedCaseAccessMixin, generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EvidencePolymorphicSerializer
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
-
-        case = get_object_or_404(Case, id=pk)
-    
-        user = self.request.user
-        
-
-        if not user.has_perm('cases.view_case') and not case.complainants.filter(id=user.id).exists():
-            raise PermissionDenied("You do not have permission to view this case's evidence.")
-        
-        return Evidence.objects.filter(case_id=pk).select_related(
-            "witnessevidence",
-            "bioevidence",
-            "vehicleevidence",
-            "identityevidence",
-            "otherevidence"
+        case = self.get_case()
+        return (
+            Evidence.objects
+            .filter(case_id=case.id)
+            .select_related(
+                "witnessevidence",
+                "bioevidence",
+                "vehicleevidence",
+                "identityevidence",
+                "otherevidence",
+            )
+            .order_by("-created_at")
         )
 
 
@@ -354,7 +350,7 @@ class FrontModulesGetView(APIView):
     def get(self, request):
         user:User = request.user
 
-        if (user is None) or (not user.is_authenticated()):
+        if (user is None) or (not user.is_authenticated):
             return Response({"modules":[]})
 
 
