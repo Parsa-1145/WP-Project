@@ -1,9 +1,11 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
-from drf_spectacular.utils import extend_schema, OpenApiExample, extend_schema_view
+from drf_spectacular.utils import extend_schema, OpenApiExample, extend_schema_view, inline_serializer
 from rest_framework import serializers
 from evidence.serializers import EvidencePolymorphicSerializer
 from .models import Case
@@ -17,7 +19,7 @@ from evidence.serializers import EvidencePolymorphicSerializer
 from investigation.serializers import DetectiveBoardSerializer
 from investigation.permissions import IsDetectiveBoardOwner
 from investigation.models import DetectiveBoard
-
+from accounts.models import User
 
 @extend_schema(
     summary="List cases (full details)",
@@ -324,5 +326,46 @@ class DetectiveBoardUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateA
         case = self.get_case()
         board, _ = DetectiveBoard.objects.get_or_create(case=case)
         return board
-    
-    
+
+
+@extend_schema_view(
+    get=extend_schema(
+        examples=[
+            OpenApiExample(
+                name="Response example",
+                response_only=True,
+                status_codes=["200"],
+                value={"modules":["COMPLAINANT_CASES"]}
+            )
+        ],
+        responses= inline_serializer(
+            name="AllowedStringsResponse",
+            fields={
+                # spectacular treats this as the top-level schema when used as a response
+                "modules": serializers.ListField(
+                    child=serializers.ChoiceField(choices=["ASSIGNED_CASES", "COMPLAINANT_CASES", "AUTOPSY"]),
+                    allow_empty=True,
+                )
+            },
+        )
+    )
+)
+class FrontModulesGetView(APIView):
+    def get(self, request):
+        user:User = request.user
+
+        if (user is None) or (not user.is_authenticated()):
+            return Response({"modules":[]})
+
+
+        items = []
+
+        if user.has_perm("cases.investigate_on_case") or user.has_perm("cases.supervise_case"):
+            items.append("ASSIGNED_CASES")
+
+        if user.has_perm("evidence.can_approve_bioevidence"):
+            items.append("AUTOPSY")
+
+        items.append("COMPLAINANT_CASES")
+
+        return Response({"modules":items})

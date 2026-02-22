@@ -4,6 +4,7 @@ from django.urls import path, include
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from . import settings
+from cases.views import FrontModulesGetView
 
 def health_check(request):
     return HttpResponse("OK", status=200)
@@ -17,6 +18,7 @@ urlpatterns = [
     path('api/auth/', include("accounts.urls")),
     path('api/evidence/', include("evidence.urls")),
     path('api/cases/', include("cases.urls")),
+    path("api/front-modules/", FrontModulesGetView.as_view(), name="front-modules-get"),
     
 
     path('api/submission/', include("submissions.urls")),
