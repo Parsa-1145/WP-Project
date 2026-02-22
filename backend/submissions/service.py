@@ -3,8 +3,6 @@ from django.db.models import Model
 from django.contrib.auth.models import AbstractUser
 from rest_framework import serializers
 from .models import *
-from core import settings
-from .submissiontypes.registry import get_submission_type
 from .submissiontypes.classes import BaseSubmissionType
     
 @transaction.atomic

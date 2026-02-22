@@ -1,14 +1,12 @@
 from rest_framework import serializers
 from submissions import models
-from submissions.submissiontypes.registry import get_submission_type
 from django.core.exceptions import ValidationError, PermissionDenied
 from submissions.models import Submission, SubmissionStatus, SubmissionAction, SubmissionActionType, SubmissionStage
 from submissions.submissiontypes.classes import BaseSubmissionType
-from submissions.submissiontypes.registry import get_submission_type
 from accounts.models import User
 from drf_spectacular.utils import extend_schema_serializer, extend_schema_field, PolymorphicProxySerializer
 from submissions.service import create_submission
-
+from submissions.submissiontypes.registry import get_submission_type
 # ---------------------------------------------------------------------
 # SubmissionActionSerializer
 # ---------------------------------------------------------------------
@@ -22,6 +20,8 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
     submission = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate(self, attrs):
+        
+
         submission: Submission = self.context.get("submission") or getattr(self.instance, "submission", None)
         if submission is None:
             raise serializers.ValidationError({"submission": "This field is required."})
@@ -147,6 +147,8 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(submission_target_schema())
     def get_target(self, obj):
+        
+
         submission_type_cls = get_submission_type(obj.submission_type)
         try:
             target_obj = submission_type_cls.get_object(obj.object_id)
@@ -154,7 +156,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return None
         return submission_type_cls.serializer_class(target_obj, context=self.context).data
     
-    def get_available_actions(self, obj:Submission):
+    def get_available_actions(self, obj: Submission) -> list[str]:
+        
+
         if not get_submission_type(obj.submission_type).can_user_do_action(obj, user=self.context["request"].user):
             return []
         
@@ -164,7 +168,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
             return []
         return [action for action in stage.allowed_actions]
     
-    def get_action_prompt(self, obj:Submission):
+    def get_action_prompt(self, obj: Submission) -> str:
+        
+
         if not get_submission_type(obj.submission_type).can_user_do_action(obj, user=self.context["request"].user):
             return ""
         

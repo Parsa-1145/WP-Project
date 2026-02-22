@@ -96,7 +96,7 @@ class OtherEvidenceSerializer(BaseEvidenceSerializer):
 class EvidencePolymorphicSerializer(serializers.Serializer):
     resource_type = serializers.SerializerMethodField()
 
-    def get_resource_type(self, obj):
+    def get_resource_type(self, obj) -> str:
         return obj.__class__.__name__
 
     def to_representation(self, instance):

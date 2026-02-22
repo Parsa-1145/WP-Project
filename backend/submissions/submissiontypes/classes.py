@@ -4,7 +4,6 @@ from django.db.models import Model
 from typing import ClassVar, Generic, Type, TypeVar
 from accounts.models import User
 from submissions.models import Submission, SubmissionAction, SubmissionStage
-from drf_spectacular.utils import inline_serializer, OpenApiExample
 from rest_framework.exceptions import ValidationError
 
 TModel = TypeVar("TModel", bound=Model)
@@ -16,7 +15,7 @@ class BaseSubmissionType(Generic[TModel]):
     serializer_class:               ClassVar[Type[Serializer]]  
     model_class:                    ClassVar[Type[TModel]]
     create_permissions:             ClassVar[list[str]]                = []
-    api_request_schema:             ClassVar[Type[Serializer] | None]  = DictField(required=True)
+    api_request_schema:             ClassVar[Type[Serializer] | None]  = None
     api_request_payload_example:    ClassVar[dict | None]              = {} 
     api_response_target_example:    ClassVar[dict | None]              = {} 
     can_be_created_from_request:    ClassVar[bool]                     = True         

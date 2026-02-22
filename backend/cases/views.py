@@ -173,7 +173,6 @@ class AssignedCaseAccessMixin:
                     "title": "Updated Case Title",
                     "description": "Updated summary",
                     "complainant_national_ids": ["1111111111", "2222222222"],
-                    "suspects_national_ids": ["1111111111", "2222222222"],
                     "witnesses": [
                         {"phone_number": "+989121234567", "national_id": "3333333333"},
                     ],

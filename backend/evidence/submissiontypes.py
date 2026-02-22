@@ -10,8 +10,8 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
     serializer_class = BioEvidenceSerializer
     create_permissions = []
     model_class = BioEvidence
-    api_schema = BioEvidenceSerializer
-    api_payload_example = { # TODO: complete example
+    api_request_schema = BioEvidenceSerializer
+    api_request_payload_example = { # TODO: complete example
         "TODO":""
     }
     api_response_target_example = {

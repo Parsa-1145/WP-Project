@@ -2,7 +2,7 @@ from rest_framework import generics
 from django.http import HttpRequest
 from .serializers.classes import SubmissionSerializer, SubmissionActionSerializer, Submission, SubmissionAction, SubmissionStatus, SubmissionStage
 from rest_framework.permissions import IsAuthenticated
-from submissions.submissiontypes.registry import SUBMISSION_TYPES
+from submissions.submissiontypes.registry import SUBMISSION_TYPES, get_submission_type
 from drf_spectacular.utils import extend_schema_view ,extend_schema, OpenApiExample, inline_serializer, PolymorphicProxySerializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -12,7 +12,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, NotFound
 from django.shortcuts import get_object_or_404
-from submissions.submissiontypes.registry import get_submission_type
 from django.db import transaction
 
 def submission_create_request_schema():
@@ -26,7 +25,7 @@ def submission_create_request_schema():
                 name=f"{st_cls.__name__}CreateRequest",
                 fields={
                     "submission_type": serializers.ChoiceField(choices=[(type_key, st_cls.display_name)]),
-                    "payload": st_cls.api_request_schema,
+                    "payload": st_cls.api_request_schema(),
                 },
             )
         )
@@ -52,7 +51,6 @@ def _submission_response_example(type_key, st_cls):
         ]
         created_by = 1
     else:
-        # System-created submission types usually have no creator and submit action.
         actions_history = []
         created_by = None
 

@@ -8,4 +8,4 @@ urlpatterns = [
     path("<int:pk>/submissions/", views.CaseSubmissionListView.as_view(), name="case-submission-list"),
     path("<int:pk>/", views.CaseUpdateView.as_view(), name="case-update"),
     path("<int:pk>/detective-board/", views.DetectiveBoardUpdateView.as_view(), name="case-detective-board"),
-]
+]   

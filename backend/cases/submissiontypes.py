@@ -1,18 +1,14 @@
 from submissions.submissiontypes.classes import BaseSubmissionType
-from cases.models import Complaint, CrimeScene, CaseSubmissionLink
+from cases.models import Complaint, CrimeScene, CaseSubmissionLink, InvestigationResults, Case
 from cases.serializers import (
     ComplaintSerializer,
     ComplaintPayloadSerializer,
     CrimeSceneSerializer,
     CaseStaffingSubmissionPayloadSerializer,
-    InvestigationResultsApprovalPayloadSerializer,
-    InvestigationResultsApprovalTargetSerializer,
+    InvestigationResultsSubmissionSerializer,
 )
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.exceptions import ValidationError, PermissionDenied
-from rest_framework import serializers
-from cases.models import Case
-from drf_spectacular.utils import OpenApiExample, inline_serializer
 from accounts.models import User
 
 class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
@@ -273,60 +269,57 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
                 submission.status = SubmissionStatus.ACCEPTED
                 submission.save()
 
-class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
+class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["InvestigationResults"]):
     type_key             = "INVESTIGATION_APPROVAL"
     display_name         = "Investigation Approval"
     create_permissions   = ["cases.investigate_on_case"]
-    model_class          = Case
-    serializer_class     = InvestigationResultsApprovalTargetSerializer
+    model_class          = InvestigationResults
+    serializer_class     = InvestigationResultsSubmissionSerializer
+    api_request_schema   = InvestigationResultsSubmissionSerializer
     api_request_payload_example = {
-        "case_id": 1
+        "case": 1,
+        "suggested_suspects_national_ids": [
+            "1234567890",
+            "1231231231",
+        ],
     }
     api_response_target_example = {
-      "id": 1,
-      "title": "Test Title",
-      "description": "test description",
-      "crime_datetime": "2026-02-18T01:05:00+03:30",
-      "crime_level": "L3",
-      "suspects" : [
-          {
-              "name" : "parsa zamiri",
-              "national_id" : "1234567890",
-              "criminal_record" : [
-                  {
-              "case_id" : 1,
-              "title"   : "Case",
-              "description" : "description",
-              "crime_datetime" : "2026-02-18T01:05:00+03:30",
-              "status"         : "closed"
-                  }
-              ]
-          }
-      ]
+        "case_details": {
+            "id": 1,
+            "title": "Test Title",
+            "description": "test description",
+            "crime_datetime": "2026-02-18T01:05:00+03:30",
+            "crime_level": "L3",
+            "status": "open",
+            "witnesses": [],
+            "lead_detective": "Detective One",
+            "supervisor": "Supervisor One",
+            "complainants": [
+                {
+                    "id": 4,
+                    "first_name": "Complainant",
+                    "second_name": "One",
+                    "national_id": "1111111111",
+                }
+            ],
+            "suspects": [],
+        },
+        "suggested_suspects": [
+            {
+                "name": "parsa zamiri",
+                "national_id": "1234567890",
+                "criminal_record": [
+                    {
+                        "case_id": 1,
+                        "title": "Case",
+                        "description": "description",
+                        "crime_datetime": "2026-02-18T01:05:00+03:30",
+                        "status": "closed",
+                    }
+                ],
+            }
+        ],
     }
-    api_request_schema           = InvestigationResultsApprovalPayloadSerializer
-
-    @classmethod
-    def validate_submission_data(cls, data, context):
-        case_id = data.get("case_id")
-        if case_id is None:
-            raise ValidationError({"case_id":"this field is required"})
-        
-        case = Case.objects.get(pk=case_id)
-
-        if case is None:
-            raise ValidationError({"case_id":"case doesnt exist"})
-        
-        user:User = context["request"].user
-
-        if case.lead_detective != user:
-            raise PermissionDenied("only the lead detective can make this request")
-            
-    @classmethod
-    def create_object(cls, payload, serializer, context):
-        case_id = payload.get("case_id")
-        
-        return Case.objects.get(pk=case_id)
     
     @classmethod
     def on_submit(cls, submission):
@@ -334,7 +327,7 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
         
         SubmissionStage.objects.create(
             submission=submission,
-            target_user=target.supervisor,
+            target_user=target.case.supervisor,
             order=0,
             allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT]
         )
@@ -342,10 +335,12 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
     @classmethod
     def handle_submission_action(cls, submission, action, context, **kwargs):
         target = cls.get_object(submission.object_id)
+        case = target.case
 
         if action.action_type == SubmissionActionType.APPROVE:
-            target.status = target.Status.AWAITING_SUSPECTS_ARREST
-            target.save()
+            case.status = case.Status.INTEROGATING_SUSPECTS
+            case.suspects.set(target.suggested_suspects)
+            case.save()
 
             submission.status = SubmissionStatus.APPROVED
 
@@ -353,6 +348,7 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Case"]):
             submission.status = SubmissionStatus.REJECTED
 
         submission.save()
+
     @classmethod
     def can_user_submit(cls, user):
-        return super().can_user_submit(user) and Case.objects.filter(lead_detective=user).exists()
+        return super().can_user_submit(user) and Case.objects.filter(lead_detective=user, status=Case.Status.OPEN_INVESTIGATION).exists()

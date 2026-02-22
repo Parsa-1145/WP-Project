@@ -187,7 +187,11 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API for the Web Programming Project",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "COMPONENT_SPLIT_REQUEST": True
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "CaseStatusEnum": "cases.models.Case.Status",
+        "SubmissionStatusEnum": "submissions.models.SubmissionStatus",
+    },
 }
 
 SIMPLE_JWT = {

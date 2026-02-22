@@ -5,6 +5,8 @@ from submissions.models import Submission
 from accounts.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+
+
 class Case(models.Model):
     class Meta:
         permissions = [
@@ -24,7 +26,7 @@ class Case(models.Model):
         OPEN_INVESTIGATION = 'open'
         AWAITING_INVESTIGATOR_ACCEPTANCE = "awaiting_investigator", "Awaiting Investigator Acceptance"
         AWAITING_SUPERVISOR_ACCEPTANCE = "awaiting_supervisor", "Awaiting Supervisor Acceptance"
-        AWAITING_SUSPECTS_ARREST = "awaiting_arrest", "Awaiting Suspects Arrest"
+        INTEROGATING_SUSPECTS = "awaiting_arrest", "Awaiting Suspects Arrest"
         SOLVED = 'solved'
         CLOSED = 'closed'
 
@@ -110,7 +112,22 @@ class Case(models.Model):
             f"    witnesses_count: {len(self.witnesses or [])}\n"
         )
 
+class InvestigationResults(models.Model):
+    case = models.ForeignKey(
+        Case,
+        on_delete=models.CASCADE,
+        related_name="suggested_suspect_links",
+    )
+    suggested_suspects = models.ManyToManyField(
+        User
+    )
+
 class CaseSuspectLink(models.Model):
+    class Status(models.TextChoices):
+        WANTED="WANTED"
+        ARRESTED="ARRESTED"
+        RELEASED_ON_BAIL="RELEASED_ON_BAIL"
+    
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -156,6 +173,11 @@ class CaseSubmissionLink(models.Model):
         default=RelationType.RELATED,
     )
 
+
+# -----------------------------------------
+# Complaint
+# -----------------------------------------
+
 class Complaint(models.Model):
     class Meta:
         permissions = [
@@ -184,6 +206,9 @@ class Complaint(models.Model):
         settings.AUTH_USER_MODEL
     )
 
+# -----------------------------------------
+# Crime scene
+# -----------------------------------------
 
 class CrimeScene(models.Model):
     class Meta:
