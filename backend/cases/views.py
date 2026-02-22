@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, extend_schema_view
 from rest_framework import serializers
 from evidence.serializers import EvidencePolymorphicSerializer
 from .models import Case
@@ -13,6 +13,10 @@ from .models import Case, CaseSubmissionLink
 from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer, CaseLinkedSubmissionSerializer
 from evidence.models import Evidence
 from evidence.serializers import EvidencePolymorphicSerializer
+
+from investigation.serializers import DetectiveBoardSerializer
+from investigation.permissions import IsDetectiveBoardOwner
+from investigation.models import DetectiveBoard
 
 
 @extend_schema(
@@ -250,3 +254,72 @@ class CaseSubmissionListView(AssignedCaseAccessMixin, generics.ListAPIView):
             .order_by("-submission__created_at")
             .distinct()
         )
+
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve or update detective board of a case",
+        description=(
+            "Detective board is a JSON structure that assigned detectives can use to organize their investigation. "
+            "Only assigned lead detective or supervisor can access or modify the board."
+            "The board_json field is null by default and can be updated with a custom JSON structure. "
+        ),
+        responses=DetectiveBoardSerializer,
+        examples=[
+            OpenApiExample(
+                name="Detective board response",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "board_json": {
+                        "any json structure": 1,
+                        "other content": "string",
+                    }
+                },
+            ),
+        ]
+    ),
+    put=extend_schema(
+        summary="Update detective board of a case",
+        description=(
+            "update the detective board JSON. "
+            "Only assigned lead detective or supervisor can modify the board. "
+        ),
+        request=DetectiveBoardSerializer,
+        responses=DetectiveBoardSerializer,
+        examples=[
+            OpenApiExample(
+                name="Detective board update request",
+                request_only=True,
+                value={
+                    "board_json": {
+                        "any_new_json": "board content",
+                    }
+                },
+            ),
+            OpenApiExample(
+                name="Detective board update response",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "board_json": {
+                        "any_new_json": "board content",
+                    }
+                },
+            )
+        ]
+    )
+)
+class DetectiveBoardUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = DetectiveBoardSerializer
+
+    http_method_names = ["get", "put"]
+
+    def get_object(self):
+        case = self.get_case()
+        board, _ = DetectiveBoard.objects.get_or_create(case=case)
+        return board
+    
+    
