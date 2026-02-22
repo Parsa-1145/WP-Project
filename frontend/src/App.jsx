@@ -4,8 +4,8 @@ import './App.css'
 import Health from './Health'
 import { Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
-import { EvidenceList, EvidenceSubmitForm } from './Evidence'
-import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, MySubmissions, InboxSubmissions } from './Submission'
+import { EvidenceList, EvidenceSubmitForm, evi_decode } from './Evidence'
+import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
 import { CaseList, case_decode } from './Cases'
 import { session, error_msg } from './session'
 
@@ -54,37 +54,46 @@ const Retrieve = ({ msg, path, then }) => {
 
 
 const App = () => {
+	const UrlList = (local_path, remote_path, Component, decoder, title) => (
+		<Route path={local_path} exact element={
+			<Retrieve msg="evidence" path={remote_path} then={(res, onReload) => (
+				<Component list={res.map(decoder)} title={title} onReload={onReload}/>
+			)}/>
+		}/>
+	);
+
 	return (<BrowserRouter>
 		<Link to='/home' style={{ position: 'absolute', left: 0, top: 0 }}>Home</Link>
 		<Routes>
 			<Route path="/home" exact element={<Home/>}/>
 			<Route path="/health" exact element={<Health/>}/>
+			<Route path="/board" exact element={<DetectiveBoard/>}/>
+
+
+			{/* submit pages */}
 			<Route path="/login" exact element={<Login/>}/>
 			<Route path="/signup" exact element={<Signup/>}/>
-			<Route path="/board" exact element={<DetectiveBoard/>}/>
 			<Route path="/evidence/submit" exact element={<EvidenceSubmitForm/>}/>
-			<Route path="/evidence/list" exact element={<EvidenceList/>}/>
 			<Route path="/submission/complaint" exact element={<ComplaintSubmitForm/>}/>
 			<Route path="/submission/crime" exact element={<CrimeSubmitForm/>}/>
-			<Route path="/submission/mine" exact element={<MySubmissions/>}/>
-			<Route path="/submission/inbox" exact element={<InboxSubmissions/>}/>
 
 			<Route path="/submission/:id/edit" exact element={
 				<ParamWrap then={(ps, qs) => (
-					<Retrieve
-						msg="submission"
-						path={`/api/submission/${ps.id}/`}
+					<Retrieve msg="submission" path={`/api/submission/${ps.id}/`}
 						then={subm => (<SubmissionSubmitForm subm0={subm.target} resubmit={subm.id} type={subm.submission_type} returnTo={qs.get('redir')}/>)}
 					/>
 				)}/>
 			}/>
 
-			<Route path="/cases/list" exact element={
-				<Retrieve msg="cases" path='/api/cases/' then={(res, onReload) => (
-					<CaseList case_list={res.map(case_decode)} title='Cases' onReload={onReload}/>
-				)}/>
-			}/>
 
+			{/* list pages */}
+			{UrlList('/evidence/list', '/api/evidence/', EvidenceList, evi_decode, 'Evidence List')}
+			{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList, subm_decode, 'My Submissions')}
+			{UrlList('/submission/inbox', '/api/submission/inbox/', SubmissionList, subm_decode, 'Submission Inbox')}
+			{UrlList('/cases/list', '/api/cases/', CaseList, case_decode, 'Case List')}
+
+
+			{/* redirect any invalid link to home */}
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);

@@ -25,18 +25,16 @@ export function CaseFrame({ cas, ...props }) {
 	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id });
 	const ProcessArr = ent => Process(...ent);
 	return (
-		<div className='item'>
+		<div className='item' {...props}>
 			{case_fields.map(ProcessArr)}
 		</div>
 	);
 }
 
-export function CaseList({ case_list, title, onReload, onReturn }) {
-	return (
-		<GenericList title={title} onReload={onReload} onReturn={onReturn}>
-			{case_list.map((cas, i) => (<CaseFrame key={i} cas={cas}/>))}
-		</GenericList>
-	)
-}
+export const CaseList = ({ list, title, onReload, onReturn }) => (
+	<GenericList title={title} onReload={onReload} onReturn={onReturn}>
+		{list.map((cas, i) => (<CaseFrame key={i} cas={cas}/>))}
+	</GenericList>
+);
 
 export default CaseList

@@ -225,7 +225,7 @@ export const form_list_map = (obj, eles) => {
 	return ans;
 }
 
-export function GenericList({ children, title, onReload, onReturn }) {
+export function GenericList({ children, title, onReload, onReturn, msg }) {
 	const [compact, setCompact] = useState(true);
 	const eleWidth = compact? 450: 550;
 	return (<>
@@ -236,6 +236,7 @@ export function GenericList({ children, title, onReload, onReturn }) {
 			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
 			Compact View
 		</label>
+		{msg && <p>{msg}</p>}
 		<ResponsiveGrid eleWidth={eleWidth}>
 			<ListCompactCtx.Provider value={compact}>
 				{children.map((child, i) => (<div key={i} style={{ width: eleWidth }}>{child}</div>))}

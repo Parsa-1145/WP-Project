@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField, ResponsiveGrid } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
@@ -117,66 +117,34 @@ export function EvidenceSubmitForm({ returnTo }) {
 	</>)
 }
 
-export function EvidenceFrame({ evi, compact, ...props }) {
+export function EvidenceFrame({ evi, ...props }) {
+	const compact = useContext(ListCompactCtx);
 	const Process = (type, name, id) => FormField(type, name, evi[id], { key: id, compact });
 	const ProcessArr = (ent) => Process(...ent);
 	return (
-		<div {...props}>
-			<div className='item'>
-				{Process('text', 'Type', 'type')}
-				{!compact && evi_fields_auto.map(ProcessArr)}
-				{evi_fields_common.map(ProcessArr)}
-				{evi_fields[evi.type].map(ProcessArr)}
-			</div>
+		<div className='item' {...props}>
+			{Process('text', 'Type', 'type')}
+			{!compact && evi_fields_auto.map(ProcessArr)}
+			{evi_fields_common.map(ProcessArr)}
+			{evi_fields[evi.type].map(ProcessArr)}
 		</div>
 	)
 }
 
-export function EvidenceList({}) {
-	const [str, setStr] = useState('Retrieving...')
-	const [phase, setPhase] = useState(0);
-	const [compact, setCompact] = useState(true);
-	const [evi_list, set_evi_list] = useState([]);
-
-	const req = () => {
-		setPhase(1);
-		session.get('/api/evidence/')
-			.then(res => {
-				try {
-					const arr = res.data;
-					for (const evi of arr) {
-						for (const info of Object.entries(evi_field_info)) if (evi.resource_type == info[1].res_type)
-							evi.type = info[0];
-						if (evi.type === 'bio')
-							evi.uploaded_images = evi.images.map(ent => ent.image);
-					}
-					setStr('Retrieved successfuly')
-					set_evi_list(arr);
-				} catch (e) {
-					setStr('Exception: ' + e.toString());
-				}
-			})
-			.catch(err => setStr(error_msg(err)))
-			.finally(() => setPhase(2));
-	}
-
-	if (phase === 0)
-		req();
-
-	const eviWidth = compact? 450: 550;
-
-	return (<>
-		<h1>Evidence List</h1>
-		<p style={{ textAlign: 'center' }}>{str}</p>
-		<button disabled={phase !== 2} onClick={() => { setStr('Retrying...'); req(); }}>Retry</button>
-		<label>
-			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
-			Compact View
-		</label>
-		<ResponsiveGrid eleWidth={eviWidth}>
-			{evi_list.map((evi, i) => (<EvidenceFrame style={{ width: eviWidth }} key={i} compact={compact} evi={evi}/>))}
-		</ResponsiveGrid>
-	</>)
+export const evi_decode = evi => {
+	const ans = { ...evi }
+	for (const [type, info] of Object.entries(evi_field_info)) if (evi.resource_type == info.res_type)
+		ans.type = type;
+	if (ans.type === 'bio')
+		ans.uploaded_images = ans.images.map(ent => ent.image);
+	return ans;
 }
+
+
+export const EvidenceList = ({ list, title, onReload, onReturn }) => (
+	<GenericList title={title} onReload={onReload} onReturn={onReturn}>
+		{list.map((evi, i) => (<EvidenceFrame key={i} evi={evi}/>))}
+	</GenericList>
+);
 
 export default EvidenceList
