@@ -17,9 +17,8 @@ urlpatterns = [
     path('api/auth/', include("accounts.urls")),
     path('api/evidence/', include("evidence.urls")),
     path('api/cases/', include("cases.urls")),
-    
-
     path('api/submission/', include("submissions.urls")),
+    path('api/payments/', include("payments.urls")),
     path(settings.ADMIN_URL, admin.site.urls),
 ]
 

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Failed</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            padding-top: 50px; 
+            background-color: #f9fafb; 
+        }
+        .failure-box { 
+            background: white; 
+            border: 1px solid #dc3545; 
+            padding: 30px; 
+            display: inline-block; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            max-width: 450px;
+        }
+        .error-message { 
+            font-weight: bold; 
+            color: #dc3545; 
+            margin-top: 15px; 
+            padding: 10px;
+            background-color: #f8d7da;
+            border-radius: 4px;
+        }
+        .btn { 
+            display: inline-block; 
+            margin-top: 20px; 
+            padding: 10px 20px; 
+            background: #6c757d; 
+            color: #fff; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            transition: background 0.3s; 
+        }
+        .btn:hover { 
+            background: #5a6268; 
+        }
+    </style>
+</head>
+<body>
+    <div class="failure-box">
+        <h2 style="color: #dc3545;">Payment Failed</h2>
+        <p>Unfortunately, we could not process your transaction.</p>
+        
+        {% if error %}
+            <div class="error-message">
+                Reason: {{ error }}
+            </div>
+        {% else %}
+            <div class="error-message">
+                Reason: Unknown error or canceled by user.
+            </div>
+        {% endif %}
+        
+        <a href="{{ frontend_dashboard_url }}" class="btn">Return to Dashboard</a>
+    </div>
+</body>
+</html>
