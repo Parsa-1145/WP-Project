@@ -6,7 +6,7 @@ import { Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm, evi_decode } from './Evidence'
 import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
-import { CaseList, case_decode } from './Cases'
+import { CaseList, CaseListSafe, case_decode } from './Cases'
 import { session, error_msg } from './session'
 
 const Home = () => {
@@ -56,11 +56,23 @@ const Retrieve = ({ msg, path, then }) => {
 const App = () => {
 	const UrlList = (local_path, remote_path, Component, decoder, title) => (
 		<Route path={local_path} exact element={
-			<Retrieve msg="evidence" path={remote_path} then={(res, onReload) => (
-				<Component list={res.map(decoder)} title={title} onReload={onReload}/>
-			)}/>
+			<ParamWrap then={(ps, qs) => {
+				for (const [key, val] of Object.entries(ps))
+					remote_path = remote_path.replace(`<${key}>`, val);
+
+				if (typeof title === 'function')
+					title = title(ps, qs);
+
+				return (
+					<Retrieve msg="evidence" path={remote_path} then={
+						(res, onReload) => (<Component list={res.map(decoder)} title={title} onReload={onReload}/>)
+					}/>
+				);
+			}}/>
 		}/>
 	);
+
+	const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
 	return (<BrowserRouter>
 		<Link to='/home' style={{ position: 'absolute', left: 0, top: 0 }}>Home</Link>
@@ -91,6 +103,9 @@ const App = () => {
 			{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList, subm_decode, 'My Submissions')}
 			{UrlList('/submission/inbox', '/api/submission/inbox/', SubmissionList, subm_decode, 'Submission Inbox')}
 			{UrlList('/cases/list', '/api/cases/', CaseList, case_decode, 'Case List')}
+			{UrlList('/cases/:id/evidences', '/api/cases/<id>/evidences/', EvidenceList, evi_decode, ps => `Evidences of Case ${ps.id}`)}
+			{UrlList('/cases/:id/submissions', '/api/cases/<id>/submissions/', SubmissionList, chain(e => e.submission, subm_decode), ps => `Submissions of Case ${ps.id}`)}
+			{UrlList('/cases/complainant', '/api/cases/complainant/', CaseListSafe, case_decode, 'Complainant in')}
 
 
 			{/* redirect any invalid link to home */}

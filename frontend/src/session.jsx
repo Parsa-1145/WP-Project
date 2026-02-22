@@ -48,8 +48,15 @@ export const error_msg_list = err => {
 	return ['Failed: ' + err.message];
 }
 export const error_msg = err => {
-	if (err.response && err.response.data && err.response.data.detail)
-		return 'Error ' + err.status + ': ' + err.response.data.detail;
+	const nested = (obj, ...ms) => ms.reduce((a, m) => a && a[m], obj);
+
+	const detail = nested(err, 'response', 'data', 'detail');
+	const message = nested(err, 'response', 'data', 'payload', 'message', 0);
+
+	if (detail)
+		return 'Error ' + err.status + ': ' + detail
+	else if (message)
+		return 'Error ' + err.status + ': ' + message;
 	else if (err.response)
 		return 'Error ' + err.status;
 	else
