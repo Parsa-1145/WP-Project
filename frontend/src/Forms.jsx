@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 
 export const SimpleField = (name, body, { id, key }) => (
 	<div key={key === undefined? id: key} style={{ position: 'relative' }}>
@@ -125,8 +125,11 @@ export const FormInputChangeFn = (data, setData, type, name) => e => {
 	setData(data2);
 }
 
+export const ListCompactCtx = createContext(false);
+
 export const FormField = (type, name, value, { id, key, compact }) => {
 	if (key === undefined) key = id;
+	if (compact === undefined) compact = useContext(ListCompactCtx);
 
 	if (!compact) {
 		const imgStyle = { margin: '0 auto', maxWidth: '500px' };
@@ -175,9 +178,11 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			return (<div key={key}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<div>{kv[1]||'<empty>'}</div>), { key: i }))}</div>);
 
 		else if (is_list(type))
-			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n')}</pre>), { id, key });
+			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n') || '<empty>'}</pre>), { id, key });
 
 		else {
+			if (type === 'textarea')
+				value = value.length > 128? value.slice(0, 128) + '...': value;
 			if (type === 'datetime')
 				value = value.replace(/\:\d{2}(\.\d+)?(?=[+-]|$)/, '').replace(/T/g, ' ');
 			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key });
@@ -204,6 +209,39 @@ export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
 			{children}
 		</div>
 	);
+}
+
+export const form_list_map = (obj, eles) => {
+	const ans = {};
+	for (const key in obj) {
+		const definition = eles[key];
+		if (definition === '')
+			ans[key] = obj[key].map(ent => [ent]);
+		else if (Array.isArray(definition))
+			ans[key] = obj[key].map(ent => eles[key].map(id => ent[id]));
+		else
+			ans[key] = obj[key];
+	}
+	return ans;
+}
+
+export function GenericList({ children, title, onReload, onReturn }) {
+	const [compact, setCompact] = useState(true);
+	const eleWidth = compact? 450: 550;
+	return (<>
+		<h1>{title}</h1>
+		{ onReload && (<button onClick={onReload}>Reload</button>) }
+		{ onReturn && (<button onClick={onReturn}>Return</button>) }
+		<label>
+			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
+			Compact View
+		</label>
+		<ResponsiveGrid eleWidth={eleWidth}>
+			<ListCompactCtx.Provider value={compact}>
+				{children.map((child, i) => (<div key={i} style={{ width: eleWidth }}>{child}</div>))}
+			</ListCompactCtx.Provider>
+		</ResponsiveGrid>
+	</>)
 }
 
 export default FormField

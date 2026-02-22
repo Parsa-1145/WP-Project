@@ -6,6 +6,7 @@ import { Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm } from './Evidence'
 import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, MySubmissions, InboxSubmissions } from './Submission'
+import { CaseList, case_decode } from './Cases'
 import session from './session'
 
 const Home = () => {
@@ -23,12 +24,12 @@ const Home = () => {
 	</>)
 }
 
-const ParamWrap = ({ fn }) => {
+const ParamWrap = ({ then }) => {
 	const params = useParams();
 	const [searchParams] = useSearchParams();
-	return fn(params, searchParams);
+	return then(params, searchParams);
 }
-const RetrieveThen = ({ msg, path, fn }) => {
+const Retrieve = ({ msg, path, then }) => {
 	const [str, setStr] = useState(`Retrieving ${msg}...`)
 	const [phase, setPhase] = useState(0);
 	const [res, setRes] = useState(null);
@@ -47,7 +48,7 @@ const RetrieveThen = ({ msg, path, fn }) => {
 	};
 
 	if (phase === 3)
-		return fn(res);
+		return then(res, () => { setStr(`Reloading ${msg}...`); setPhase(0); });
 	if (phase === 0)
 		req();
 
@@ -75,14 +76,21 @@ const App = () => {
 			<Route path="/submission/inbox" exact element={<InboxSubmissions/>}/>
 
 			<Route path="/submission/:id/edit" exact element={
-				<ParamWrap fn={(ps, qs) => (
-					<RetrieveThen
+				<ParamWrap then={(ps, qs) => (
+					<Retrieve
 						msg="submission"
 						path={`/api/submission/${ps.id}/`}
-						fn={subm => (<SubmissionSubmitForm subm0={subm.target} resubmit={subm.id} type={subm.submission_type} returnTo={qs.get('redir')}/>)}
+						then={subm => (<SubmissionSubmitForm subm0={subm.target} resubmit={subm.id} type={subm.submission_type} returnTo={qs.get('redir')}/>)}
 					/>
 				)}/>
 			}/>
+
+			<Route path="/cases/list" exact element={
+				<Retrieve msg="cases" path='/api/cases/' then={(res, onReload) => (
+					<CaseList case_list={res.map(case_decode)} title='Cases' onReload={onReload}/>
+				)}/>
+			}/>
+
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
 	</BrowserRouter>);
