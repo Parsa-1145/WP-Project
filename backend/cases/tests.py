@@ -824,6 +824,52 @@ class CaseListAccessTest(APITestCase):
             {"id", "title", "crime_datetime", "status", "complainant_national_ids"},
         )
 
+    def test_case_retrieve_visibility_and_serializer(self):
+        assigned_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
+        general_url = reverse("case-update", kwargs={"pk": self.case_general.id})
+        complainant_all_url = reverse("case-update", kwargs={"pk": self.case_complainant_all.id})
+
+        self.client.force_authenticate(self.detective)
+        response = self.client.get(assigned_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertSetEqual(
+            set(response.json().keys()),
+            {
+                "id",
+                "title",
+                "description",
+                "crime_datetime",
+                "crime_level",
+                "status",
+                "witnesses",
+                "lead_detective",
+                "supervisor",
+                "complainant_national_ids",
+                "suspects_national_ids",
+            },
+        )
+
+        self.client.force_authenticate(self.supervisor)
+        response = self.client.get(assigned_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.viewer)
+        response = self.client.get(general_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["id"], self.case_general.id)
+
+        self.client.force_authenticate(self.outsider)
+        response = self.client.get(general_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.complainant)
+        response = self.client.get(assigned_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.complainant_with_all)
+        response = self.client.get(complainant_all_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_case_update_allowed_for_detective_only(self):
         update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
         payload = {

@@ -132,45 +132,76 @@ class AssignedCaseAccessMixin:
 
 
 
-@extend_schema(
-    summary="Update case",
-    description=(
-        "Partially update a case. "
-        "Only the assigned lead detective can update case data."
-    ),
-    request=CaseUpdateSerializer,
-    responses=CaseUpdateSerializer,
-    examples=[
-        OpenApiExample(
-            name="Patch case",
-            request_only=True,
-            value={
-                "title": "Updated Case Title",
-                "description": "Updated summary",
-                "complainant_national_ids": ["1111111111", "2222222222"],
-                "suspects_national_ids": ["1111111111", "2222222222"],
-                "witnesses": [
-                    {"phone_number": "+989121234567", "national_id": "3333333333"},
-                ],
-            },
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve case (full details)",
+        description=(
+            "Returns full case details for users who are assigned as lead detective/supervisor "
+            "or have `cases.view_all_cases`. "
+            "Complainants are blocked from this endpoint even if they have `cases.view_all_cases`."
         ),
-    ],
+        responses=CaseListSerializer,
+    ),
+    patch=extend_schema(
+        summary="Update case",
+        description=(
+            "Partially update a case. "
+            "Only the assigned lead detective can update case data."
+        ),
+        request=CaseUpdateSerializer,
+        responses=CaseUpdateSerializer,
+        examples=[
+            OpenApiExample(
+                name="Patch case",
+                request_only=True,
+                value={
+                    "title": "Updated Case Title",
+                    "description": "Updated summary",
+                    "complainant_national_ids": ["1111111111", "2222222222"],
+                    "suspects_national_ids": ["1111111111", "2222222222"],
+                    "witnesses": [
+                        {"phone_number": "+989121234567", "national_id": "3333333333"},
+                    ],
+                },
+            ),
+        ],
+    ),
 )
-class CaseUpdateView(AssignedCaseAccessMixin, generics.UpdateAPIView):
+class CaseUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = CaseUpdateSerializer
     queryset = (
         Case.objects
         .select_related("lead_detective", "supervisor")
         .prefetch_related("complainants")
     )
-    http_method_names = ["patch"]
+    http_method_names = ["get", "patch"]
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return CaseListSerializer
+        return CaseUpdateSerializer
 
     def get_object(self):
-        case = self.get_case()
-        if case.lead_detective_id != self.request.user.id:
-            raise PermissionDenied("Only the assigned lead detective can update this case.")
-        return case
+        user = self.request.user
+
+        if self.request.method == "PATCH":
+            case = self.get_case()
+            if case.lead_detective_id != user.id:
+                raise PermissionDenied("Only the assigned lead detective can update this case.")
+            return case
+
+        case = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+        complainant_ids = {complainant.id for complainant in case.complainants.all()}
+        if user.id in complainant_ids:
+            raise PermissionDenied("Complainants cannot access full case details.")
+
+        if user.has_perm("cases.view_all_cases"):
+            return case
+
+        if case.lead_detective_id == user.id or case.supervisor_id == user.id:
+            return case
+
+        raise PermissionDenied("Only assigned detective/supervisor or users with view_all_cases can access this case.")
 
 
 @extend_schema(
