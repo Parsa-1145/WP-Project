@@ -20,6 +20,8 @@ class BailRequest(models.Model):
         related_name='bail_requests'
     )
 
+    created_at = models.DateTimeField(auto_now_add=True)
+
     pass
 
 class Reward(models.Model):
