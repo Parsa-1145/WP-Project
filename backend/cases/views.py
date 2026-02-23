@@ -50,7 +50,7 @@ from accounts.models import User
                     {
                         "id": 1,
                         "first_name": "P",
-                        "second_name": "Q",
+                        "last_name": "Q",
                         "national_id": "1111111111",
                     }
                 ],
@@ -58,7 +58,7 @@ from accounts.models import User
                     {
                         "id": 2,
                         "first_name": "S",
-                        "second_name": "T",
+                        "last_name": "T",
                         "national_id": "2222222222",
                         "suspect_link": 9,
                     }

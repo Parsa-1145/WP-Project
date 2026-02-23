@@ -5,8 +5,6 @@ from submissions.models import Submission
 from accounts.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-
-
 class Case(models.Model):
     class Meta:
         permissions = [
@@ -122,12 +120,7 @@ class InvestigationResults(models.Model):
         User
     )
 
-class CaseSuspectLink(models.Model):
-    class Status(models.TextChoices):
-        WANTED="WANTED"
-        ARRESTED="ARRESTED"
-        RELEASED_ON_BAIL="RELEASED_ON_BAIL"
-    
+class CaseSuspectLink(models.Model):    
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -138,16 +131,12 @@ class CaseSuspectLink(models.Model):
         on_delete=models.CASCADE,
         related_name="suspect_links",
     )
-    arrested = models.BooleanField(
-        blank=True,
-        default=False
-    )
     supervisor_score = models.PositiveSmallIntegerField(
-        default=0,
+        default=1,
         validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
     detective_score  = models.PositiveIntegerField(
-        default=0,
+        default=1,
         validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
 
@@ -172,7 +161,6 @@ class CaseSubmissionLink(models.Model):
         choices=RelationType.choices,
         default=RelationType.RELATED,
     )
-
 
 # -----------------------------------------
 # Complaint

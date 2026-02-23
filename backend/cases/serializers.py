@@ -186,19 +186,24 @@ class UserBriefInfoSerializer(serializers.ModelSerializer):
 class SuspectInfoSerializer(UserBriefInfoSerializer):
     id = serializers.IntegerField(source="user.id", read_only=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)
-    second_name = serializers.CharField(source="user.last_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
     national_id = serializers.CharField(source="user.national_id", read_only=True)
     suspect_link = serializers.IntegerField(source="id", read_only=True)
+    supervisor_score = serializers.IntegerField(read_only=True)
+    detective_score = serializers.IntegerField(read_only=True)
+    status = serializers.CharField(source="user.status", read_only=True)
 
     class Meta:
         model = CaseSuspectLink
-        fields = ["id", "first_name", "second_name", "national_id", "suspect_link"]
+        fields = ["id", "first_name", "last_name", "national_id",
+                   "suspect_link", "supervisor_score", "detective_score", "status"]
         read_only_fields = fields
 
 
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
     supervisor = serializers.SerializerMethodField()
+    your_role = serializers.SerializerMethodField()
     complainants = UserBriefInfoSerializer(
         source="complainants.all",
         many=True,
@@ -223,7 +228,8 @@ class CaseListSerializer(serializers.ModelSerializer):
             "lead_detective",
             "supervisor",
             "complainants",
-            "suspects"
+            "suspects",
+            "your_role"
         ]
         read_only_fields = fields
 
@@ -236,6 +242,20 @@ class CaseListSerializer(serializers.ModelSerializer):
         if obj.supervisor is None:
             return "Not Assigned"
         return f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip()
+
+    @extend_schema_field(
+        serializers.ChoiceField(choices=["DETECTIVE", "SUPERVISOR"], allow_null=True)
+    )
+    def get_your_role(self, obj) -> str | None:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return None
+        if obj.lead_detective_id == user.id:
+            return "DETECTIVE"
+        if obj.supervisor_id == user.id:
+            return "SUPERVISOR"
+        return None
 
 # ---------------------------------------------------------------------
 # Investigation results
@@ -345,36 +365,95 @@ class ComplainantCaseListSerializer(serializers.ModelSerializer):
 # Case update
 # ---------------------------------------------------------------------
 
+class SuspectUpdateSerilizer(serializers.Serializer):
+    suspect_link = serializers.PrimaryKeyRelatedField(
+        queryset=CaseSuspectLink.objects.all(),
+        write_only=True
+    )
+    supervisor_score = serializers.IntegerField(
+        write_only=True,
+        required=False
+    )
+    lead_detective_score = serializers.IntegerField(
+        write_only=True,
+        required=False
+    )
+    score = serializers.IntegerField(
+        write_only=True,
+        required=False
+    )
+
+    def validate(self, attrs):
+        suspect_link: CaseSuspectLink = attrs["suspect_link"]
+        case = suspect_link.case
+        user: User = self.context["request"].user
+
+        if (case.lead_detective.id != user.id) and (case.supervisor.id != user.id):
+            raise PermissionDenied("You should be the detective / supervisor of the case")
+        
+        if suspect_link.user.status is suspect_link.user.Status.WANTED:
+            raise serializers.ValidationError({"suspect_link" : "suspect is wanted and not interogated yet"})
+
+        if "supervisor_score" in attrs and case.supervisor_id != user.id:
+            raise serializers.ValidationError(
+                {"supervisor_score": "Only the case supervisor can set this field."}
+            )
+        
+        if "lead_detective_score" in attrs and case.lead_detective_id != user.id:
+            raise serializers.ValidationError(
+                {"lead_detective_score": "Only the lead detective of the case can set this field."}
+            )
+        
+        return attrs
+    
+    def validate_lead_detective_score(self, value: int):
+        if not 1 <= value <= 10:
+            raise serializers.ValidationError("should be between 1 and 10")
+        return value
+
+    def validate_supervisor_score(self, value: int):
+        if not 1 <= value <= 10:
+            raise serializers.ValidationError("should be between 1 and 10")
+        return value
+
+    def validate_score(self, value: int):
+        if not 1 <= value <= 10:
+            raise serializers.ValidationError("should be between 1 and 10")
+        return value
+
+
 class CaseUpdateSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.ListField(
         child=NationalIDField(should_exist=True),
         required=False,
+        write_only=True,
         help_text="List of complainants national IDs.",
     )
     witnesses = WitnessItemSerializer(
         many=True,
         required=False,
+        write_only=True,
         help_text="Witnesses linked to this case.",
+    )
+    suspects = SuspectUpdateSerilizer(
+        many=True,
+        required=False,
+        write_only=True
     )
 
     class Meta:
         model = Case
         fields = [
-            "id",
             "title",
             "description",
+            "crime_level"
             "complainant_national_ids",
-            "witnesses"
+            "witnesses",
+            "suspects"
         ]
-        read_only_fields = ["id"]
 
     def get_complainant_national_ids(self, obj):
         return list(obj.complainants.values_list("national_id", flat=True))
-    
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data["complainant_national_ids"] = self.get_complainant_national_ids(instance)
-        return data
 
     def validate_complainant_national_ids(self, national_ids):
         seen = set()
@@ -403,13 +482,38 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(indexed_errors)
 
         return witnesses
+    
+    def validate_suspects(self, suspects):
+        counts = {}
+        for s in suspects:
+            sid = s.get("suspect_link").pk
+            counts[sid] = counts.get(sid, 0) + 1
+
+        indexed_errors = {}
+        case_id = getattr(self.instance, "id", None)
+        for i, w in enumerate(suspects):
+            link: CaseSuspectLink = w.get("suspect_link")
+            sid = link.pk
+            if counts.get(sid, 0) > 1:
+                indexed_errors[str(i)] = {
+                    "suspect_link": [f"Duplicate suspect_link: {sid}."]
+                }
+            if case_id is not None and link.case_id != case_id:
+                indexed_errors.setdefault(str(i), {}).setdefault("suspect_link", []).append(
+                    f"Suspect link {sid} does not belong to this case."
+                )
+
+        if indexed_errors:
+            raise serializers.ValidationError(indexed_errors)
+
+        return suspects
 
     def update(self, instance, validated_data):
         complainant_national_ids = validated_data.pop("complainant_national_ids", None)
+        suspects = validated_data.pop("suspects", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        instance.save()
 
         if complainant_national_ids is not None:
             users_by_nid = {
@@ -418,6 +522,26 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             }
             ordered_users = [users_by_nid[nid] for nid in complainant_national_ids if nid in users_by_nid]
             instance.complainants.set(ordered_users)
+
+        if suspects is not None:
+            for s in suspects:
+                link: CaseSuspectLink = s["suspect_link"]
+
+                if "supervisor_score" in s:
+                    link.supervisor_score = s["supervisor_score"]
+
+                if "lead_detective_score" in s:
+                    link.detective_score = s["lead_detective_score"]
+                elif "score" in s:
+                    user: User = self.context["request"].user
+                    if instance.supervisor_id == user.id:
+                        link.supervisor_score = s["score"]
+                    if instance.lead_detective_id == user.id:
+                        link.detective_score = s["score"]
+                
+                link.save()
+
+        instance.save()
 
         return instance
 

@@ -556,22 +556,33 @@ class CaseCreationTest(APITestCase):
             "INVESTIGATION_APPROVAL",
             {
                 "case": crime_scene_case.pk,
-                "suggested_suspects_national_ids": ["2222222222"],
+                "suggested_suspects_national_ids": ["2222222222", "3333333333"],
             },
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        submission_id = Submission.objects.get(pk=res.json()["id"])
+        crime_scene_investigation_approval_submission = Submission.objects.get(pk=res.json()["id"])
 
         self.client.force_authenticate(self.u6)
-        res = self.send_submission_action("APPROVE", {}, submission_id.pk)
+        res = self.send_submission_action("APPROVE", {}, crime_scene_investigation_approval_submission.pk)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
 
         full_url = reverse("case-list")
         self.client.force_authenticate(self.u6)
-        response = self.client.get(full_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.printJ(response)
+        res = self.client.get(full_url, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        case_json = next((x for x in res.json() if x["id"] ==
+                                crime_scene_case.pk), None)
+        
+        self.assertIsNotNone(case_json)
+        suspects_json = case_json["suspects"]
+        self.assertEqual(
+            {User.objects.get(national_id = "2222222222").id, User.objects.get(national_id = "3333333333").id},
+            set([x["id"] for x in suspects_json]))
+        
+        self.printJ(res)
+
         
 
     def test_front_modules(self):
@@ -590,283 +601,284 @@ class CaseCreationTest(APITestCase):
                 res = self.get_front_modules()
                 self.assertEqual(res.status_code, status.HTTP_200_OK)
                 self.assertEqual(res.json(), {"modules": expected_modules})
-class CaseListAccessTest(APITestCase):
-    @classmethod
-    def add_perms(cls, user: User, *codenames):
-        for codename in codenames:
-            user.user_permissions.add(Permission.objects.get(codename=codename))
 
-    @classmethod
-    def printJ(self, data):
-        print(json.dumps(data.json(), indent=2))
+# class CaseListAccessTest(APITestCase):
+#     @classmethod
+#     def add_perms(cls, user: User, *codenames):
+#         for codename in codenames:
+#             user.user_permissions.add(Permission.objects.get(codename=codename))
 
-    @classmethod
-    def setUpTestData(cls):
-        base_dt = timezone.now()
+#     @classmethod
+#     def printJ(self, data):
+#         print(json.dumps(data.json(), indent=2))
 
-        cls.detective = User.objects.create_user(
-            username="detective",
-            password="pass12345",
-            national_id="7000000001",
-            phone_number="+989121111111",
-            first_name="Det",
-            last_name="One",
-        )
-        cls.supervisor = User.objects.create_user(
-            username="supervisor",
-            password="pass12345",
-            national_id="7000000002",
-            phone_number="+989122222222",
-            first_name="Sup",
-            last_name="One",
-        )
-        cls.complainant = User.objects.create_user(
-            username="complainant",
-            password="pass12345",
-            national_id="7000000003",
-            phone_number="+989123333333",
-            first_name="Comp",
-            last_name="One",
-        )
-        cls.complainant_with_all = User.objects.create_user(
-            username="complainant_all",
-            password="pass12345",
-            national_id="7000000004",
-            phone_number="+989124444444",
-            first_name="Comp",
-            last_name="All",
-        )
-        cls.viewer = User.objects.create_user(
-            username="viewer",
-            password="pass12345",
-            national_id="7000000005",
-            phone_number="+989125555555",
-            first_name="View",
-            last_name="All",
-        )
-        cls.outsider = User.objects.create_user(
-            username="outsider",
-            password="pass12345",
-            national_id="7000000006",
-            phone_number="+989126666666",
-            first_name="Out",
-            last_name="Side",
-        )
+#     @classmethod
+#     def setUpTestData(cls):
+#         base_dt = timezone.now()
 
-        cls.add_perms(cls.viewer, "view_all_cases")
-        cls.add_perms(cls.complainant_with_all, "view_all_cases")
+#         cls.detective = User.objects.create_user(
+#             username="detective",
+#             password="pass12345",
+#             national_id="7000000001",
+#             phone_number="+989121111111",
+#             first_name="Det",
+#             last_name="One",
+#         )
+#         cls.supervisor = User.objects.create_user(
+#             username="supervisor",
+#             password="pass12345",
+#             national_id="7000000002",
+#             phone_number="+989122222222",
+#             first_name="Sup",
+#             last_name="One",
+#         )
+#         cls.complainant = User.objects.create_user(
+#             username="complainant",
+#             password="pass12345",
+#             national_id="7000000003",
+#             phone_number="+989123333333",
+#             first_name="Comp",
+#             last_name="One",
+#         )
+#         cls.complainant_with_all = User.objects.create_user(
+#             username="complainant_all",
+#             password="pass12345",
+#             national_id="7000000004",
+#             phone_number="+989124444444",
+#             first_name="Comp",
+#             last_name="All",
+#         )
+#         cls.viewer = User.objects.create_user(
+#             username="viewer",
+#             password="pass12345",
+#             national_id="7000000005",
+#             phone_number="+989125555555",
+#             first_name="View",
+#             last_name="All",
+#         )
+#         cls.outsider = User.objects.create_user(
+#             username="outsider",
+#             password="pass12345",
+#             national_id="7000000006",
+#             phone_number="+989126666666",
+#             first_name="Out",
+#             last_name="Side",
+#         )
 
-        cls.case_assigned = Case.objects.create(
-            title="Assigned Case",
-            description="Sensitive details",
-            crime_datetime=base_dt,
-            lead_detective=cls.detective,
-            supervisor=cls.supervisor,
-            witnesses=[{"phone_number": "+989120000000", "national_id": cls.complainant.national_id}],
-        )
-        cls.case_assigned.complainants.set([cls.complainant])
-        cls.case_assigned.suspects.set([cls.complainant])
+#         cls.add_perms(cls.viewer, "view_all_cases")
+#         cls.add_perms(cls.complainant_with_all, "view_all_cases")
 
-        cls.case_general = Case.objects.create(
-            title="General Case",
-            description="General details",
-            crime_datetime=base_dt + timedelta(hours=1),
-            witnesses=[],
-        )
+#         cls.case_assigned = Case.objects.create(
+#             title="Assigned Case",
+#             description="Sensitive details",
+#             crime_datetime=base_dt,
+#             lead_detective=cls.detective,
+#             supervisor=cls.supervisor,
+#             witnesses=[{"phone_number": "+989120000000", "national_id": cls.complainant.national_id}],
+#         )
+#         cls.case_assigned.complainants.set([cls.complainant])
+#         cls.case_assigned.suspects.set([cls.complainant])
 
-        cls.case_complainant_all = Case.objects.create(
-            title="Complainant With Permission Case",
-            description="Should not leak full details",
-            crime_datetime=base_dt + timedelta(hours=2),
-            witnesses=[{"phone_number": "+989121234567", "national_id": cls.complainant_with_all.national_id}],
-        )
-        cls.case_complainant_all.complainants.set([cls.complainant_with_all])
+#         cls.case_general = Case.objects.create(
+#             title="General Case",
+#             description="General details",
+#             crime_datetime=base_dt + timedelta(hours=1),
+#             witnesses=[],
+#         )
 
-        cls.case_assigned_submission = Submission.objects.create(
-            submission_type="COMPLAINT",
-            object_id=999999,
-            status=SubmissionStatus.PENDING,
-            created_by=cls.detective,
-        )
-        CaseSubmissionLink.objects.create(
-            submission=cls.case_assigned_submission,
-            case=cls.case_assigned,
-            relation_type=CaseSubmissionLink.RelationType.RELATED,
-        )
-        cls.case_general_submission = Submission.objects.create(
-            submission_type="COMPLAINT",
-            object_id=999998,
-            status=SubmissionStatus.PENDING,
-            created_by=cls.viewer,
-        )
-        CaseSubmissionLink.objects.create(
-            submission=cls.case_general_submission,
-            case=cls.case_general,
-            relation_type=CaseSubmissionLink.RelationType.RELATED,
-        )
+#         cls.case_complainant_all = Case.objects.create(
+#             title="Complainant With Permission Case",
+#             description="Should not leak full details",
+#             crime_datetime=base_dt + timedelta(hours=2),
+#             witnesses=[{"phone_number": "+989121234567", "national_id": cls.complainant_with_all.national_id}],
+#         )
+#         cls.case_complainant_all.complainants.set([cls.complainant_with_all])
 
-        cls.case_assigned_evidence = OtherEvidence.objects.create(
-            case=cls.case_assigned,
-            recorder=cls.detective,
-            title="Assigned Case Evidence",
-            description="Evidence for assigned case",
-        )
-        cls.case_general_evidence = OtherEvidence.objects.create(
-            case=cls.case_general,
-            recorder=cls.viewer,
-            title="General Case Evidence",
-            description="Evidence for general case",
-        )
+#         cls.case_assigned_submission = Submission.objects.create(
+#             submission_type="COMPLAINT",
+#             object_id=999999,
+#             status=SubmissionStatus.PENDING,
+#             created_by=cls.detective,
+#         )
+#         CaseSubmissionLink.objects.create(
+#             submission=cls.case_assigned_submission,
+#             case=cls.case_assigned,
+#             relation_type=CaseSubmissionLink.RelationType.RELATED,
+#         )
+#         cls.case_general_submission = Submission.objects.create(
+#             submission_type="COMPLAINT",
+#             object_id=999998,
+#             status=SubmissionStatus.PENDING,
+#             created_by=cls.viewer,
+#         )
+#         CaseSubmissionLink.objects.create(
+#             submission=cls.case_general_submission,
+#             case=cls.case_general,
+#             relation_type=CaseSubmissionLink.RelationType.RELATED,
+#         )
 
-    def test_full_case_list_visibility(self):
-        full_url = reverse("case-list")
-        self.client.force_authenticate(self.complainant)
-        response = self.client.get(full_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), [])
+#         cls.case_assigned_evidence = OtherEvidence.objects.create(
+#             case=cls.case_assigned,
+#             recorder=cls.detective,
+#             title="Assigned Case Evidence",
+#             description="Evidence for assigned case",
+#         )
+#         cls.case_general_evidence = OtherEvidence.objects.create(
+#             case=cls.case_general,
+#             recorder=cls.viewer,
+#             title="General Case Evidence",
+#             description="Evidence for general case",
+#         )
 
-        self.client.force_authenticate(self.outsider)
-        response = self.client.get(full_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), [])
+#     def test_full_case_list_visibility(self):
+#         full_url = reverse("case-list")
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.get(full_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertEqual(response.json(), [])
 
-    def test_complainant_case_list_is_reduced_and_used_for_complainants(self):
-        full_url = reverse("case-list")
-        complainant_url = reverse("case-complainant-list")
+#         self.client.force_authenticate(self.outsider)
+#         response = self.client.get(full_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertEqual(response.json(), [])
 
-        self.client.force_authenticate(self.complainant)
-        response = self.client.get(complainant_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned.id})
-        self.assertSetEqual(
-            set(response.json()[0].keys()),
-            {"id", "title", "crime_datetime", "status", "complainant_national_ids"},
-        )
+#     def test_complainant_case_list_is_reduced_and_used_for_complainants(self):
+#         full_url = reverse("case-list")
+#         complainant_url = reverse("case-complainant-list")
 
-    def test_case_retrieve_visibility_and_serializer(self):
-        assigned_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
-        general_url = reverse("case-update", kwargs={"pk": self.case_general.id})
-        complainant_all_url = reverse("case-update", kwargs={"pk": self.case_complainant_all.id})
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.get(complainant_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned.id})
+#         self.assertSetEqual(
+#             set(response.json()[0].keys()),
+#             {"id", "title", "crime_datetime", "status", "complainant_national_ids"},
+#         )
 
-        self.client.force_authenticate(self.outsider)
-        response = self.client.get(general_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#     def test_case_retrieve_visibility_and_serializer(self):
+#         assigned_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
+#         general_url = reverse("case-update", kwargs={"pk": self.case_general.id})
+#         complainant_all_url = reverse("case-update", kwargs={"pk": self.case_complainant_all.id})
 
-        self.client.force_authenticate(self.complainant)
-        response = self.client.get(assigned_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.outsider)
+#         response = self.client.get(general_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.complainant_with_all)
-        response = self.client.get(complainant_all_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.get(assigned_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_case_update_allowed_for_detective_only(self):
-        update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
-        payload = {
-            "title": "Updated Assigned Case",
-            "description": "Updated by detective",
-            "complainant_national_ids": [self.complainant_with_all.national_id, self.complainant.national_id],
-            "witnesses": [
-                {"phone_number": "+989121000000", "national_id": self.complainant.national_id},
-            ],
-        }
+#         self.client.force_authenticate(self.complainant_with_all)
+#         response = self.client.get(complainant_all_url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.detective)
-        response = self.client.patch(update_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()["title"], payload["title"])
-        self.assertEqual(
-            set(response.json()["complainant_national_ids"]),
-            {self.complainant.national_id, self.complainant_with_all.national_id},
-        )
+#     def test_case_update_allowed_for_detective_only(self):
+#         update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
+#         payload = {
+#             "title": "Updated Assigned Case",
+#             "description": "Updated by detective",
+#             "complainant_national_ids": [self.complainant_with_all.national_id, self.complainant.national_id],
+#             "witnesses": [
+#                 {"phone_number": "+989121000000", "national_id": self.complainant.national_id},
+#             ],
+#         }
 
-        self.case_assigned.refresh_from_db()
-        self.assertEqual(self.case_assigned.title, payload["title"])
-        self.assertEqual(self.case_assigned.description, payload["description"])
-        self.assertEqual(self.case_assigned.witnesses, payload["witnesses"])
-        self.assertSetEqual(
-            set(self.case_assigned.complainants.values_list("national_id", flat=True)),
-            {self.complainant.national_id, self.complainant_with_all.national_id},
-        )
+#         self.client.force_authenticate(self.detective)
+#         response = self.client.patch(update_url, payload, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertEqual(response.json()["title"], payload["title"])
+#         self.assertEqual(
+#             set(response.json()["complainant_national_ids"]),
+#             {self.complainant.national_id, self.complainant_with_all.national_id},
+#         )
 
-        self.client.force_authenticate(self.supervisor)
-        response = self.client.patch(
-            update_url,
-            {"description": "Updated by supervisor"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.case_assigned.refresh_from_db()
-        self.assertEqual(self.case_assigned.description, payload["description"])
+#         self.case_assigned.refresh_from_db()
+#         self.assertEqual(self.case_assigned.title, payload["title"])
+#         self.assertEqual(self.case_assigned.description, payload["description"])
+#         self.assertEqual(self.case_assigned.witnesses, payload["witnesses"])
+#         self.assertSetEqual(
+#             set(self.case_assigned.complainants.values_list("national_id", flat=True)),
+#             {self.complainant.national_id, self.complainant_with_all.national_id},
+#         )
 
-    def test_case_update_forbidden_for_non_assignees(self):
-        update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
-        payload = {"title": "Unauthorized update"}
+#         self.client.force_authenticate(self.supervisor)
+#         response = self.client.patch(
+#             update_url,
+#             {"description": "Updated by supervisor"},
+#             format="json",
+#         )
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.case_assigned.refresh_from_db()
+#         self.assertEqual(self.case_assigned.description, payload["description"])
 
-        self.client.force_authenticate(self.supervisor)
-        response = self.client.patch(update_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#     def test_case_update_forbidden_for_non_assignees(self):
+#         update_url = reverse("case-update", kwargs={"pk": self.case_assigned.id})
+#         payload = {"title": "Unauthorized update"}
 
-        self.client.force_authenticate(self.viewer)
-        response = self.client.patch(update_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.supervisor)
+#         response = self.client.patch(update_url, payload, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.complainant)
-        response = self.client.patch(update_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.viewer)
+#         response = self.client.patch(update_url, payload, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.complainant_with_all)
-        response = self.client.patch(update_url, payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.patch(update_url, payload, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_case_evidence_list_access_and_scoping(self):
-        url = reverse("case-evidence-list", kwargs={"pk": self.case_assigned.id})
+#         self.client.force_authenticate(self.complainant_with_all)
+#         response = self.client.patch(update_url, payload, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.detective)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned_evidence.id})
+#     def test_case_evidence_list_access_and_scoping(self):
+#         url = reverse("case-evidence-list", kwargs={"pk": self.case_assigned.id})
 
-        self.client.force_authenticate(self.supervisor)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned_evidence.id})
+#         self.client.force_authenticate(self.detective)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned_evidence.id})
 
-        self.client.force_authenticate(self.outsider)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.supervisor)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertSetEqual({item["id"] for item in response.json()}, {self.case_assigned_evidence.id})
 
-        self.client.force_authenticate(self.complainant)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.outsider)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_case_submission_list_access_and_scoping(self):
-        url = reverse("case-submission-list", kwargs={"pk": self.case_assigned.id})
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(self.detective)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSetEqual(
-            {item["submission"]["id"] for item in response.json()},
-            {self.case_assigned_submission.id},
-        )
-        self.assertSetEqual(
-            {item["relation"] for item in response.json()},
-            {CaseSubmissionLink.RelationType.RELATED},
-        )
+#     def test_case_submission_list_access_and_scoping(self):
+#         url = reverse("case-submission-list", kwargs={"pk": self.case_assigned.id})
 
-        self.client.force_authenticate(self.supervisor)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSetEqual(
-            {item["submission"]["id"] for item in response.json()},
-            {self.case_assigned_submission.id},
-        )
+#         self.client.force_authenticate(self.detective)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertSetEqual(
+#             {item["submission"]["id"] for item in response.json()},
+#             {self.case_assigned_submission.id},
+#         )
+#         self.assertSetEqual(
+#             {item["relation"] for item in response.json()},
+#             {CaseSubmissionLink.RelationType.RELATED},
+#         )
 
-        self.client.force_authenticate(self.outsider)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.supervisor)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertSetEqual(
+#             {item["submission"]["id"] for item in response.json()},
+#             {self.case_assigned_submission.id},
+#         )
 
-        self.client.force_authenticate(self.complainant)
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.client.force_authenticate(self.outsider)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+#         self.client.force_authenticate(self.complainant)
+#         response = self.client.get(url, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

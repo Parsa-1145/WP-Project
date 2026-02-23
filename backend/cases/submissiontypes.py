@@ -298,7 +298,7 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
                 {
                     "id": 4,
                     "first_name": "Complainant",
-                    "second_name": "One",
+                    "last_name": "One",
                     "national_id": "1111111111",
                 }
             ],
