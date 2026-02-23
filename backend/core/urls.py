@@ -19,9 +19,8 @@ urlpatterns = [
     path('api/evidence/', include("evidence.urls")),
     path('api/cases/', include("cases.urls")),
     path("api/front-modules/", FrontModulesGetView.as_view(), name="front-modules-get"),
-    
-
     path('api/submission/', include("submissions.urls")),
+    path('api/payments/', include("payments.urls")),
     path(settings.ADMIN_URL, admin.site.urls),
 ]
 

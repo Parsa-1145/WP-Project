@@ -23,7 +23,7 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
     def on_submit(cls, submission: Submission) -> None:
         SubmissionStage.objects.create(
             submission=submission,
-            target_permission="evidence.can_approve",
+            target_permission="evidence.can_approve_bioevidence",
             order=0,
             allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
         )
