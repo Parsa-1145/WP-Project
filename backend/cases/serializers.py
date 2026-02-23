@@ -177,11 +177,9 @@ class CaseStaffingSubmissionPayloadSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------
 
 class UserBriefInfoSerializer(serializers.ModelSerializer):
-    second_name = serializers.CharField(source="last_name", read_only=True)
-
     class Meta:
         model = User
-        fields = ["id", "first_name", "second_name", "national_id"]
+        fields = ["id", "first_name", "last_name", "national_id"]
         read_only_fields = fields
 
 
