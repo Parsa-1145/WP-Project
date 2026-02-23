@@ -205,8 +205,6 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateAPIView):
 
         if self.request.method == "PATCH":
             case = self.get_case()
-            if case.lead_detective_id != user.id:
-                raise PermissionDenied("Only the assigned lead detective can update this case.")
             return case
 
         case = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])

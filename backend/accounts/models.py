@@ -24,4 +24,3 @@ class User(AbstractUser):
         choices=Status.choices, 
         default=Status.FREE
     )
-    

@@ -345,12 +345,25 @@ class SubmissionTypeListView(APIView):
                             )
                         },
                     ),
+                    inline_serializer(
+                        name="SUBMIT",
+                        fields={
+                            "action_type": serializers.ChoiceField(choices=["SUBMIT"]),
+                            "payload" : serializers.DictField(
+                                required=True
+                            )
+                        },
+                    ),
                 ],
             ),
         examples=[
                 OpenApiExample("Resubmit", value={
                     "action_type": "RESUBMIT",
                     "payload": {"param1":"data1"}}, request_only=True, description="Payload must match the submission-create payload schema for this submission's submission_type."),
+                OpenApiExample("Submit", value={
+                    "action_type": "SUBMIT",
+                    "payload": ["1", "2"]}, request_only=True, description="Tof bezan. faghat too GUILT_ASSESMENT estefade mishe"),
+                OpenApiExample("Approve", value={"action_type": "APPROVE", "payload":{}}, request_only=True),
                 OpenApiExample("Approve", value={"action_type": "APPROVE", "payload":{}}, request_only=True),
                 OpenApiExample("Accept", value={"action_type": "ACCEPT", "payload":{}}, request_only=True),
                 OpenApiExample("Reject", value={"action_type": "REJECT", "payload":{"message":"Rejection message"}}, request_only=True),

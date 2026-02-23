@@ -123,16 +123,18 @@ class CrimeSceneSerializer(serializers.ModelSerializer):
             nid = w.get("national_id")
             counts[nid] = counts.get(nid, 0) + 1
 
-        indexed_errors = {}
+        errors = [{} for _ in witnesses]
+        has_errors = False
         for i, w in enumerate(witnesses):
             nid = w.get("national_id")
             if counts.get(nid, 0) > 1:
-                indexed_errors[str(i)] = {
-                    "national_id": [f"Duplicate national_id: {nid}."]
-                }
+                errors[i].setdefault("national_id", []).append(
+                    f"Duplicate national_id: {nid}."
+                )
+                has_errors = True
 
-        if indexed_errors:
-            raise serializers.ValidationError(indexed_errors)
+        if has_errors:
+            raise serializers.ValidationError(errors)
 
         return witnesses
 
@@ -365,6 +367,27 @@ class ComplainantCaseListSerializer(serializers.ModelSerializer):
 # Case update
 # ---------------------------------------------------------------------
 
+class IndexedErrorsListSerializer(serializers.ListSerializer):
+    def run_validation(self, data=serializers.empty):
+        try:
+            return super().run_validation(data)
+        except serializers.ValidationError as exc:
+            detail = exc.detail
+            if isinstance(detail, list):
+                indexed_errors = {}
+                for i, item in enumerate(detail):
+                    if item in (None, {}, []):
+                        continue
+                    indexed_errors[str(i)] = item
+                raise serializers.ValidationError(indexed_errors)
+            raise
+
+
+class CaseUpdateWitnessItemSerializer(WitnessItemSerializer):
+    class Meta:
+        list_serializer_class = IndexedErrorsListSerializer
+
+
 class SuspectUpdateSerilizer(serializers.Serializer):
     suspect_link = serializers.PrimaryKeyRelatedField(
         queryset=CaseSuspectLink.objects.all(),
@@ -382,26 +405,35 @@ class SuspectUpdateSerilizer(serializers.Serializer):
         write_only=True,
         required=False
     )
+    status = serializers.ChoiceField(
+        choices=User.Status.choices,
+        required=False,
+        write_only=True
+    )
 
     def validate(self, attrs):
         suspect_link: CaseSuspectLink = attrs["suspect_link"]
         case = suspect_link.case
         user: User = self.context["request"].user
 
+        changing_score:bool = ("lead_detective_score" in attrs) or \
+                                ("supervisor_score" in attrs) or \
+                                ("score" in attrs)
+
+        if (suspect_link.user.status == suspect_link.user.Status.WANTED) and (changing_score):
+            raise serializers.ValidationError({"suspect_link" : "suspect is wanted and not interogated yet"})
+        
         if (case.lead_detective.id != user.id) and (case.supervisor.id != user.id):
             raise PermissionDenied("You should be the detective / supervisor of the case")
-        
-        if suspect_link.user.status is suspect_link.user.Status.WANTED:
-            raise serializers.ValidationError({"suspect_link" : "suspect is wanted and not interogated yet"})
 
         if "supervisor_score" in attrs and case.supervisor_id != user.id:
             raise serializers.ValidationError(
-                {"supervisor_score": "Only the case supervisor can set this field."}
+                {"score": "Only the case supervisor can set this field."}
             )
         
         if "lead_detective_score" in attrs and case.lead_detective_id != user.id:
             raise serializers.ValidationError(
-                {"lead_detective_score": "Only the lead detective of the case can set this field."}
+                {"score": "Only the lead detective of the case can set this field."}
             )
         
         return attrs
@@ -421,6 +453,9 @@ class SuspectUpdateSerilizer(serializers.Serializer):
             raise serializers.ValidationError("should be between 1 and 10")
         return value
 
+    class Meta:
+        list_serializer_class = IndexedErrorsListSerializer
+
 
 class CaseUpdateSerializer(serializers.ModelSerializer):
     complainant_national_ids = serializers.ListField(
@@ -429,7 +464,7 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         help_text="List of complainants national IDs.",
     )
-    witnesses = WitnessItemSerializer(
+    witnesses = CaseUpdateWitnessItemSerializer(
         many=True,
         required=False,
         write_only=True,
@@ -491,8 +526,13 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
 
         indexed_errors = {}
         case_id = getattr(self.instance, "id", None)
-        for i, w in enumerate(suspects):
-            link: CaseSuspectLink = w.get("suspect_link")
+
+        case: Case = self.instance
+        if case.status != case.Status.INTEROGATING_SUSPECTS:
+            raise serializers.ValidationError("the case is in open investigation state")
+
+        for i, s in enumerate(suspects):
+            link: CaseSuspectLink = s.get("suspect_link")
             sid = link.pk
             if counts.get(sid, 0) > 1:
                 indexed_errors[str(i)] = {
@@ -539,6 +579,9 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
                     if instance.lead_detective_id == user.id:
                         link.detective_score = s["score"]
                 
+                if "status" in s:
+                    link.user.status = s["status"]
+                    link.user.save()
                 link.save()
 
         instance.save()
@@ -569,3 +612,16 @@ class CaseLinkedSubmissionSerializer(serializers.ModelSerializer):
         model = CaseSubmissionLink
         fields = ["relation", "submission"]
         read_only_fields = fields
+
+# ---------------------------------------------------------------------
+# Case submisions
+# ---------------------------------------------------------------------
+
+class CaseChargesSubmissionSerializer(CaseListSerializer):
+    case_id = serializers.PrimaryKeyRelatedField(
+        queryset=Case.objects.all(),
+        write_only=True
+    )
+
+    class Meta(CaseListSerializer.Meta):
+        fields = CaseListSerializer.Meta.fields + ["case_id"]

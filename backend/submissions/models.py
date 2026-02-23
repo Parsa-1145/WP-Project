@@ -12,11 +12,10 @@ class SubmissionStatus(models.TextChoices):
 
 
 class SubmissionActionType(models.TextChoices):
-    SUBMIT = "SUBMIT"
-    APPROVE = "APPROVE"
-    ACCEPT = "ACCEPT"
-    REJECT = "REJECT"
-    CANCEL = "CANCEL"
+    SUBMIT   = "SUBMIT"
+    APPROVE  = "APPROVE"
+    ACCEPT   = "ACCEPT"
+    REJECT   = "REJECT"
     RESUBMIT = "RESUBMIT"
 
 class Submission(models.Model):

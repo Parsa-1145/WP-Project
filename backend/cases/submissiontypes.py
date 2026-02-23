@@ -6,10 +6,12 @@ from cases.serializers import (
     CrimeSceneSerializer,
     CaseStaffingSubmissionPayloadSerializer,
     InvestigationResultsSubmissionSerializer,
+    CaseChargesSubmissionSerializer
 )
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from accounts.models import User
+from django.db.models import Q
 
 class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     type_key             = "COMPLAINT"
@@ -338,8 +340,15 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
         case = target.case
 
         if action.action_type == SubmissionActionType.APPROVE:
-            case.status = case.Status.INTEROGATING_SUSPECTS
+            case.status = Case.Status.INTEROGATING_SUSPECTS
             case.suspects.set(target.suggested_suspects.all())
+
+
+            for user in case.suspects.all():
+                user.status = user.Status.WANTED
+                user.save(update_fields=["status"])
+
+
             case.save()
 
             submission.status = SubmissionStatus.APPROVED
@@ -352,3 +361,70 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
     @classmethod
     def can_user_submit(cls, user):
         return super().can_user_submit(user) and Case.objects.filter(lead_detective=user, status=Case.Status.OPEN_INVESTIGATION).exists()
+
+class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
+    type_key             = "GUILT_ASSESMENT"
+    display_name         = "Guilt assesment"
+    create_permissions   = []
+    model_class          = Case
+    serializer_class     = CaseChargesSubmissionSerializer
+    api_request_schema   = CaseChargesSubmissionSerializer
+    api_request_payload_example = {
+        "case_id": 1
+    }
+
+    @classmethod
+    def validate_submission_data(cls, data, context):
+        case_id = data.get("case_id")
+        if case_id is None:
+            raise ValidationError({"case_id":"this field is required"})
+        
+        case = Case.objects.get(pk=case_id)
+
+        if case is None:
+            raise ValidationError({"case_id":"case doesnt exist"})
+        
+        user:User = context["request"].user
+
+        if case.lead_detective != user:
+            raise PermissionDenied("only the lead detective can make this request")
+            
+    @classmethod
+    def create_object(cls, payload, context):
+        case_id = payload.get("case_id")
+        
+        return Case.objects.get(pk=case_id)
+    
+    @classmethod
+    def on_submit(cls, submission):
+        target = cls.get_object(submission.object_id)
+        
+        SubmissionStage.objects.create(
+            submission=submission,
+            target_permission=["cases.assess_suspect_guilt"],
+            order=0,
+            allowed_actions=[SubmissionActionType.REJECT]
+        )
+
+        if target.crime_level == target.CrimeLevel.CRITICAL:
+            SubmissionStage.objects.create(
+                submission=submission,
+                target_permission=["cases.approve_suspect_guilt_assessment"],
+                order=1,
+                allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
+            )
+    
+    @classmethod
+    def handle_submission_action(cls, submission, action, context, **kwargs):
+        stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
+        target = cls.get_object(submission.object_id)
+
+        if stage.order == 0:
+            pass
+        if stage.order == 1:
+            pass
+
+    
+    @classmethod
+    def can_user_submit(cls, user):
+        return super().can_user_submit(user) and Case.objects.filter(Q(lead_detective=user)|Q(supervisor=user)).filter(status=Case.Status.INTEROGATING_SUSPECTS).exists()

@@ -12,6 +12,8 @@ class Case(models.Model):
             ("investigate_on_case", "Can investigate on a case"),
             ("supervise_case", "Can supervise a case"),
             ("add_case_acceptance_submission", "Can add a submission to find a lead_detective and a supervisor for a case"),
+            ("assess_suspect_guilt", "Can assess whether suspects are guilty or not guilty"),
+            ("approve_suspect_guilt_assessment", "Can approve suspect guilt assessments in critical cases"),
             
         ]
     class CrimeLevel(models.TextChoices):
@@ -24,7 +26,7 @@ class Case(models.Model):
         OPEN_INVESTIGATION = 'open'
         AWAITING_INVESTIGATOR_ACCEPTANCE = "awaiting_investigator", "Awaiting Investigator Acceptance"
         AWAITING_SUPERVISOR_ACCEPTANCE = "awaiting_supervisor", "Awaiting Supervisor Acceptance"
-        INTEROGATING_SUSPECTS = "awaiting_arrest", "Awaiting Suspects Arrest"
+        INTEROGATING_SUSPECTS = "interogation", "Interogating suspects"
         SOLVED = 'solved'
         CLOSED = 'closed'
 

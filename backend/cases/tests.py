@@ -589,11 +589,160 @@ class CaseCreationTest(APITestCase):
         suspect_link_id_1 = suspects_json[0]["suspect_link"]
         suspect_link_id_2 = suspects_json[1]["suspect_link"]
 
-        self.update_case(crime_scene_case.pk, {
-            "suspects" : {
-                "score" : 10
-            }
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "status" : "ARRESTED"
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "status" : "ARRESTED"
+                }
+            ]
         })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 111
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : -1
+                },
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 11
+                }
+            ]
+        })
+
+        # Invalid scores (out of allowed range)
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 111
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : -1
+                },
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 11
+                }
+            ]
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.json(),
+            {
+                "suspects": {
+                    "0": {"score": ["should be between 1 and 10"]},
+                    "1": {"score": ["should be between 1 and 10"]},
+                    "2": {"score": ["should be between 1 and 10"]},
+                }
+            },
+        )
+
+        # Valid score range but duplicate suspect link in the same payload
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 5
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : 5
+                },
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 5
+                }
+            ]
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.json(),
+            {
+                "suspects": {
+                    "0": {"suspect_link": [f"Duplicate suspect_link: {suspect_link_id_2}."]},
+                    "2": {"suspect_link": [f"Duplicate suspect_link: {suspect_link_id_2}."]},
+                }
+            },
+        )
+
+        # in suffitient permissions
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "lead_detective_score" : 5
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : 5
+                }
+            ]
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.json(),
+            {
+                "suspects": {
+                    "0": {"score": [f"Only the lead detective of the case can set this field."]}
+                }
+            },
+        )
+
+        # Valid payload updates supervisor scores
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 5
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : 6
+                }
+            ]
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(self.u5)
+        res = self.update_case(crime_scene_case.pk, {
+            "suspects" : [
+                {
+                    "suspect_link": suspect_link_id_2,
+                    "score" : 2
+                },
+                {
+                    "suspect_link": suspect_link_id_1,
+                    "score" : 10
+                }
+            ]
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        full_url = reverse("case-list")
+        self.client.force_authenticate(self.u6)
+        res = self.client.get(full_url, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        case_json_after = next((x for x in res.json() if x["id"] == crime_scene_case.pk), None)
+        self.assertIsNotNone(case_json_after)
+        suspects_after = {x["suspect_link"]: x for x in case_json_after["suspects"]}
+
+        self.assertEqual(suspects_after[suspect_link_id_2]["supervisor_score"], 5)
+        self.assertEqual(suspects_after[suspect_link_id_1]["supervisor_score"], 6)
+        self.assertEqual(suspects_after[suspect_link_id_2]["detective_score"], 2)
+        self.assertEqual(suspects_after[suspect_link_id_1]["detective_score"], 10)
 
         
 

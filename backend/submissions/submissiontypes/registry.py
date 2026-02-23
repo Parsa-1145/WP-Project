@@ -1,4 +1,4 @@
-from cases.submissiontypes import ComplaintSubmissionType, CrimeSceneSubmissionType, BaseSubmissionType, CaseStaffingSubmissionType, InvestigationResultsApprovalSubmissionType
+from cases.submissiontypes import ComplaintSubmissionType, GuiltAssesmentSubmissionType, CrimeSceneSubmissionType, BaseSubmissionType, CaseStaffingSubmissionType, InvestigationResultsApprovalSubmissionType
 from evidence.submissiontypes import BioEvidenceSubmissionType
 
 SUBMISSION_TYPES: dict[str, type[BaseSubmissionType]] = {
@@ -7,6 +7,7 @@ SUBMISSION_TYPES: dict[str, type[BaseSubmissionType]] = {
     CaseStaffingSubmissionType.type_key: CaseStaffingSubmissionType,
     InvestigationResultsApprovalSubmissionType.type_key: InvestigationResultsApprovalSubmissionType,
     BioEvidenceSubmissionType.type_key: BioEvidenceSubmissionType,
+    GuiltAssesmentSubmissionType.type_key: GuiltAssesmentSubmissionType
 }
 
 
