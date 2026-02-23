@@ -581,7 +581,19 @@ class CaseCreationTest(APITestCase):
             {User.objects.get(national_id = "2222222222").id, User.objects.get(national_id = "3333333333").id},
             set([x["id"] for x in suspects_json]))
         
-        self.printJ(res)
+        self.assertEqual(
+            case_json["your_role"],
+            "SUPERVISOR"
+        )
+
+        suspect_link_id_1 = suspects_json[0]["suspect_link"]
+        suspect_link_id_2 = suspects_json[1]["suspect_link"]
+
+        self.update_case(crime_scene_case.pk, {
+            "suspects" : {
+                "score" : 10
+            }
+        })
 
         
 

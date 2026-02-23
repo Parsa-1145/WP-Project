@@ -446,7 +446,7 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title",
             "description",
-            "crime_level"
+            "crime_level",
             "complainant_national_ids",
             "witnesses",
             "suspects"

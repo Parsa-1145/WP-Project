@@ -176,6 +176,11 @@ class AssignedCaseAccessMixin:
                     "witnesses": [
                         {"phone_number": "+989121234567", "national_id": "3333333333"},
                     ],
+                    "suspects": [
+                        {"suspect_link": 9, "score": 8},
+
+                        {"suspect_link": 10, "supervisor_score":5}
+                    ],
                 },
             ),
         ],
