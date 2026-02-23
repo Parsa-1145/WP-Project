@@ -7,10 +7,76 @@ from django.utils import timezone
 from django.shortcuts import redirect,render
 from django.db import transaction
 import logging
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 class PaymentView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description="Payment URL generated successfully",
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        "Successful Response",
+                        summary="Example of a successful payment URL response",
+                        value={
+                            "payment_url": "https://sandbox.zarinpal.com/pg/StartPay/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description="Bad request",
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        "Invalid Bail Request",
+                        value={"error": "Bail request not found or not approved"}
+                    ),
+                    OpenApiExample(
+                        "Gateway Rejection",
+                        value={
+                            "error": "Gateway rejected the payment request",
+                            "gateway_details": {"code": -1, "message": "Invalid merchant ID"}
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden",
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized User",
+                        value={"error": "You are not authorized to pay for this bail request"}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not found",
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        "Bail Request Not Found",
+                        value={"error": "Bail request not found or not approved"}
+                    )
+                ]
+            ),
+            500: OpenApiResponse(
+                description="Internal server error",
+                response=dict,
+                examples=[
+                    OpenApiExample(
+                        "Unexpected Error",
+                        value={"error": "An unexpected error occurred"}
+                    )
+                ]
+            )
+        }
+    )
     def post(self, request, *args, **kwargs):
         user = request.user
 
@@ -77,6 +143,7 @@ class PaymentView(views.APIView):
 
 class PaymentCallbackView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    
     @transaction.atomic
     def get(self, request, *args, **kwargs):
         authority = request.query_params.get("Authority")
