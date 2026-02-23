@@ -2,7 +2,7 @@ from submissions.submissiontypes.classes import BaseSubmissionType
 from cases.models import Complaint, CrimeScene, CaseSubmissionLink, InvestigationResults, Case
 from cases.serializers import (
     ComplaintSerializer,
-    ComplaintPayloadSerializer,
+    ComplaintSerializer,
     CrimeSceneSerializer,
     CaseStaffingSubmissionPayloadSerializer,
     InvestigationResultsSubmissionSerializer,
@@ -19,7 +19,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
     serializer_class     = ComplaintSerializer
     create_permissions   = []
     model_class          = Complaint
-    api_request_schema   = ComplaintPayloadSerializer
+    api_request_schema   = ComplaintSerializer
     api_request_payload_example  = {
         "title":"title",
         "description":"description",
@@ -54,7 +54,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
             if action.action_type != SubmissionActionType.RESUBMIT:
                 return
             
-            ser = ComplaintPayloadSerializer(
+            ser = ComplaintSerializer(
                 instance=target,
                 data=action.payload or {},
                 partial=True,
@@ -93,12 +93,6 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                     submission=submission,
                     relation_type=CaseSubmissionLink.RelationType.ORIGIN
                 )
-
-    @classmethod
-    def validate_submission_data(cls, data, context):
-        serializer = ComplaintPayloadSerializer(data=data, context=context)
-        serializer.is_valid(raise_exception=True)
-        return serializer
     
     @classmethod
     def on_submit(cls, submission): 

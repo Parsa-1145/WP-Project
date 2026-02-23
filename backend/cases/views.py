@@ -21,6 +21,60 @@ from investigation.permissions import IsDetectiveBoardOwner
 from investigation.models import DetectiveBoard
 from accounts.models import User
 
+case_list_example = {
+                "id": 12,
+                "title": "Bank Robbery",
+                "description": "Armed robbery at city branch.",
+                "crime_datetime": "2026-02-19T10:30:00Z",
+                "crime_level": "CR",
+                "status": "open",
+                "lead_detective": "Alex Carter",
+                "supervisor": "Sam Lee",
+                "your_role": "SUPERVISOR",
+                "witnesses": [
+                    {
+                        "id": 2,
+                        "first_name": "User",
+                        "last_name": "One",
+                        "national_id": "2222222222",
+                        "phone_number": "+989121234568"
+                    }
+                ],
+                "complainants": [
+                    {
+                        "id": 2,
+                        "first_name": "User",
+                        "last_name": "One",
+                        "national_id": "2222222222",
+                        "phone_number": "+989121234568"
+                    }
+                ],
+                "suspects": [
+                    {
+                        "id": 2,
+                        "first_name": "User",
+                        "last_name": "One",
+                        "national_id": "2222222222",
+                        "suspect_link": 1,
+                        "supervisor_score": 1,
+                        "detective_score": 1,
+                        "status": "WANTED",
+                        "phone_number": "+989121234568"
+                    },
+                    {
+                        "id": 3,
+                        "first_name": "User",
+                        "last_name": "Three",
+                        "national_id": "3333333333",
+                        "suspect_link": 2,
+                        "supervisor_score": 1,
+                        "detective_score": 1,
+                        "status": "WANTED",
+                        "phone_number": "+989121234569"
+                    }
+                ],
+            }
+
 @extend_schema(
     summary="List cases (full details)",
     description=(
@@ -34,36 +88,7 @@ from accounts.models import User
             name="Full case list response",
             response_only=True,
             status_codes=["200"],
-            value={
-                "id": 12,
-                "title": "Bank Robbery",
-                "description": "Armed robbery at city branch.",
-                "crime_datetime": "2026-02-19T10:30:00Z",
-                "crime_level": "CR",
-                "status": "open",
-                "witnesses": [
-                    {"phone_number": "+989121234567", "national_id": "1234567890"},
-                ],
-                "lead_detective": "Alex Carter",
-                "supervisor": "Sam Lee",
-                "complainants": [
-                    {
-                        "id": 1,
-                        "first_name": "P",
-                        "last_name": "Q",
-                        "national_id": "1111111111",
-                    }
-                ],
-                "suspects": [
-                    {
-                        "id": 2,
-                        "first_name": "S",
-                        "last_name": "T",
-                        "national_id": "2222222222",
-                        "suspect_link": 9,
-                    }
-                ],
-            },
+            value=case_list_example,
         ),
     ],
 )
@@ -109,7 +134,15 @@ class CaseListView(generics.ListAPIView):
                 "title": "Street Assault",
                 "crime_datetime": "2026-02-18T19:15:00Z",
                 "status": "awaiting_investigator",
-                "complainant_national_ids": ["1111111111", "2222222222"]
+                "complainants": [
+                    {
+                        "id": 2,
+                        "first_name": "User",
+                        "last_name": "One",
+                        "national_id": "2222222222",
+                        "phone_number": "+989121234568"
+                    }
+                ]
             },
         ),
     ],
@@ -144,9 +177,6 @@ class AssignedCaseAccessMixin:
         return case
 
 
-
-
-
 @extend_schema_view(
     get=extend_schema(
         summary="Retrieve case (full details)",
@@ -156,6 +186,14 @@ class AssignedCaseAccessMixin:
             "Complainants are blocked from this endpoint even if they have `cases.view_all_cases`."
         ),
         responses=CaseListSerializer,
+        examples=[
+            OpenApiExample(
+                name="Full case list response",
+                response_only=True,
+                status_codes=["200"],
+                value=case_list_example,
+            ),
+        ],
     ),
     patch=extend_schema(
         summary="Update case",
@@ -173,13 +211,10 @@ class AssignedCaseAccessMixin:
                     "title": "Updated Case Title",
                     "description": "Updated summary",
                     "complainant_national_ids": ["1111111111", "2222222222"],
-                    "witnesses": [
-                        {"phone_number": "+989121234567", "national_id": "3333333333"},
-                    ],
+                    "witnesses_national_ids": ["1111111111", "2222222222"],
                     "suspects": [
                         {"suspect_link": 9, "score": 8},
-
-                        {"suspect_link": 10, "supervisor_score":5}
+                        {"suspect_link": 10, "supervisor_score":5, "status":"ARRESTED"}
                     ],
                 },
             ),

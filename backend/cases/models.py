@@ -50,10 +50,10 @@ class Case(models.Model):
         related_name='filed_cases',
         blank=True
     )
-    witnesses = models.JSONField(
-        blank=True,
-        null=False,
-        default=list
+    witnesses = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='witnessed_cases',
+        blank=True
     )
 
     submissions = models.ManyToManyField(
@@ -222,8 +222,7 @@ class CrimeScene(models.Model):
         null=False,
         help_text="Date and time when the incident at this crime scene occurred.",
     )
-    witnesses = models.JSONField(
-        blank=True,
-        default=list,
+    witnesses = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
         help_text="List of witness entries attached to this crime scene.",
     )

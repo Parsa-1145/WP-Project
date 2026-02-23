@@ -29,9 +29,9 @@ def create_case_from_crime_scene(crime_scene: CrimeScene) -> Case:
     case = Case.objects.create(
         title=crime_scene.title,
         description=crime_scene.description,
-        witnesses=crime_scene.witnesses or [],
         crime_datetime=crime_scene.crime_datetime
     )
+    case.witnesses.set(crime_scene.witnesses.all())
 
     case.status = Case.Status.AWAITING_INVESTIGATOR_ACCEPTANCE
 

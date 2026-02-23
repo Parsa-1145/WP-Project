@@ -8,138 +8,161 @@ from rest_framework.exceptions import PermissionDenied
 from drf_spectacular.utils import extend_schema_field
 
 # ---------------------------------------------------------------------
-# complaint
+# base
 # ---------------------------------------------------------------------
 
-class ComplaintSerializer(serializers.ModelSerializer):
-    complainant_national_ids = serializers.SerializerMethodField(
-        help_text="National IDs of complainants attached to this complaint.",
-    )
+class UserBriefInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "first_name", "last_name", "national_id", "phone_number"]
+        read_only_fields = fields
+
+
+class SuspectInfoSerializer(UserBriefInfoSerializer):
+    id = serializers.IntegerField(source="user.id", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    phone_number = serializers.CharField(source="user.phone_number", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
+    national_id = serializers.CharField(source="user.national_id", read_only=True)
+    suspect_link = serializers.IntegerField(source="id", read_only=True)
+    supervisor_score = serializers.IntegerField(read_only=True)
+    detective_score = serializers.IntegerField(read_only=True)
+    status = serializers.CharField(source="user.status", read_only=True)
 
     class Meta:
-        model = Complaint
-        fields = ["id", "title", "description", "crime_datetime", "complainant_national_ids"]
+        model = CaseSuspectLink
+        fields = ["id", "first_name", "last_name", "national_id",
+                   "suspect_link", "supervisor_score", "detective_score", "status", "phone_number"]
+        read_only_fields = fields
 
-    def validate_complainant_national_ids(self, national_ids):
+class IndexedErrorsListSerializer(serializers.ListSerializer):
+    def run_validation(self, data=serializers.empty):
+        try:
+            return super().run_validation(data)
+        except serializers.ValidationError as exc:
+            detail = exc.detail
+            if isinstance(detail, list):
+                indexed_errors = {}
+                for i, item in enumerate(detail):
+                    if item in (None, {}, []):
+                        continue
+                    indexed_errors[str(i)] = item
+                raise serializers.ValidationError(indexed_errors)
+            raise
+
+class IndexedErrorsListField(serializers.ListField):
+    """
+    ListField that converts child list-shaped errors into {"0": ..., "2": ...}.
+    """
+    def run_validation(self, data=serializers.empty):
+        try:
+            return super().run_validation(data)
+        except serializers.ValidationError as exc:
+            detail = exc.detail
+            if isinstance(detail, list):
+                indexed_errors = {}
+                for i, item in enumerate(detail):
+                    if item in (None, {}, []):
+                        continue
+                    indexed_errors[str(i)] = item
+                raise serializers.ValidationError(indexed_errors)
+            raise
+
+
+class NationalIDUsersListField(IndexedErrorsListField):
+    """Accept national IDs and return ordered, deduped User objects."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("child", NationalIDField(should_exist=True))
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        values = super().to_internal_value(data)
+
         seen = set()
-        deduped = []
-        for nid in national_ids:
-            if nid not in seen:
-                seen.add(nid)
-                deduped.append(nid)
-        return deduped
+        national_ids = []
+        for value in values:
+            if value in seen:
+                continue
+            seen.add(value)
+            national_ids.append(value)
 
-    def get_complainant_national_ids(self, obj) -> list[str]:
-        return list(obj.complainants.values_list("national_id", flat=True))
-
-    def _get_actor(self) -> User:
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-        if user is None or not user.is_authenticated:
-            raise serializers.ValidationError(
-                {"non_field_errors": ["Authenticated request context is required."]}
-            )
-        return user
-
-    def _resolve_complainants(self, national_ids: list[str], actor: User) -> list[User]:
         users_by_nid = {
             user.national_id: user
             for user in User.objects.filter(national_id__in=national_ids)
         }
+        return [users_by_nid[nid] for nid in national_ids if nid in users_by_nid]
 
-        ordered_users = []
-        seen_ids = set()
-        for nid in national_ids:
-            user = users_by_nid.get(nid)
-            if user and user.id not in seen_ids:
-                ordered_users.append(user)
-                seen_ids.add(user.id)
+# ---------------------------------------------------------------------
+# complaint
+# ---------------------------------------------------------------------
 
-        if actor.id not in seen_ids:
-            ordered_users.append(actor)
+class ComplaintSerializer(serializers.ModelSerializer):
+    complainant_national_ids = NationalIDUsersListField(
+        required=False,
+        help_text=(
+            "Optional list of complainants' national IDs. "
+        ),
+    )
+    complainants=UserBriefInfoSerializer(
+        many=True,
+        read_only=True
+    )
 
-        return ordered_users
+    class Meta:
+        model = Complaint
+        fields = ["id", "title", "description", "crime_datetime", "complainants", "complainant_national_ids"]
 
     def create(self, validated_data):
-        actor = self._get_actor()
-        national_ids = validated_data.pop("complainant_national_ids", [])
+        user = getattr(self.context["request"], "user", None)
+        complainants = validated_data.pop("complainant_national_ids", [])
 
         complaint = Complaint.objects.create(**validated_data)
 
-        complaint.complainants.set(self._resolve_complainants(national_ids, actor))
+        complaint.complainants.set(complainants)
         return complaint
 
     def update(self, instance, validated_data):
-        actor = self._get_actor()
-        national_ids = validated_data.pop("complainant_national_ids", None)
+        user = getattr(self.context["request"], "user", None)
+        complainants = validated_data.pop("complainant_national_ids", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
-        if national_ids is not None:
-            instance.complainants.set(self._resolve_complainants(national_ids, actor))
+        if complainants is not None:
+            if user and all(existing.id != user.id for existing in complainants):
+                complainants.append(user)
+            instance.complainants.set(complainants)
 
         instance.save()
         return instance
-
-
-class ComplaintPayloadSerializer(ComplaintSerializer):
-    complainant_national_ids = serializers.ListField(
-        child=NationalIDField(should_exist=True),
-        required=False,
-        help_text=(
-            "Optional list of complainants' national IDs. "
-            "If omitted, the authenticated user is added as a complainant."
-        ),
-    )
 
 # ---------------------------------------------------------------------
 # Crime scene
 # ---------------------------------------------------------------------
 
-class WitnessItemSerializer(serializers.Serializer):
-    phone_number = PhoneNumberField(
-        help_text="Witness phone number in Iranian format.",
-    )
-    national_id = NationalIDField(
-        should_exist=True,
-        help_text="National ID of an existing user who is a witness.",
-    )
 
 class CrimeSceneSerializer(serializers.ModelSerializer):
-    witnesses = WitnessItemSerializer(
-        many=True,
+    witnesses_national_ids = NationalIDUsersListField(
         required=True,
-        help_text="Witnesses linked to this crime scene.",
+        write_only=True
+    )
+    witnesses=UserBriefInfoSerializer(
+        many=True,
+        read_only=True
     )
 
     class Meta:
         model = CrimeScene
-        fields = ["id", "title", "description", "witnesses", "crime_datetime"]
-    
-    def validate_witnesses(self, witnesses):
-        counts = {}
-        for w in witnesses:
-            nid = w.get("national_id")
-            counts[nid] = counts.get(nid, 0) + 1
-
-        errors = [{} for _ in witnesses]
-        has_errors = False
-        for i, w in enumerate(witnesses):
-            nid = w.get("national_id")
-            if counts.get(nid, 0) > 1:
-                errors[i].setdefault("national_id", []).append(
-                    f"Duplicate national_id: {nid}."
-                )
-                has_errors = True
-
-        if has_errors:
-            raise serializers.ValidationError(errors)
-
-        return witnesses
+        fields = ["id", "title", "description", "witnesses", "crime_datetime", "witnesses_national_ids"]
 
     def create(self, validated_data):
-        return super().create(validated_data)
+        witnesses = validated_data.pop("witnesses_national_ids", [])
+
+        crime_scene = CrimeScene.objects.create(**validated_data)
+
+        crime_scene.witnesses.set(witnesses)
+        return crime_scene
 
 # ---------------------------------------------------------------------
 # Case staffing
@@ -178,36 +201,16 @@ class CaseStaffingSubmissionPayloadSerializer(serializers.ModelSerializer):
 # Case list
 # ---------------------------------------------------------------------
 
-class UserBriefInfoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["id", "first_name", "last_name", "national_id"]
-        read_only_fields = fields
-
-
-class SuspectInfoSerializer(UserBriefInfoSerializer):
-    id = serializers.IntegerField(source="user.id", read_only=True)
-    first_name = serializers.CharField(source="user.first_name", read_only=True)
-    last_name = serializers.CharField(source="user.last_name", read_only=True)
-    national_id = serializers.CharField(source="user.national_id", read_only=True)
-    suspect_link = serializers.IntegerField(source="id", read_only=True)
-    supervisor_score = serializers.IntegerField(read_only=True)
-    detective_score = serializers.IntegerField(read_only=True)
-    status = serializers.CharField(source="user.status", read_only=True)
-
-    class Meta:
-        model = CaseSuspectLink
-        fields = ["id", "first_name", "last_name", "national_id",
-                   "suspect_link", "supervisor_score", "detective_score", "status"]
-        read_only_fields = fields
-
-
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
     supervisor = serializers.SerializerMethodField()
     your_role = serializers.SerializerMethodField()
     complainants = UserBriefInfoSerializer(
-        source="complainants.all",
+        many=True,
+        read_only=True,
+    )
+    witnesses = UserBriefInfoSerializer(
+        source="witnesses.all",
         many=True,
         read_only=True,
     )
@@ -298,8 +301,7 @@ class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
         help_text="Case ID for which investigation results are submitted.",
     )
     case_details = CaseListSerializer(source="case", read_only=True)
-    suggested_suspects_national_ids = serializers.ListField(
-        child=NationalIDField(should_exist=True),
+    suggested_suspects_national_ids = NationalIDUsersListField(
         write_only=True,
         help_text="List of suggested suspects national IDs.",
     )
@@ -319,25 +321,8 @@ class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["case_details", "suggested_suspects"]
 
-    def validate_suggested_suspects_national_ids(self, national_ids: list[str]) -> list[str]:
-        seen = set()
-        deduped = []
-        for nid in national_ids:
-            if nid not in seen:
-                seen.add(nid)
-                deduped.append(nid)
-        return deduped
-
-    def _resolve_suspects(self, national_ids: list[str]) -> list[User]:
-        users_by_nid = {
-            user.national_id: user
-            for user in User.objects.filter(national_id__in=national_ids)
-        }
-        return [users_by_nid[nid] for nid in national_ids if nid in users_by_nid]
-
     def create(self, validated_data):
-        national_ids = validated_data.pop("suggested_suspects_national_ids", [])
-        suspects = self._resolve_suspects(national_ids)
+        suspects = validated_data.pop("suggested_suspects_national_ids", [])
 
         investigation_results = super().create(validated_data)
         investigation_results.suggested_suspects.set(suspects)
@@ -348,7 +333,10 @@ class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------
 
 class ComplainantCaseListSerializer(serializers.ModelSerializer):
-    complainant_national_ids = serializers.SerializerMethodField()
+    complainants = UserBriefInfoSerializer(
+        many=True,
+        read_only=True,
+    )
 
     class Meta:
         model = Case
@@ -357,36 +345,13 @@ class ComplainantCaseListSerializer(serializers.ModelSerializer):
             "title",
             "crime_datetime",
             "status",
-            "complainant_national_ids"
+            "complainants"
         ]
-
-    def get_complainant_national_ids(self, obj) -> list[str]:
-        return list(obj.complainants.values_list("national_id", flat=True))
+        read_only_fields=fields
 
 # ---------------------------------------------------------------------
 # Case update
 # ---------------------------------------------------------------------
-
-class IndexedErrorsListSerializer(serializers.ListSerializer):
-    def run_validation(self, data=serializers.empty):
-        try:
-            return super().run_validation(data)
-        except serializers.ValidationError as exc:
-            detail = exc.detail
-            if isinstance(detail, list):
-                indexed_errors = {}
-                for i, item in enumerate(detail):
-                    if item in (None, {}, []):
-                        continue
-                    indexed_errors[str(i)] = item
-                raise serializers.ValidationError(indexed_errors)
-            raise
-
-
-class CaseUpdateWitnessItemSerializer(WitnessItemSerializer):
-    class Meta:
-        list_serializer_class = IndexedErrorsListSerializer
-
 
 class SuspectUpdateSerilizer(serializers.Serializer):
     suspect_link = serializers.PrimaryKeyRelatedField(
@@ -458,14 +423,12 @@ class SuspectUpdateSerilizer(serializers.Serializer):
 
 
 class CaseUpdateSerializer(serializers.ModelSerializer):
-    complainant_national_ids = serializers.ListField(
-        child=NationalIDField(should_exist=True),
+    complainant_national_ids = NationalIDUsersListField(
         required=False,
         write_only=True,
         help_text="List of complainants national IDs.",
     )
-    witnesses = CaseUpdateWitnessItemSerializer(
-        many=True,
+    witnesses_national_ids = NationalIDUsersListField(
         required=False,
         write_only=True,
         help_text="Witnesses linked to this case.",
@@ -483,40 +446,12 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
             "description",
             "crime_level",
             "complainant_national_ids",
-            "witnesses",
+            "witnesses_national_ids",
             "suspects"
         ]
 
     def get_complainant_national_ids(self, obj):
         return list(obj.complainants.values_list("national_id", flat=True))
-
-    def validate_complainant_national_ids(self, national_ids):
-        seen = set()
-        deduped = []
-        for nid in national_ids:
-            if nid not in seen:
-                seen.add(nid)
-                deduped.append(nid)
-        return deduped
-
-    def validate_witnesses(self, witnesses):
-        counts = {}
-        for w in witnesses:
-            nid = w.get("national_id")
-            counts[nid] = counts.get(nid, 0) + 1
-
-        indexed_errors = {}
-        for i, w in enumerate(witnesses):
-            nid = w.get("national_id")
-            if counts.get(nid, 0) > 1:
-                indexed_errors[str(i)] = {
-                    "national_id": [f"Duplicate national_id: {nid}."]
-                }
-
-        if indexed_errors:
-            raise serializers.ValidationError(indexed_errors)
-
-        return witnesses
     
     def validate_suspects(self, suspects):
         counts = {}
@@ -549,19 +484,17 @@ class CaseUpdateSerializer(serializers.ModelSerializer):
         return suspects
 
     def update(self, instance, validated_data):
-        complainant_national_ids = validated_data.pop("complainant_national_ids", None)
+        complainants = validated_data.pop("complainant_national_ids", None)
+        witnesses = validated_data.pop("witnesses_national_ids", None)
         suspects = validated_data.pop("suspects", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
-        if complainant_national_ids is not None:
-            users_by_nid = {
-                user.national_id: user
-                for user in User.objects.filter(national_id__in=complainant_national_ids)
-            }
-            ordered_users = [users_by_nid[nid] for nid in complainant_national_ids if nid in users_by_nid]
-            instance.complainants.set(ordered_users)
+        if complainants is not None:
+            instance.complainants.set(complainants)
+        if witnesses is not None:
+            instance.witnesses.set(witnesses)
 
         if suspects is not None:
             for s in suspects:

@@ -162,9 +162,10 @@ class CaseCreationTest(APITestCase):
         self.assertEqual(response.json()["submission_type"], "COMPLAINT")
         self.assertEqual(response.json()["status"], SubmissionStatus.PENDING)
         self.assertSetEqual(
-            set(response.json()["target"]["complainant_national_ids"]),
-            {self.u1.national_id, self.u2.national_id},
+            set(c["national_id"] for c in response.json()["target"]["complainants"]),
+            {self.u2.national_id},
         )
+        self.printJ(response)
 
         invalid_complaint_payload = {
             "title": "KMKH",
@@ -258,9 +259,9 @@ class CaseCreationTest(APITestCase):
             "title": "Crime Scene A",
             "description": "desc",
             "crime_datetime": "2026-02-17T21:35:00Z",
-            "witnesses": [
-                {"phone_number": "989112405786", "national_id": "2222222222"},
-                {"phone_number": "989112405787", "national_id": "3333333333"},
+            "witnesses_national_ids": [
+                "2222222222",
+                "3333333333"
             ],
         }
 
@@ -302,9 +303,9 @@ class CaseCreationTest(APITestCase):
                 "title": "Crime Scene B",
                 "description": "desc",
                 "crime_datetime": "2026-02-17T21:35:00Z",
-                "witnesses": [
-                    {"phone_number": "989112405788", "national_id": "2222222222"},
-                    {"phone_number": "989112405789", "national_id": "3333333333"},
+                "witnesses_national_ids": [
+                    "2222222222",
+                    "3333333333"
                 ],
             },
         )
@@ -380,15 +381,15 @@ class CaseCreationTest(APITestCase):
             "title": "Test Title",
             "description": "test description",
             "crime_datetime": "2026-02-17T21:35:00Z",
-            "complainant_national_ids": ["2222222222", "3333333333"],
+            "complainant_national_ids": ["1111111111", "2222222222", "3333333333"],
         }
         crime_scene_payload = {
             "title": "Crime Scene A",
             "description": "desc",
             "crime_datetime": "2026-02-17T21:35:00Z",
-            "witnesses": [
-                {"phone_number": "989112405786", "national_id": "2222222222"},
-                {"phone_number": "989112405787", "national_id": "3333333333"},
+            "witnesses_national_ids": [
+                "2222222222",
+                "3333333333"
             ],
         }
 
@@ -571,6 +572,8 @@ class CaseCreationTest(APITestCase):
         self.client.force_authenticate(self.u6)
         res = self.client.get(full_url, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        self.printJ(res)
 
         case_json = next((x for x in res.json() if x["id"] ==
                                 crime_scene_case.pk), None)
