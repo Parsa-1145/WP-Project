@@ -551,6 +551,29 @@ class CaseCreationTest(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
+        self.client.force_authenticate(self.u5)
+        res = self.send_submission(
+            "INVESTIGATION_APPROVAL",
+            {
+                "case": crime_scene_case.pk,
+                "suggested_suspects_national_ids": ["2222222222"],
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        submission_id = Submission.objects.get(pk=res.json()["id"])
+
+        self.client.force_authenticate(self.u6)
+        res = self.send_submission_action("APPROVE", {}, submission_id.pk)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+
+        full_url = reverse("case-list")
+        self.client.force_authenticate(self.u6)
+        response = self.client.get(full_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.printJ(response)
+        
+
     def test_front_modules(self):
         expected_modules_by_user = [
             (self.u1, ["ASSIGNED_CASES", "AUTOPSY", "COMPLAINANT_CASES"]),

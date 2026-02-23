@@ -339,7 +339,7 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
 
         if action.action_type == SubmissionActionType.APPROVE:
             case.status = case.Status.INTEROGATING_SUSPECTS
-            case.suspects.set(target.suggested_suspects)
+            case.suspects.set(target.suggested_suspects.all())
             case.save()
 
             submission.status = SubmissionStatus.APPROVED

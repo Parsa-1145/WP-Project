@@ -201,13 +201,15 @@ class SuspectInfoSerializer(UserBriefInfoSerializer):
 class CaseListSerializer(serializers.ModelSerializer):
     lead_detective = serializers.SerializerMethodField()
     supervisor = serializers.SerializerMethodField()
-    complainants = serializers.ListField(
-        child=UserBriefInfoSerializer(),
-        required=True
+    complainants = UserBriefInfoSerializer(
+        source="complainants.all",
+        many=True,
+        read_only=True,
     )
-    suspects = serializers.ListField(
-        child=SuspectInfoSerializer(),
-        required=True
+    suspects = SuspectInfoSerializer(
+        source="suspect_links.all",
+        many=True,
+        read_only=True,
     )
     
     class Meta:
@@ -225,12 +227,7 @@ class CaseListSerializer(serializers.ModelSerializer):
             "complainants",
             "suspects"
         ]
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data["complainants"] = self.get_complainants(instance)
-        data["suspects"] = self.get_suspects(instance)
-        return data
+        read_only_fields = fields
 
     def get_lead_detective(self, obj) -> str:
         if obj.lead_detective is None:
@@ -241,14 +238,6 @@ class CaseListSerializer(serializers.ModelSerializer):
         if obj.supervisor is None:
             return "Not Assigned"
         return f"{obj.supervisor.first_name} {obj.supervisor.last_name}".strip()
-
-    def get_complainants(self, obj: Case) -> list[dict]:
-        complainants = obj.complainants.all().order_by("id")
-        return UserBriefInfoSerializer(complainants, many=True, context=self.context).data
-
-    def get_suspects(self, obj: Case) -> list[dict]:
-        suspect_links = obj.suspect_links.select_related("user").order_by("id")
-        return SuspectInfoSerializer(suspect_links, many=True, context=self.context).data
 
 # ---------------------------------------------------------------------
 # Investigation results
@@ -331,7 +320,7 @@ class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
         suspects = self._resolve_suspects(national_ids)
 
         investigation_results = super().create(validated_data)
-        investigation_results.suspects.set(suspects)
+        investigation_results.suggested_suspects.set(suspects)
         return investigation_results
 
 # ---------------------------------------------------------------------
