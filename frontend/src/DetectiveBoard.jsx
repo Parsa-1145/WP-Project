@@ -1,13 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 
-const DragButton = ({onDrag, onChange, children, ...otherProps}) => {
+let drag_button_grab = false;
+
+const DragButton = ({rootRef, onDrag, onChange, children, ...otherProps}) => {
 	const [drag, setDrag] = useState(false);
 
-	const mouseMove = e => onDrag(e.movementX, e.movementY);
+	const mouseMove = e => {
+		let x = e.pageX, y = e.pageY;
+		x -= rootRef.current.getBoundingClientRect().x + window.scrollX;
+		y -= rootRef.current.getBoundingClientRect().y + window.scrollY;
+		onDrag(x, y);
+	}
 	const mouseUpDown = (e, val) => {
 		if (e.button === 0) {
 			if (onChange)
 				onChange(val);
+			drag_button_grab = val;
 			setDrag(val);
 		}
 	};
@@ -23,22 +31,26 @@ const DragButton = ({onDrag, onChange, children, ...otherProps}) => {
 				window.removeEventListener('mouseup', mouseUp);
 			}
 		}
-	}, [drag, onDrag]);
+	}, [drag, mouseMove, mouseUp]);
 
 	return (<button {...otherProps} onMouseDown={mouseDown}>{children}</button>)
 }
 
-function Ent({ children, pos, fns }) {
+function Ent({ rootRef, children, pos, fns }) {
 	const pinRef = useRef(null);
+	const handleRef = useRef(null);
+	const frameRef = useRef(null);
+
 	useEffect(() => {
-		const e = pinRef.current;
-		fns.pinPos(e.offsetLeft + e.offsetWidth/2, e.offsetTop + e.offsetHeight/2)
-	}, [pos]);
+		fns.refs({ pin: pinRef, handle: handleRef, frame: frameRef });
+	}, [fns]);
+
 	return (
 		<div
 			className="item"
+			ref={frameRef}
 			style={{ position: 'absolute', left: pos.x, top: pos.y, margin: 0 }}
-			onMouseEnter={fns.hover}
+			onMouseEnter={() => { if (!drag_button_grab) fns.hover() }}
 		>
 			<div style={{ display: 'flex', flexDirection: 'row' }}>
 				<div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -47,8 +59,8 @@ function Ent({ children, pos, fns }) {
 					</div>
 				</div>
 				<div style={{ display: 'flex', flexDirection: 'column' }}>
-					<DragButton className="icon-button" onDrag={fns.drag}>🖐️</DragButton>
-					<DragButton ref={pinRef} className="icon-button" onChange={fns.thread} onDrag={fns.dragThread}>🟢️</DragButton>
+					<DragButton rootRef={rootRef} ref={handleRef} className="icon-button" onDrag={fns.drag}>🖐️</DragButton>
+					<DragButton rootRef={rootRef} ref={pinRef} className="icon-button" onChange={fns.thread} onDrag={fns.dragThread}>🟢️</DragButton>
 				</div>
 			</div>
 		</div>
@@ -57,21 +69,30 @@ function Ent({ children, pos, fns }) {
 
 
 function DetectiveBoard() {
-	const make_ent = (id, str, x, y) => { return { id, str, pos: {x, y}, pin: {x: 0, y: 0}, thread: undefined}; };
-	const [ls, setLs] = useState([
+	const make_ent = (id, str, x, y) => { return { id, str, pos: {x, y} }; };
+	let [ls, setLs] = useState([
 		make_ent(1, 'Is this the real life?', 0, 0),
 		make_ent(2, 'Is this just fantasy?', 0, 200),
 		make_ent(3, 'Caught in a landslide, no escape from reality', 300, 0),
 	]);
+	const refs = useRef([]);
 	const [cons, setCons] = useState([]);
 	const canvasRef = useRef(null);
 	const divRef = useRef(null);
 
 	useEffect(() => {
+		if (!refs)
+			return;
 		const pos = [];
 		const n = ls.length;
-		for (let i = 0; i < n; i++)
-			pos[ls[i].id] = ls[i].pin;
+		for (let i = 0; i < n; i++) {
+			const pin = refs.current[i].pin.current.getBoundingClientRect();
+			const div = divRef.current.getBoundingClientRect();
+			pos[ls[i].id] = {
+				x: (pin.left + pin.right)/2 - div.x,
+				y: (pin.top + pin.bottom)/2 - div.y,
+			}
+		}
 
 		const canvas = canvasRef.current;
 		const div = divRef.current;
@@ -100,31 +121,44 @@ function DetectiveBoard() {
 		ctx.strokeStyle = 'rgb(31, 31, 191)';
 		for (let i = 0; i < n; i++) {
 			if (ls[i].thread)
-				seg(ls[i].pin, ls[i].thread);
+				seg(pos[ls[i].id], ls[i].thread);
 		}
 		ctx.stroke();
-	}, [divRef, ls, cons]);
+	}, [ls, cons]);
 
+	const ch_raw = (i, name, value) => {
+		const res = {...ls[i]};
+		res[name] = value;
+		ls = [].concat(ls.slice(0, i), res, ls.slice(i + 1));
+		setLs(ls);
+	};
+	const ch = (i, name, value) => {
+		if (ls[i][name] !== value)
+			ch_raw(i, name, value);
+	}
 	const ch_vec = (i, name, vec) => {
-		if ((typeof vec !== typeof ls[i][name]) || (vec && (vec.x != ls[i][name].x || vec.y != ls[i][name].y))) {
-			const res = {...ls[i]};
-			res[name] = vec? {x: vec.x, y: vec.y}: vec;
-			setLs([].concat(ls.slice(0, i), res, ls.slice(i + 1)));
-		}
+		if ((typeof vec !== typeof ls[i][name]) || (vec && (vec.x != ls[i][name].x || vec.y != ls[i][name].y)))
+			ch_raw(i, name, vec);
 	};
 	const add_vec = (i, name, dx, dy) => ch_vec(i, name, { x: ls[i][name].x + dx, y: ls[i][name].y + dy });
+	const bound = (x, sz, mx) => x < 0? 0: x + sz > mx? mx - sz: x;
 
 	const to_top = i => {
-		 if (i + 1 != ls.length)
-			 setLs([].concat(ls.slice(0, i), ls.slice(i+1), ls[i]));
+		if (i + 1 != ls.length) {
+			refs.current = [].concat(refs.current.slice(0, i), refs.current.slice(i+1), [refs.current[i]]);
+			ls = [].concat(ls.slice(0, i), ls.slice(i+1), [ls[i]]);
+			setLs(ls);
+		}
 	};
 
 	const try_connect = (id, pos) => {
 		let i;
 		for (i = ls.length - 1; i >= 0; i--) {
-			if (   ls[i].pin.x - 16 <= pos.x && pos.x < ls[i].pin.x + 16
-			    && ls[i].pin.y - 16 <= pos.y && pos.y < ls[i].pin.y + 16)
-						break
+			const p = refs.current[i].pin.current.getBoundingClientRect();
+			const d = divRef.current.getBoundingClientRect();
+			const x = pos.x + d.x, y = pos.y + d.y;
+			if (p.left <= x && x < p.right && p.top <= y && y < p.bottom)
+				break;
 		}
 		if (i < 0 || ls[i].id === id)
 			return;
@@ -139,27 +173,41 @@ function DetectiveBoard() {
 			setCons([].concat(cons.slice(0, con), cons.slice(con + 1)));
 	}
 
-	return (<div className="item" ref={divRef} style={{ position: 'relative', width: '1200px', height: '600px' }}>
-		<h1>Hello</h1>
-		{ls.map((e, i) => (
-			<Ent
-				key={i}
-				pos={{ x: e.pos.x, y: e.pos.y }}
-				fns={{
-					hover: () => to_top(i),
-					drag: (dx, dy) => add_vec(i, 'pos', dx, dy),
-					dragThread: (dx, dy) => add_vec(i, 'thread', dx, dy),
-					pinPos: (x, y) => ch_vec(i, 'pin', {x: x + e.pos.x, y: y + e.pos.y}),
-					thread: v => {
-						if (!v) try_connect(e.id, e.thread);
-						ch_vec(i, 'thread', v? e.pin: undefined);
-					},
-				}}
-			>
-				{e.str}
-			</Ent>
-		))}
-		<canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}/>
+	return (<div className="item"  style={{ position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
+		<div ref={divRef} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0 }}>
+			<h1>Board</h1>
+			{ls.map((e, i) => (
+				<Ent
+					key={i}
+					pos={e.pos}
+					rootRef={divRef}
+					fns={{
+						hover: () => to_top(i),
+						drag: (x, y) => {
+							const div = divRef.current;
+							const f = refs.current[i].frame.current.getBoundingClientRect();
+							const h = refs.current[i].handle.current.getBoundingClientRect();
+							x -= (h.left + h.right)/2 - f.left;
+							y -= (h.top + h.bottom)/2 - f.top;
+							x = bound(x, f.width, div.clientWidth);
+							y = bound(y, f.height, div.clientHeight);
+							ch_vec(i, 'pos', { x, y });
+						},
+						dragThread: (x, y) => ch_vec(i, 'thread', { x, y }),
+						refs: ref => refs.current[i] = ref,
+						thread: v => {
+							if (!v) {
+								try_connect(e.id, e.thread);
+								ch(i, 'thread', undefined);
+							}
+						},
+					}}
+				>
+					{e.str}
+				</Ent>
+			))}
+			<canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}/>
+		</div>
 	</div>)
 }
 
