@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router'
-import { form_list_map, FormField, GenericList } from './Forms'
+import { form_list_map, FormField, GenericList, ListCompactCtx } from './Forms'
 import session from './session'
 
 // due to case being a keyword, we use cas instead
@@ -28,9 +28,10 @@ export const case_decode = cas => form_list_map(cas, {
 });
 
 export function CaseFrame({ cas, safeOnly, ...props }) {
+	const compact = useContext(ListCompactCtx);
 	const fields = safeOnly? case_fields.filter(([,, id]) => case_safe_fields.includes(id)): case_fields;
 
-	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id });
+	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id, compact });
 	const ProcessArr = ent => Process(...ent);
 	return (
 		<div className='item' {...props}>

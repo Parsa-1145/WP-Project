@@ -52,34 +52,48 @@ const Retrieve = ({ msg, path, then }) => {
 	</>)
 }
 
+const UrlList = (local_path, remote_path, Component, decoder, title) => (
+	<Route path={local_path} exact element={
+		<ParamWrap then={(ps, qs) => {
+			for (const [key, val] of Object.entries(ps))
+				remote_path = remote_path.replace(`<${key}>`, val);
 
-const App = () => {
-	const UrlList = (local_path, remote_path, Component, decoder, title) => (
-		<Route path={local_path} exact element={
-			<ParamWrap then={(ps, qs) => {
-				for (const [key, val] of Object.entries(ps))
-					remote_path = remote_path.replace(`<${key}>`, val);
+			if (typeof title === 'function')
+				title = title(ps, qs);
 
-				if (typeof title === 'function')
-					title = title(ps, qs);
+			return (
+				<Retrieve msg="evidence" path={remote_path} then={
+					(res, onReload) => (<Component list={res.map(decoder)} title={title} onReload={onReload}/>)
+				}/>
+			);
+		}}/>
+	}/>
+);
 
-				return (
-					<Retrieve msg="evidence" path={remote_path} then={
-						(res, onReload) => (<Component list={res.map(decoder)} title={title} onReload={onReload}/>)
-					}/>
-				);
-			}}/>
-		}/>
-	);
+const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
-	const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
-
-	return (<BrowserRouter>
+const App = () => (
+	<BrowserRouter>
 		<Link to='/home' style={{ position: 'absolute', left: 0, top: 0 }}>Home</Link>
 		<Routes>
 			<Route path="/home" exact element={<Home/>}/>
 			<Route path="/health" exact element={<Health/>}/>
-			<Route path="/board" exact element={<DetectiveBoard/>}/>
+
+
+			<Route path="/cases/:id/detective-board" exact element={
+				<ParamWrap then={ps => (
+					<Retrieve msg="evidences" path={`/api/cases/${ps.id}/evidences/`} then={ (evi_list, reload) => (
+						<Retrieve msg="board" path={`/api/cases/${ps.id}/detective-board/`} then={ board => (
+							<DetectiveBoard
+								evi_list={evi_list.map(evi_decode)}
+								item_list={board.board_json && board.board_json.items}
+								con_list={board.board_json && board.board_json.cons}
+								onReload={reload}
+							/>
+						)}/>
+					)}/>
+				)}/>
+			}/>
 
 
 			{/* submit pages */}
@@ -111,7 +125,7 @@ const App = () => {
 			{/* redirect any invalid link to home */}
 			<Route path="*" element={<Navigate to="/home" replace />} />
 		</Routes>
-	</BrowserRouter>);
-}
+	</BrowserRouter>
+);
 
 export default App

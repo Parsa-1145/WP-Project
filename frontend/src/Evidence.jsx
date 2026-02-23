@@ -117,16 +117,17 @@ export function EvidenceSubmitForm({ returnTo }) {
 	</>)
 }
 
-export function EvidenceFrame({ evi, ...props }) {
+export function EvidenceFrame({ evi, onSelect, className, ...props }) {
 	const compact = useContext(ListCompactCtx);
 	const Process = (type, name, id) => FormField(type, name, evi[id], { key: id, compact });
 	const ProcessArr = (ent) => Process(...ent);
 	return (
-		<div className='item' {...props}>
+		<div className={className || 'item'} {...props}>
 			{Process('text', 'Type', 'type')}
 			{!compact && evi_fields_auto.map(ProcessArr)}
 			{evi_fields_common.map(ProcessArr)}
 			{evi_fields[evi.type].map(ProcessArr)}
+			{ onSelect && <button onClick={onSelect}>Select</button> }
 		</div>
 	)
 }
@@ -141,9 +142,9 @@ export const evi_decode = evi => {
 }
 
 
-export const EvidenceList = ({ list, title, onReload, onReturn }) => (
+export const EvidenceList = ({ list, title, onReload, onReturn, onSelect }) => (
 	<GenericList title={title} onReload={onReload} onReturn={onReturn}>
-		{list.map((evi, i) => (<EvidenceFrame key={i} evi={evi}/>))}
+		{list.map((evi, i) => (<EvidenceFrame key={i} evi={evi} onSelect={() => onSelect(evi)}/>))}
 	</GenericList>
 );
 

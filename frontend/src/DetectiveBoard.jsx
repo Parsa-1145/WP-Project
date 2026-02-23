@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { EvidenceFrame, EvidenceList } from './Evidence'
+import { ListCompactCtx } from './Forms'
 
 let drag_button_grab = false;
 
@@ -36,7 +38,7 @@ const DragButton = ({rootRef, onDrag, onChange, children, ...otherProps}) => {
 	return (<button {...otherProps} onMouseDown={mouseDown}>{children}</button>)
 }
 
-function Ent({ rootRef, children, pos, fns }) {
+function Item({ rootRef, children, pos, fns }) {
 	const pinRef = useRef(null);
 	const handleRef = useRef(null);
 	const frameRef = useRef(null);
@@ -54,9 +56,7 @@ function Ent({ rootRef, children, pos, fns }) {
 		>
 			<div style={{ display: 'flex', flexDirection: 'row' }}>
 				<div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-					<div className="subitem">
-						{children}
-					</div>
+					{children}
 				</div>
 				<div style={{ display: 'flex', flexDirection: 'column' }}>
 					<DragButton rootRef={rootRef} ref={handleRef} className="icon-button" onDrag={fns.drag}>🖐️</DragButton>
@@ -68,15 +68,8 @@ function Ent({ rootRef, children, pos, fns }) {
 }
 
 
-function DetectiveBoard() {
-	const make_ent = (id, str, x, y) => { return { id, str, pos: {x, y} }; };
-	let [ls, setLs] = useState([
-		make_ent(1, 'Is this the real life?', 0, 0),
-		make_ent(2, 'Is this just fantasy?', 0, 200),
-		make_ent(3, 'Caught in a landslide, no escape from reality', 300, 0),
-	]);
+function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 	const refs = useRef([]);
-	const [cons, setCons] = useState([]);
 	const canvasRef = useRef(null);
 	const divRef = useRef(null);
 
@@ -177,7 +170,7 @@ function DetectiveBoard() {
 		<div ref={divRef} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0 }}>
 			<h1>Board</h1>
 			{ls.map((e, i) => (
-				<Ent
+				<Item
 					key={i}
 					pos={e.pos}
 					rootRef={divRef}
@@ -203,12 +196,50 @@ function DetectiveBoard() {
 						},
 					}}
 				>
-					{e.str}
-				</Ent>
+					<div style={{ maxWidth: '300px' }}>
+						<ListCompactCtx.Provider value={2}>
+							<EvidenceFrame evi={evi_list.find(evi => evi.id === e.evi_id)} className='subitem'/>
+						</ListCompactCtx.Provider>
+					</div>
+				</Item>
 			))}
 			<canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}/>
 		</div>
 	</div>)
 }
 
-export default DetectiveBoard
+const DetectiveBoardPicker = ({ evi_list, onSelect }) => EvidenceList({
+	list: evi_list, title: 'Select Evidence', onReturn: () => onSelect(null), onSelect
+});
+
+function DetectiveBoard({ evi_list, item_list, con_list, onReload }) {
+	const [selecting, setSelecting] = useState(false);
+	const [ls, setLs] = useState(item_list || []);
+	const [cons, setCons] = useState(con_list || []);
+
+	const genId = () => {
+		for (let i = 0;; i++) {
+			if (!ls.some(item => item.id === i))
+				return i;
+		}
+	}
+
+	if (selecting) return DetectiveBoardPicker({ evi_list: evi_list, onSelect: evi => {
+		setSelecting(false);
+		if (evi !== null)
+			setLs([...ls, { id: genId(), evi_id: evi.id, pos: { x: 0, y: 0 } }]);
+	}});
+
+	return (
+		<div style={{ display: 'flex', flexDirection: 'row' }}>
+			<div style={{ display: 'flex', flexDirection: 'column' }}>
+				{ onReload && <button onClick={onReload}>Reload</button> }
+				<button onClick={() => setSelecting(true)}>Add Evidence</button>
+				<button disabled={true}>Save</button>
+			</div>
+			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons }}/>
+		</div>
+	);
+}
+
+export default DetectiveBoard;

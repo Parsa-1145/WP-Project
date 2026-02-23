@@ -1,13 +1,16 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 
-export const SimpleField = (name, body, { id, key }) => (
-	<div key={key === undefined? id: key} style={{ position: 'relative' }}>
-		<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
-		<div style={{ marginLeft: '180px', textAlign: 'left' }}>
-			{body}
+export const SimpleField = (name, body, { id, key, compact, style }) => {
+	if (key === undefined) key = id;
+	return (
+		<div key={key} style={{ position: 'relative' }}>
+			<label htmlFor={id} style={{ ...style, position: 'absolute', left: 0 }}>{name}: </label>
+			<div style={{ ...style, marginLeft: compact >= 2? '110px': '180px', textAlign: 'left' }}>
+				{body}
+			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 const is_list = (type) => typeof type === 'string' && type.slice(0, 5) == 'list ';
 
@@ -129,10 +132,9 @@ export const ListCompactCtx = createContext(false);
 
 export const FormField = (type, name, value, { id, key, compact }) => {
 	if (key === undefined) key = id;
-	if (compact === undefined) compact = useContext(ListCompactCtx);
 
 	if (!compact) {
-		const imgStyle = { margin: '0 auto', maxWidth: '500px' };
+		const imgStyle = { display: 'block', margin: '0 auto', maxWidth: '500px' };
 
 		if (type === 'file') // image
 			return (<img key={key} src={value} style={imgStyle}/>);
@@ -166,26 +168,33 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 	}
 
 	else {
-		const imgStyle = { margin: 0, maxWidth: '400px', maxHeight: '300px' };
+		const imgStyle = { display: 'block', margin: '0 auto',
+			maxWidth: compact >= 2? '250px': '400px',
+			maxHeight: compact >= 2? '150px': '300px',
+		};
+		const divStyle = compact >= 2? { fontSize: '10pt' }: {};
 
 		if (type === 'file') // image
 			return (<img key={key} src={value} style={imgStyle}/>);
 
-		else if (type === 'files') // images
-			return (<div key={key}>{value.map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
+		else if (type === 'files') { // images
+			let imgs = value;
+			if (compact >= 2) imgs = imgs.slice(0, 1);
+			return (<div key={key}>{imgs.map((src, i) => (<img key={i} src={src} style={imgStyle}/>))}</div>);
+		}
 
 		else if (type === 'list Key Value')
-			return (<div key={key}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<div>{kv[1]||'<empty>'}</div>), { key: i }))}</div>);
+			return (<div key={key} style={divStyle}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<div>{kv[1]||'<empty>'}</div>), { key: i, compact }))}</div>);
 
 		else if (is_list(type))
-			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n') || '<empty>'}</pre>), { id, key });
+			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n') || '<empty>'}</pre>), { id, key, compact, style: divStyle });
 
 		else {
 			if (type === 'textarea')
 				value = value.length > 128? value.slice(0, 128) + '...': value;
 			if (type === 'datetime')
 				value = value.replace(/\:\d{2}(\.\d+)?(?=[+-]|$)/, '').replace(/T/g, ' ');
-			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key });
+			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key, style: divStyle, compact });
 		}
 	}
 }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, form_list_map } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx, form_list_map } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
@@ -93,12 +93,13 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 		['text', 'Status', 'status'],
 		['datetime', 'Created at', 'created_at'],
 	];
+	const compact = useContext(ListCompactCtx);
 	const [rejMsg, setRejMsg] = useState('');
 	const type = subm.submission_type;
 	const actions = subm.available_actions;
 	const last_action = subm.actions_history[0];
 
-	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id });
+	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
 	const ProcessArr = data => (ent) => Process(data)(...ent);
 	return (
 		<div className='item' {...props}>
