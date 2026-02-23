@@ -32,7 +32,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "6NBnaJGqISvX858adqYqQvcn4xSzTG
 MERCHANT_ID = os.environ.get("MERCHANT_ID", "04386323-b1b1-4c85-baa5-4d9f6ab388b1")
 PAYMENT_CALLBACK_URL = os.environ.get("PAYMENT_CALLBACK_URL", "http://localhost:8000/api/payments/callback/")
 FRONT_DASHBOARD_URL = os.environ.get("FRONT_DASHBOARD_URL", "http://localhost:5173/home/")
-GATEWAY_BASE_URL = os.environ.get("GATEWAY_URL", "https://sandbox.zarinpal.com/")
+GATEWAY_BASE_URL = os.environ.get("GATEWAY_URL", "https://sandbox.zarinpal.com")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

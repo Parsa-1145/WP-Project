@@ -6,6 +6,7 @@ from .models import BailRequest, PaymentTransaction
 from django.utils import timezone
 from django.shortcuts import redirect,render
 from django.db import transaction
+import logging
 
 class PaymentView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -14,10 +15,16 @@ class PaymentView(views.APIView):
         user = request.user
 
         bail_request_id = kwargs.get("pk")
-        bail_request = BailRequest.objects.filter(id=bail_request_id, user=user, status=BailRequest.Status.APPROVED).first()
+        bail_request = BailRequest.objects.filter(id=bail_request_id, status=BailRequest.Status.APPROVED).first()
+
         if not bail_request:
             return Response({"error": "Bail request not found or not approved"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if bail_request.requested_by != user:
+            return Response({"error": "You are not authorized to pay for this bail request"}, status=status.HTTP_403_FORBIDDEN)
 
+        if PaymentTransaction.objects.filter(bail_request=bail_request, status=PaymentTransaction.Status.COMPLETED).exists():
+            return Response({"error": "This bail request has already been paid"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             response = requests.post(f"{settings.GATEWAY_BASE_URL}/pg/v4/payment/request.json", json={
@@ -33,10 +40,20 @@ class PaymentView(views.APIView):
                 }, 
                 timeout=10
             )
+
+            if not response.ok:
+                error_body = response.text
+                logging.error(f"Zarinpal rejected the request. Status: {response.status_code}, Body: {error_body}")
+                return Response(
+                    {"error": "Gateway rejected the payment request", "gateway_details": response.json()}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
             response.raise_for_status()
             response_data = response.json()['data']
 
         except requests.RequestException as e:
+            logging.error(f"Payment gateway request failed: {str(e)}")
             return Response({"error": "Failed to connect to payment gateway"}, status=status.HTTP_502_BAD_GATEWAY)
         except Exception as e:
             return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
