@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router'
-import { form_list_map, FormField, GenericList, ListCompactCtx } from './Forms'
+import { form_list_decode, FormField, GenericList, ListCompactCtx } from './Forms'
 import session from './session'
 
 // due to case being a keyword, we use cas instead
@@ -15,16 +15,16 @@ const case_fields = [
 	['text', 'Status', 'status'],
 	['text', 'Lead Detective', 'lead_detective'],
 	['text', 'Supervisor', 'supervisor'],
-	['list Phone ID', 'Witnesses', 'witnesses'],
-	['list ID', 'Complainants', 'complainant_national_ids'],
-	['list ID', 'Suspects', 'suspects_national_ids'],
+	['list !First_Name !Last_Name !Phone .National_ID', 'Witnesses', 'witnesses'],
+	['list !First_Name !Last_Name !Phone .National_ID', 'Complainants', 'complainants'],
+	['list !First_Name !Last_Name !Phone .National_ID !Link', 'Suspects', 'suspects'],
 ];
-const case_safe_fields = ['id', 'title', 'crime_datetime', 'status', 'complainant_national_ids'];
+const case_safe_fields = ['id', 'title', 'crime_datetime', 'status', 'complainants'];
 
-export const case_decode = cas => form_list_map(cas, {
-	witnesses: ['phone_number', 'national_id'],
-	complainant_national_ids: '',
-	suspects_national_ids: '',
+export const case_decode = cas => form_list_decode(cas, {
+	witnesses   : ['first_name', 'last_name', 'phone_number'],
+	complainants: ['first_name', 'last_name', 'phone_number'],
+	suspects    : ['first_name', 'last_name', 'phone_number', 'suspect_link'],
 });
 
 export function CaseFrame({ cas, safeOnly, ...props }) {

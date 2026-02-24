@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx, form_list_map } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx, form_list_decode } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
@@ -11,10 +11,10 @@ const subm_fields_common = [
 ];
 const subm_fields = {
 	CRIME_SCENE: [
-		['list Phone ID', 'Witnesses', 'witnesses'],
+		['list !First_Name !Last_Name !Phone .National_ID', 'Witnesses', 'witnesses'],
 	],
 	COMPLAINT: [
-		['list ID', 'Complainants', 'complainant_national_ids'],
+		['list !First_Name !Last_Name !Phone .National_ID', 'Complainants', 'complainants'],
 	],
 	CASE_STAFFING: [
 		['text', 'Level', 'crime_level'],
@@ -27,7 +27,7 @@ const subm_types = [...Object.keys(subm_fields)];
 
 export function SubmissionSubmitForm({ subm0, resubmit, type, returnTo }) {
 	const defaultData = () => {
-		if (subm0) return { ...subm0, complainant_national_ids: subm0.complainant_national_ids.map(x => [x]) };
+		if (subm0) return { ...subm0, complainants: subm0.complainants.map(x => [x.national_id]) };
 		const obj = {}
 		for (const ent of subm_fields_common)
 			obj[ent[2]] = '';
@@ -45,10 +45,14 @@ export function SubmissionSubmitForm({ subm0, resubmit, type, returnTo }) {
 		const payload = {};
 		for (const fields of [subm_fields_common, subm_fields[type]]) for (const [,,id] of fields)
 			payload[id] = data[id];
-		if (payload.witnesses)
-			payload.witnesses = payload.witnesses.map(ent => ({ phone_number: ent[0], national_id: ent[1] }))
-		if (payload.complainant_national_ids)
-			payload.complainant_national_ids = payload.complainant_national_ids.map(([x]) => x);
+		if (payload.witnesses) {
+			payload.witnesses_national_ids = payload.witnesses.map(([x]) => x);
+			payload.witnesses = undefined;
+		}
+		if (payload.complainants) {
+			payload.complainant_national_ids = payload.complainants.map(([x]) => x);
+			payload.complainants = undefined;
+		}
 		for (const id in payload)
 			if (payload[id] === '')
 				payload[id] = undefined;
@@ -114,7 +118,10 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 }
 
 export const subm_decode = subm => {
-	return { ...subm, target: form_list_map(subm.target, { witnesses: ['phone_number', 'national_id'], complainant_national_ids: '' }) };
+	return { ...subm, target: form_list_decode(subm.target, {
+		witnesses   : ['first_name', 'last_name', 'phone_number'],
+		complainants: ['first_name', 'last_name', 'phone_number'],
+	}) };
 }
 
 export function SubmissionList({ list, title, onReload, onReturn }) {

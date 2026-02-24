@@ -14,6 +14,15 @@ export const SimpleField = (name, body, { id, key, compact, style }) => {
 
 const is_list = (type) => typeof type === 'string' && type.slice(0, 5) == 'list ';
 
+const parse_list = (type, input) =>
+	type
+		.split(' ')
+		.slice(1)
+		.filter(e => !input || e[0] != '!')
+		.filter(e => input || e[0] != '.')
+		.map(e => e[0] == '!' || e[0] == '.'? e.slice(1): e)
+		.map(e => e.replaceAll('_', ' '))
+
 export const FormInputField = (type, name, value, onChange, { id, key }) => {
 	if (key === undefined) key = id;
 
@@ -62,7 +71,7 @@ export const FormInputField = (type, name, value, onChange, { id, key }) => {
 	}
 
 	else if (is_list(type)) {
-		const eles = type.split(' ').slice(1);
+		const eles = parse_list(type, true);
 		return (
 			<div key={id} style={{ position: 'relative' }}>
 				<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
@@ -146,7 +155,7 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			return (<div key={key}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<p>{kv[1]||'<empty>'}</p>), { key: i }))}</div>);
 
 		else if (is_list(type)) {
-			const enames = type.split(' ').slice(1);
+			const enames = parse_list(type, false);
 			return (
 				<div key={key}>
 					<div>{name}</div>
@@ -187,7 +196,7 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			return (<div key={key} style={divStyle}>{Object.entries(value).map((kv, i) => SimpleField(kv[0], (<div>{kv[1]||'<empty>'}</div>), { key: i, compact }))}</div>);
 
 		else if (is_list(type))
-			return SimpleField(name, (<pre>{value.map(x => x.map(y => y||'<empty>').join(' - ')).join('\n') || '<empty>'}</pre>), { id, key, compact, style: divStyle });
+			return SimpleField(name, (<pre>{value.map(ent => ent.slice(0, 2).map(ele => ele||'<empty>').join(' - ')).join('\n') || '<empty>'}</pre>), { id, key, compact, style: divStyle });
 
 		else {
 			if (type === 'textarea')
@@ -220,7 +229,7 @@ export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
 	);
 }
 
-export const form_list_map = (obj, eles) => {
+export const form_list_decode = (obj, eles) => {
 	const ans = {};
 	for (const key in obj) {
 		const definition = eles[key];
