@@ -17,7 +17,7 @@ class Session {
 		return () => this.subs = this.subs.filter(f => f !== fn);
 	}
 
-	_add_auth(config) {
+	add_auth(config) {
 		if (this.auth_token) {
 			const res = { ...config };
 			res.headers = { ...res.headers };
@@ -27,8 +27,17 @@ class Session {
 		return config;
 	}
 
-	get(path, config) { return axios.get(import.meta.env.VITE_BACKEND_URL + path, this._add_auth(config)); }
-	post(path, body, config) { return axios.post(import.meta.env.VITE_BACKEND_URL + path, body, this._add_auth(config)); }
+	http_request(method, path, body, config) {
+		const fn = axios[method];
+		const url = import.meta.env.VITE_BACKEND_URL + path;
+		const conf = this.add_auth(config);
+		return body === undefined? fn(url, conf): fn(url, body, conf);
+	}
+
+	get(path, config) { return this.http_request('get', path, undefined, config); }
+	post(path, body, config) { return this.http_request('post', path, body, config); }
+	patch(path, body, config) { return this.http_request('patch', path, body, config); }
+	put(path, body, config) { return this.http_request('put', path, body, config); }
 }
 
 export const error_msg_list = err => {

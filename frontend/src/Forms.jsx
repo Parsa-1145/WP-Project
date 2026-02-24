@@ -242,6 +242,25 @@ export const form_list_decode = (obj, eles) => {
 	}
 	return ans;
 }
+export const form_list_encode = (obj, eles) => {
+	const ans = {};
+	for (const key in obj) {
+		const definition = eles[key];
+		if (definition === '')
+			ans[key] = obj[key].map(([ent]) => ent);
+		else if (Array.isArray(definition))
+			ans[key] = obj[key].map(ent => {
+				res = {};
+				for (let i = 0; i < eles.length; i++)
+					res[eles[i]] = ent[i];
+				return res;
+			})
+		else
+			ans[key] = obj[key];
+	}
+	return ans;
+}
+
 
 export function GenericList({ children, title, onReload, onReturn, msg }) {
 	const [compact, setCompact] = useState(true);
