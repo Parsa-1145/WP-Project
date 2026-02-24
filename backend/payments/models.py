@@ -1,17 +1,23 @@
 from django.db import models
 from core import settings
+import uuid
 
 
 class BailRequest(models.Model):
     # Represents a request for bail or fine payment (for Level 2 & 3 crimes)
     # Stores the amount determined by the Sergeant
+    class Meta:
+        permissions = [
+            ("can_approve_bail_request", "Can approve bail requests"),
+        ]
+
     class Status(models.TextChoices):
         PENDING = 'pending', "Pending"
         APPROVED = 'approved', "Approved"
         REJECTED = 'rejected', "Rejected"
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    amount = models.IntegerField()
+    amount = models.IntegerField(null=True, blank=True)  
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -27,7 +33,39 @@ class BailRequest(models.Model):
 class Reward(models.Model):
     # Represents a reward for a citizen who provided valid info
     # Stores the generated Unique ID and the calculated amount
-    pass
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', "Pending"
+        CLAIMED = 'CLAIMED', "Claimed"
+
+    unique_code = models.UUIDField(
+        default=uuid.uuid4, 
+        editable=False, 
+        unique=True,
+        db_index=True
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='rewards'
+    )
+    submission = models.OneToOneField(
+        'submissions.Submission',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reward_issued'
+    )
+    amount = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=16, 
+        choices=Status.choices, 
+        default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Reward {self.unique_code} - {self.user.username}"
 
 class PaymentTransaction(models.Model):
 

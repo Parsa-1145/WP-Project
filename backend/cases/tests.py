@@ -163,9 +163,9 @@ class CaseCreationTest(APITestCase):
 
     def test_complaint_creation(self):
         initial_case_count = Case.objects.count()
-        self.assert_type_keys(self.u1, {"COMPLAINT", "BIO_EVIDENCE"})
-        self.assert_type_keys(self.u2, {"COMPLAINT", "BIO_EVIDENCE"})
-        self.assert_type_keys(self.u3, {"COMPLAINT", "CRIME_SCENE", "BIO_EVIDENCE"})
+        self.assert_type_keys(self.u1, {"COMPLAINT", "BIO_EVIDENCE", "BAIL_REQUEST"})
+        self.assert_type_keys(self.u2, {"COMPLAINT", "BIO_EVIDENCE", "BAIL_REQUEST"})
+        self.assert_type_keys(self.u3, {"COMPLAINT", "CRIME_SCENE", "BIO_EVIDENCE", "BAIL_REQUEST"})
 
         self.client.force_authenticate(self.u1)
         complaint_payload = {

@@ -1,25 +1,30 @@
 from submissions.submissiontypes.classes import BaseSubmissionType
 from submissions.models import Submission, SubmissionAction, SubmissionStage, SubmissionActionType, SubmissionStatus
 from .models import BailRequest
+from accounts.models import User
+from .serializers import BailRequestSerializer
+
 
 
 class BailRequestSubmissionType(BaseSubmissionType["BailRequest"]):
     type_key = "BAIL_REQUEST"
     display_name = "Bail Request"
-    model_class = None
-    serializer_class = None
+    model_class = BailRequest
+    serializer_class = BailRequestSerializer
     create_permissions = []
-    api_schema = None
-    api_payload_example = None
+    api_request_schema = None
+    api_request_payload_example = None
     api_response_target_example = None
 
     @classmethod
     def on_submit(cls, submission):
-        cls.get_object(submission.object_id).user = submission.created_by
+        bail = cls.get_object(submission.object_id)
+        bail.requested_by = submission.created_by
+        bail.save()
 
         SubmissionStage.objects.create(
             submission=submission,
-            target_permission="finance.can_approve_bail_request",
+            target_permission="payments.can_approve_bail_request",
             order=0,
             allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
         )
@@ -32,10 +37,16 @@ class BailRequestSubmissionType(BaseSubmissionType["BailRequest"]):
             if action.action_type == SubmissionActionType.ACCEPT:
                 bail = cls.get_object(submission.object_id)
                 bail.status = BailRequest.Status.APPROVED
-                bail.amount = action.payload.amount
+                bail.amount = action.payload.get("amount")
+                bail.save()
                 submission.status = SubmissionStatus.ACCEPTED
                 submission.save()
             elif action.action_type == SubmissionActionType.REJECT:
-                cls.get_object(submission.object_id).status = BailRequest.Status.REJECTED
+                bail = cls.get_object(submission.object_id)
+                bail.status = BailRequest.Status.REJECTED
+                bail.save()
                 submission.status = SubmissionStatus.REJECTED
                 submission.save()
+    @classmethod
+    def can_submit(cls, user: User, obj):
+        return user.status == User.Status.ARRESTED and not BailRequest.objects.filter(requested_by=user, status=BailRequest.Status.PENDING).exists()
