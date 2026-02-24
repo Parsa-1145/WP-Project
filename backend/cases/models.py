@@ -26,8 +26,9 @@ class Case(models.Model):
         OPEN_INVESTIGATION = 'open'
         AWAITING_INVESTIGATOR_ACCEPTANCE = "awaiting_investigator", "Awaiting Investigator Acceptance"
         AWAITING_SUPERVISOR_ACCEPTANCE = "awaiting_supervisor", "Awaiting Supervisor Acceptance"
-        INTEROGATING_SUSPECTS = "interogation", "Interogating suspects"
-        SOLVED = 'solved'
+        INTEROGATING_SUSPECTS = "interogation", "Interogating Suspects"
+        GUILT_ASSESMENT = "guilt_assesment", "Guilt Assesment"
+        TRIAL="TRIAL"
         CLOSED = 'closed'
 
     title = models.CharField(
@@ -122,7 +123,12 @@ class InvestigationResults(models.Model):
         User
     )
 
-class CaseSuspectLink(models.Model):    
+class CaseSuspectLink(models.Model):
+    class SuspectGuiltStatus(models.TextChoices):
+        PENDING_ASSESSMENT = "PENDING_ASSESSMENT"
+        GUILTY = "GUILTY"
+        CLEARED = "CLEARED"
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -141,6 +147,11 @@ class CaseSuspectLink(models.Model):
         default=1,
         validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
+    guilt_state=models.CharField(
+        choices=SuspectGuiltStatus.choices,
+        default=SuspectGuiltStatus.PENDING_ASSESSMENT
+    )
+    
 
 class CaseSubmissionLink(models.Model):
     class RelationType(models.TextChoices):

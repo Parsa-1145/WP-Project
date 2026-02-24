@@ -20,15 +20,13 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
     submission = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate(self, attrs):
-        
-
         submission: Submission = self.context.get("submission") or getattr(self.instance, "submission", None)
         if submission is None:
             raise serializers.ValidationError({"submission": "This field is required."})
         
         user: User = self.context["request"].user
 
-        submission_type_cls = get_submission_type(submission.submission_type)  # FIX: use instance, not model class
+        submission_type_cls = get_submission_type(submission.submission_type)
 
         stage = SubmissionStage.objects.filter(
             submission=submission,
@@ -74,6 +72,7 @@ class SubmissionActionSerializer(serializers.ModelSerializer):
                     "payload": e.message
                 })
             
+        submission_type_cls.validate_submission_action_payload(submission, action_type, payload, self.context)
         
 
         attrs["created_by"] = user

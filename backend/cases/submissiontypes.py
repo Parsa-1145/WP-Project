@@ -1,12 +1,13 @@
 from submissions.submissiontypes.classes import BaseSubmissionType
-from cases.models import Complaint, CrimeScene, CaseSubmissionLink, InvestigationResults, Case
+from cases.models import Complaint, CrimeScene, CaseSubmissionLink, InvestigationResults, Case, CaseSuspectLink
 from cases.serializers import (
     ComplaintSerializer,
     ComplaintSerializer,
     CrimeSceneSerializer,
     CaseStaffingSubmissionPayloadSerializer,
     InvestigationResultsSubmissionSerializer,
-    CaseChargesSubmissionSerializer
+    CaseChargesSubmissionSerializer,
+    GuiltAssesmentPayloadSerializer
 )
 from submissions.models import SubmissionStage, SubmissionActionType, Submission, SubmissionAction, SubmissionStatus
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -380,11 +381,11 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
         
         user:User = context["request"].user
 
-        if case.lead_detective != user:
-            raise PermissionDenied("only the lead detective can make this request")
+        if (case.lead_detective != user) and (case.supervisor != user):
+            raise PermissionDenied("only the lead detective or the supervisor can make this request")
             
     @classmethod
-    def create_object(cls, payload, context):
+    def create_object(cls, payload, serializer, context):
         case_id = payload.get("case_id")
         
         return Case.objects.get(pk=case_id)
@@ -392,18 +393,20 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
     @classmethod
     def on_submit(cls, submission):
         target = cls.get_object(submission.object_id)
+        target.status = target.Status.GUILT_ASSESMENT
+        target.save()
         
         SubmissionStage.objects.create(
             submission=submission,
-            target_permission=["cases.assess_suspect_guilt"],
+            target_permission="cases.assess_suspect_guilt",
             order=0,
-            allowed_actions=[SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.ASSESS_GUILTS]
         )
 
         if target.crime_level == target.CrimeLevel.CRITICAL:
             SubmissionStage.objects.create(
                 submission=submission,
-                target_permission=["cases.approve_suspect_guilt_assessment"],
+                target_permission="cases.approve_suspect_guilt_assessment",
                 order=1,
                 allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
             )
@@ -413,10 +416,51 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
         stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
         target = cls.get_object(submission.object_id)
 
+        for s in target.suspect_links.all():
+            s: CaseSuspectLink
+            s.guilt_state = s.SuspectGuiltStatus.CLEARED
+            s.save()
+
+
         if stage.order == 0:
-            pass
+            for sid in action.payload["guilty_suspects_ids"]:
+                link = CaseSuspectLink.objects.get(pk=sid)
+                link.guilt_state = CaseSuspectLink.SuspectGuiltStatus.GUILTY
+                link.save()
+            if target.crime_level != target.CrimeLevel.CRITICAL:
+                target.status = target.Status.TRIAL
+                target.save()
+                submission.status = SubmissionStatus.APPROVED
+                submission.save()
+            else:
+                submission.current_stage=1
+                submission.save()
+
+
         if stage.order == 1:
-            pass
+            if action.action_type == SubmissionActionType.REJECT:
+                for s in target.suspect_links.all():
+                    s: CaseSuspectLink
+                    s.guilt_state = s.SuspectGuiltStatus.PENDING_ASSESSMENT
+                    s.save()
+                submission.current_stage=0
+                submission.save()
+            if action.action_type == SubmissionActionType.APPROVE:
+                target.status = target.Status.TRIAL
+                target.save()
+                submission.status = SubmissionStatus.APPROVED
+                submission.save()
+
+    @classmethod
+    def validate_submission_action_payload(cls, submission, action_type, payload, context, **kwargs):
+        target = cls.get_object(submission.object_id)
+
+        if action_type == SubmissionActionType.ASSESS_GUILTS:
+            serializer = GuiltAssesmentPayloadSerializer(data=payload, context=context)
+            serializer.is_valid(raise_exception=True)
+            for sid in payload["guilty_suspects_ids"]:
+                if CaseSuspectLink.objects.get(pk=sid).case.pk != target.pk:
+                    raise ValidationError(f"suspect id does not belong to this case: {sid}")
 
     
     @classmethod

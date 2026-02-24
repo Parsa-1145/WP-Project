@@ -72,6 +72,22 @@ class CaseCreationTest(APITestCase):
             national_id="6666666666",
             phone_number="+989121234569",
         )
+        cls.u7 = User.objects.create_user(
+            username="u7",
+            password="pass12345",
+            first_name="User",
+            last_name="Seven",
+            national_id="7777777778",
+            phone_number="+989121234569",
+        )
+        cls.u8 = User.objects.create_user(
+            username="u8",
+            password="pass12345",
+            first_name="User",
+            last_name="Eight",
+            national_id="8888888889",
+            phone_number="+989121234569",
+        )
 
         cls.add_perms(cls.u1, "investigate_on_case", "supervise_case", "can_approve_bioevidence")
         cls.add_perms(cls.u2, "complaint_initial_approve")
@@ -79,6 +95,8 @@ class CaseCreationTest(APITestCase):
         cls.add_perms(cls.u4, "complaint_initial_approve", "add_crimescene")
         cls.add_perms(cls.u5, "investigate_on_case", "supervise_case")
         cls.add_perms(cls.u6, "supervise_case")
+        cls.add_perms(cls.u7, "assess_suspect_guilt")
+        cls.add_perms(cls.u8, "approve_suspect_guilt_assessment")
 
 
         cls.submission_type_list_url = reverse("submission-type-list")
@@ -165,7 +183,6 @@ class CaseCreationTest(APITestCase):
             set(c["national_id"] for c in response.json()["target"]["complainants"]),
             {self.u2.national_id},
         )
-        self.printJ(response)
 
         invalid_complaint_payload = {
             "title": "KMKH",
@@ -573,8 +590,6 @@ class CaseCreationTest(APITestCase):
         res = self.client.get(full_url, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
-        self.printJ(res)
-
         case_json = next((x for x in res.json() if x["id"] ==
                                 crime_scene_case.pk), None)
         
@@ -747,6 +762,36 @@ class CaseCreationTest(APITestCase):
         self.assertEqual(suspects_after[suspect_link_id_2]["detective_score"], 2)
         self.assertEqual(suspects_after[suspect_link_id_1]["detective_score"], 10)
 
+        res = self.send_submission(
+            "GUILT_ASSESMENT",
+            {
+                "case_id": crime_scene_case.pk
+            }
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        guilt_assesment_submission = Submission.objects.get(pk=res.json()["id"])
+
+        self.client.force_authenticate(self.u7)
+        res=self.get_submissions_inbox()
+        self.assertIn(guilt_assesment_submission.pk, [x["id"] for x in res.json()])
+        
+
+        # self.client.force_authenticate(self.u7)
+
+        res = self.send_submission_action(
+            SubmissionActionType.ASSESS_GUILTS,
+            {
+                "guilty_suspects_ids": [
+                    suspect_link_id_1
+                ]
+            },
+            guilt_assesment_submission.pk,
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(self.u5)
+        res = self.get_cases()
+        self.printJ(res)
         
 
     def test_front_modules(self):

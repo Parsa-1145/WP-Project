@@ -28,11 +28,12 @@ class SuspectInfoSerializer(UserBriefInfoSerializer):
     supervisor_score = serializers.IntegerField(read_only=True)
     detective_score = serializers.IntegerField(read_only=True)
     status = serializers.CharField(source="user.status", read_only=True)
-
+    guilt_status = serializers.CharField(source="guilt_state", read_only=True)
+    
     class Meta:
         model = CaseSuspectLink
         fields = ["id", "first_name", "last_name", "national_id",
-                   "suspect_link", "supervisor_score", "detective_score", "status", "phone_number"]
+                   "suspect_link", "supervisor_score", "detective_score", "status", "phone_number", "guilt_status"]
         read_only_fields = fields
 
 class IndexedErrorsListSerializer(serializers.ListSerializer):
@@ -558,3 +559,17 @@ class CaseChargesSubmissionSerializer(CaseListSerializer):
 
     class Meta(CaseListSerializer.Meta):
         fields = CaseListSerializer.Meta.fields + ["case_id"]
+
+# ---------------------------------------------------------------------
+# Guilt assesment
+# ---------------------------------------------------------------------
+
+class GuiltAssesmentPayloadSerializer(serializers.Serializer):
+    guilty_suspects_ids = serializers.ListField(
+        child=serializers.PrimaryKeyRelatedField(
+            queryset=CaseSuspectLink.objects.all(),
+            write_only=True,
+        )
+    )
+
+    

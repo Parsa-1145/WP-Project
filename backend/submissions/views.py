@@ -338,7 +338,7 @@ class SubmissionTypeListView(APIView):
                         fields={
                             "action_type": serializers.ChoiceField(choices=["REJECT"]),
                             "payload" : inline_serializer(
-                                name="payload",
+                                name="RejectionPayload",
                                 fields={
                                     "message" : serializers.CharField()
                                     }
@@ -346,12 +346,18 @@ class SubmissionTypeListView(APIView):
                         },
                     ),
                     inline_serializer(
-                        name="SUBMIT",
+                        name="ASSESS_GUILTS",
                         fields={
-                            "action_type": serializers.ChoiceField(choices=["SUBMIT"]),
-                            "payload" : serializers.DictField(
-                                required=True
-                            )
+                            "action_type": serializers.ChoiceField(choices=["ASSESS_GUILTS"]),
+                            "payload": inline_serializer(
+                                name="AssessGuiltsPayload",
+                                fields={
+                                    "guilty_suspects" : serializers.ListField(
+                                            child=serializers.IntegerField(),
+                                            help_text="List of suspect link IDs marked as guilty.",
+                                        )
+                                    }
+                            ),
                         },
                     ),
                 ],
@@ -360,9 +366,9 @@ class SubmissionTypeListView(APIView):
                 OpenApiExample("Resubmit", value={
                     "action_type": "RESUBMIT",
                     "payload": {"param1":"data1"}}, request_only=True, description="Payload must match the submission-create payload schema for this submission's submission_type."),
-                OpenApiExample("Submit", value={
-                    "action_type": "SUBMIT",
-                    "payload": ["1", "2"]}, request_only=True, description="Tof bezan. faghat too GUILT_ASSESMENT estefade mishe"),
+                OpenApiExample("ASSESS_GUILTS", value={
+                    "action_type": "ASSESS_GUILTS",
+                    "payload": {"guilty_suspects_ids":[1, 2]}}, request_only=True, description="Send suspect link IDs of guilty suspects."),
                 OpenApiExample("Approve", value={"action_type": "APPROVE", "payload":{}}, request_only=True),
                 OpenApiExample("Approve", value={"action_type": "APPROVE", "payload":{}}, request_only=True),
                 OpenApiExample("Accept", value={"action_type": "ACCEPT", "payload":{}}, request_only=True),
