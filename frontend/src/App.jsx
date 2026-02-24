@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate, useParams, u
 import { useReducer, useState } from 'react'
 import './App.css'
 import Health from './Health'
-import { Login, Signup } from './Auth'
+import { AccountSwitcher, Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm, evi_decode } from './Evidence'
 import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
@@ -76,22 +76,12 @@ const App = () => (
 		<div className='w-screen h-screen m-0 px-24 py-24 box-border'>
 			<div className='flex flex-col h-full gap-2'>
 				<div className='shrink w-full flex flex-row'>
-					<div className='flex flex-row grow gap-4 text-xl '>
+					<div className='flex flex-row grow gap-4 text-xl'>
 						<Link to="/home">Home</Link>
 						<Link to='/submission/inbox'>Inbox</Link>
 						<Link to='/submission/mine'>Submissions</Link>
 					</div>
-					<div className='relative text-xl'>
-						<details className='group'>
-							<summary className='cursor-pointer select-none underline underline-offset-4 decoration-2 [&::-webkit-details-marker]:hidden'>
-								Accounts
-							</summary>
-							<div className='absolute right-0 z-20 mt-2 flex min-w-40 flex-col gap-2 rounded border border-white/20 bg-[#1f1f1f] p-3 text-left'>
-								<Link to='/login' className='hover:underline'>Login</Link>
-								<Link to='/signup' className='hover:underline'>Signup</Link>
-							</div>
-						</details>
-					</div>
+					<AccountSwitcher />
 				</div>
 				<div className='grow border-2 border-white p-4'>
 					<Routes>

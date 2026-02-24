@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate, Link } from 'react-router'
 import { FormInputField, FormInputChangeFn } from './Forms'
 import { session, error_msg_list, error_msg } from './session.jsx'
 
@@ -96,54 +96,96 @@ export function Login() {
 
 
 export const AccountSwitcher = () => {
-    const [activeUser, setActiveUser] = useState(session.activeUser);
-    const [accounts, setAccounts] = useState(session.accounts);
+	const navigate = useNavigate();
+	const [activeUser, setActiveUser] = useState(session.activeUser);
+	const [accounts, setAccounts] = useState(() => ({ ...session.accounts }));
 
-    useEffect(() => {
-        const unlisten = session.listen((newActiveUser, newAccounts) => {
-            setActiveUser(newActiveUser);
-            setAccounts(newAccounts || {});
-        });
-        
-        return unlisten;
-    }, []);
+	useEffect(() => {
+		const unlisten = session.listen((newActiveUser, newAccounts) => {
+			setActiveUser(newActiveUser);
+			setAccounts({ ...(newAccounts || {}) });
+		});
 
-    const handleSwitch = (e) => {
-        const selectedUser = e.target.value;
-        if (selectedUser === "ADD_NEW_ACCOUNT") {
-            navigation.navigate('/login');
-			return;
-        }
-        session.switch_account(selectedUser);
-    };
+		return unlisten;
+	}, []);
 
-    const usernames = Object.keys(accounts);
+	const usernames = Object.keys(accounts);
 
-    if (usernames.length === 0) {
-        return <div>No active accounts</div>;
-    }
-
-    return (
-        <div className="account-switcher">
-            <span>Logged in as: </span>
-            <select 
-                value={activeUser || ''} 
-                onChange={handleSwitch}
-            >
-                {usernames.map(username => (
-                    <option key={username} value={username}>
-                        {username}
-                    </option>
-                ))}
-                <option disabled>──────────</option>
-                <option value="ADD_NEW_ACCOUNT">Add Account...</option>
-            </select>
-
-            {activeUser && (
-                <button onClick={() => session.logout()}>
-                    Logout
-                </button>
-            )}
-        </div>
-    );
+	return (
+		<div className='relative text-xl'>
+			<details className='group'>
+				<summary className='flex cursor-pointer select-none items-center gap-2 rounded px-3 py-1 text-base hover:bg-white/5'>
+					<span className='underline underline-offset-4 decoration-2'>
+						Accounts
+					</span>
+					{activeUser && (
+						<span className='text-sm text-white/70 group-open:text-white'>
+							{activeUser}
+						</span>
+					)}
+					<span className='ml-1 text-xs text-white/70 transition-transform duration-150 group-open:rotate-180'>
+						▾
+					</span>
+				</summary>
+				<div className='absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-2 rounded border border-white/20 bg-[#1f1f1f] p-3 text-left shadow-lg'>
+					{usernames.length === 0 ? (
+						<>
+							<div className='text-sm text-white/70'>No active accounts.</div>
+							<Link to='/login' className='hover:underline'>
+								Login
+							</Link>
+							<Link to='/signup' className='hover:underline'>
+								Signup
+							</Link>
+						</>
+					) : (
+						<>
+							<div className='mb-1 text-sm font-semibold text-white/80'>
+								Switch account
+							</div>
+							<div className='flex flex-col gap-1'>
+								{usernames.map(username => (
+									<button
+										key={username}
+										type='button'
+										onClick={() => {
+											if (username !== activeUser)
+												session.switch_account(username);
+										}}
+										className={`flex w-full cursor-pointer items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-white/10 ${
+											username === activeUser
+												? 'bg-white/10 text-white'
+												: 'text-white/80'
+										}`}
+									>
+										<span>{username}</span>
+										{username === activeUser && (
+											<span className='ml-2 text-xs text-emerald-400'>
+												Active
+											</span>
+										)}
+									</button>
+								))}
+							</div>
+							<div className='my-2 h-px bg-white/10' />
+							<button
+								type='button'
+								onClick={() => navigate('/login')}
+								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-white/80 hover:bg-white/10'
+							>
+								Add account…
+							</button>
+							<button
+								type='button'
+								onClick={() => session.logout()}
+								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-red-300 hover:bg-red-500/20'
+							>
+								Logout
+							</button>
+						</>
+					)}
+				</div>
+			</details>
+		</div>
+	);
 };

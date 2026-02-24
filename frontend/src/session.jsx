@@ -27,6 +27,7 @@ class Session {
             this.activeUser = remainingUsers.length > 0 ? remainingUsers[0] : null;
         }
 
+		this._notify();
     }
 
 	_notify() {
