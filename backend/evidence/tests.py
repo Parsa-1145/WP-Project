@@ -13,7 +13,7 @@ class EvidenceTests(APITestCase):
         self.case1 = Case.objects.create(
             title="Saman Bank Robbery",
             description="Investigation of the robbery on Feb 10",
-            crime_date=timezone.now()
+            crime_datetime=timezone.now()
         )
         self.recorder1 = User.objects.create_user(username="recorder1", password="password123")
         self.list_url = reverse('evidence-list')
@@ -27,4 +27,4 @@ class EvidenceTests(APITestCase):
     def test_evidence_list(self):
         self.client.force_authenticate(user=self.recorder1)
         response = self.client.get(self.list_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN) # Can't see all evidence
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN) 
