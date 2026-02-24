@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router'
 import { FormInputField, FormInputChangeFn } from './Forms'
 import { session, error_msg_list, error_msg } from './session.jsx'
+import { ChevronDown } from 'lucide-react'
 
 export function Signup() {
 	const fields = [
@@ -94,7 +95,6 @@ export function Login() {
 	</>)
 }
 
-
 export const AccountSwitcher = () => {
 	const navigate = useNavigate();
 	const [activeUser, setActiveUser] = useState(session.activeUser);
@@ -112,20 +112,20 @@ export const AccountSwitcher = () => {
 	const usernames = Object.keys(accounts);
 
 	return (
-		<div className='relative text-xl'>
+		<div className='relative text-xl w-56 flex justify-end'>
 			<details className='group'>
-				<summary className='flex cursor-pointer select-none items-center gap-2 rounded px-3 py-1 text-base hover:bg-white/5'>
-					<span className='underline underline-offset-4 decoration-2'>
-						Accounts
-					</span>
-					{activeUser && (
-						<span className='text-sm text-white/70 group-open:text-white'>
-							{activeUser}
+				<summary className='flex min-w-0 cursor-pointer select-none items-center gap-2 rounded px-3 py-1 text-base hover:bg-white/5'>
+					<span className='flex min-w-0 items-baseline gap-1'>
+						<span className='underline underline-offset-4 decoration-2 whitespace-nowrap'>
+							Accounts
 						</span>
-					)}
-					<span className='ml-1 text-xs text-white/70 transition-transform duration-150 group-open:rotate-180'>
-						▾
+						{activeUser && (
+							<span className='w-24 truncate text-sm text-white/70 group-open:text-white'>
+								{activeUser}
+							</span>
+						)}
 					</span>
+					<ChevronDown className='ml-1 h-3 w-3 text-white/70 transition-transform duration-150 group-open:rotate-180' />
 				</summary>
 				<div className='absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-2 rounded border border-white/20 bg-[#1f1f1f] p-3 text-left shadow-lg'>
 					{usernames.length === 0 ? (
