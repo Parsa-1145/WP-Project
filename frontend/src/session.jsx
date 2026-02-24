@@ -1,27 +1,51 @@
 import axios from 'axios'
 
 class Session {
-	username;
-	auth_token;
+	activeUser = null;
+	accounts ={};
 	subs = [];
 
-	set_creds(username, auth_token) {
-		for (const fn of this.subs)
-			fn(username, auth_token);
-		this.username = username;
-		this.auth_token = auth_token;
+	login(username, password) {
+		this.accounts[username] = { password };
+		this.activeUser = username;
+		this._notify();
 	}
+
+
+	switch_account(username) {
+		if (this.accounts[username]) {
+            this.activeUser = username;
+            this._notify();
+        }
+	}
+
+	logout(username = this.activeUser) {
+        delete this.accounts[username];
+        
+        if (this.activeUser === username) {
+            const remainingUsers = Object.keys(this.accounts);
+            this.activeUser = remainingUsers.length > 0 ? remainingUsers[0] : null;
+        }
+
+    }
+
+	_notify() {
+        for (const fn of this.subs) {
+            fn(this.activeUser, this.accounts);
+        }
+    }
 
 	listen(fn) {
 		this.subs.push(fn)
 		return () => this.subs = this.subs.filter(f => f !== fn);
 	}
 
-	add_auth(config) {
-		if (this.auth_token) {
+	_add_auth(config) {
+		const auth_token = this.activeUser ? this.accounts[this.activeUser].password : null;
+		if (auth_token) {
 			const res = { ...config };
 			res.headers = { ...res.headers };
-			res.headers['Authorization'] = `Bearer ${this.auth_token}`;
+			res.headers['Authorization'] = `Bearer ${auth_token}`;
 			return res;
 		}
 		return config;
@@ -30,7 +54,7 @@ class Session {
 	http_request(method, path, body, config) {
 		const fn = axios[method];
 		const url = import.meta.env.VITE_BACKEND_URL + path;
-		const conf = this.add_auth(config);
+		const conf = this._add_auth(config);
 		return body === undefined? fn(url, conf): fn(url, body, conf);
 	}
 
@@ -75,8 +99,10 @@ export const error_msg = err => {
 export const session = new Session;
 
 const auth_data = JSON.parse(localStorage.getItem('auth-data'));
-if (auth_data)
-	session.set_creds(auth_data.username, auth_data.auth_token);
-session.listen((username, auth_token) => localStorage.setItem('auth-data', JSON.stringify({ username, auth_token })));
+if (auth_data && auth_data.accounts) {
+	session.accounts = auth_data.accounts;
+	session.activeUser = auth_data.activeUser;
+}
+session.listen((activeUser, accounts) => localStorage.setItem('auth-data', JSON.stringify({ activeUser, accounts })));
 
 export default session;

@@ -76,7 +76,7 @@ export function Login() {
 		session.post('/api/auth/login/', req_body)
 			.then(res => {
 				setStr('Login successful');
-				session.set_creds(user, res.data.access);
+				session.login(user, res.data.access);
 				navigate('/home');
 			})
 			.catch(err => setStr(error_msg(err)))
@@ -93,3 +93,57 @@ export function Login() {
 		</div>
 	</>)
 }
+
+
+export const AccountSwitcher = () => {
+    const [activeUser, setActiveUser] = useState(session.activeUser);
+    const [accounts, setAccounts] = useState(session.accounts);
+
+    useEffect(() => {
+        const unlisten = session.listen((newActiveUser, newAccounts) => {
+            setActiveUser(newActiveUser);
+            setAccounts(newAccounts || {});
+        });
+        
+        return unlisten;
+    }, []);
+
+    const handleSwitch = (e) => {
+        const selectedUser = e.target.value;
+        if (selectedUser === "ADD_NEW_ACCOUNT") {
+            navigation.navigate('/login');
+			return;
+        }
+        session.switch_account(selectedUser);
+    };
+
+    const usernames = Object.keys(accounts);
+
+    if (usernames.length === 0) {
+        return <div>No active accounts</div>;
+    }
+
+    return (
+        <div className="account-switcher">
+            <span>Logged in as: </span>
+            <select 
+                value={activeUser || ''} 
+                onChange={handleSwitch}
+            >
+                {usernames.map(username => (
+                    <option key={username} value={username}>
+                        {username}
+                    </option>
+                ))}
+                <option disabled>──────────</option>
+                <option value="ADD_NEW_ACCOUNT">Add Account...</option>
+            </select>
+
+            {activeUser && (
+                <button onClick={() => session.logout()}>
+                    Logout
+                </button>
+            )}
+        </div>
+    );
+};
