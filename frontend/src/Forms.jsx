@@ -247,13 +247,17 @@ export function GenericList({ children, title, onReload, onReturn, msg }) {
 	const [compact, setCompact] = useState(true);
 	const eleWidth = compact? 450: 550;
 	return (<>
-		<h1>{title}</h1>
-		{ onReload && (<button onClick={onReload}>Reload</button>) }
-		{ onReturn && (<button onClick={onReturn}>Return</button>) }
-		<label>
-			<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
-			Compact View
-		</label>
+		<div className='flex flex-col'>
+			<div className='flex flex-row shrink w-full gap-2'>
+				<h2 className='text-left grow'>{title}</h2>
+				<label>
+					<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
+					Compact View
+				</label>
+				{ onReload && (<button onClick={onReload}>Reload</button>) }
+				{ onReturn && (<button onClick={onReturn}>Return</button>) }
+			</div>
+		</div>
 		{msg && <p>{msg}</p>}
 		<ResponsiveGrid eleWidth={eleWidth}>
 			<ListCompactCtx.Provider value={compact}>
