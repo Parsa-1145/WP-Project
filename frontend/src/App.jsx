@@ -79,13 +79,26 @@ const App = () => {
 			<div className='flex flex-col h-full gap-2'>
 				<div className='shrink w-full flex flex-row'>
 					<div className='flex flex-row grow gap-4 text-xl'>
-						<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-							<Link to="/home">Home</Link>
-							<Link to='/submission/inbox'>Inbox</Link>
-							<Link to='/submission/mine'>Submissions</Link>
-							{modules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
-							{modules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
-						</>) } />
+						<Retrieve
+							msg="modules"
+							path={`/api/front-modules/`}
+							then={({ modules } = {}) => {
+								const safeModules = Array.isArray(modules) ? modules : [];
+								return (
+									<>
+										<Link to="/home">Home</Link>
+										<Link to="/submission/inbox">Inbox</Link>
+										<Link to="/submission/mine">Submissions</Link>
+										{safeModules.includes("COMPLAINANT_CASES") ? (
+											<Link to="/cases/complainant">My Cases</Link>
+										) : null}
+										{safeModules.includes("ASSIGNED_CASES") ? (
+											<Link to="/cases/list">Assigned Cases</Link>
+										) : null}
+									</>
+								);
+							}}
+						/>
 					</div>
 					<AccountSwitcher />
 				</div>
