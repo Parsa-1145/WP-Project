@@ -115,9 +115,12 @@ const App = () => {
 						<Route path="/login" exact element={<Login/>}/>
 						<Route path="/signup" exact element={<Signup/>}/>
 						<Route path="/evidence/submit" exact element={<EvidenceSubmitForm/>}/>
-						<Route path="/submission/new" exact element={<SubmissionSubmitForm/>}/>
-						<Route path="/submission/complaint" exact element={<SubmissionSubmitForm/>}/>
-						<Route path="/submission/crime" exact element={<SubmissionSubmitForm/>}/>
+
+						<Route path="/submission/new" exact element={
+							<Retrieve msg="submission types" path='/api/submission/types/'
+								then={({ types }) => (<SubmissionSubmitForm typeList={types} />)}
+							/>
+						}/>
 
 						<Route path="/submission/:id/edit" exact element={
 							<ParamWrap then={(ps, qs) => (

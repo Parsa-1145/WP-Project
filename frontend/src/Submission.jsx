@@ -18,6 +18,8 @@ const subm_fields = {
 		...subm_fields_common,
 		['list !First_Name !Last_Name !Phone .National_ID', 'Complainants', 'complainants'],
 	],
+	BIO_EVIDENCE: [],
+	BAIL_REQUEST: [],
 	CASE_STAFFING: [
 		['text', 'Level', 'crime_level'],
 		['text', 'Lead Detective', 'lead_detective'],
@@ -32,90 +34,54 @@ const subm_fields = {
 const subm_types = [...Object.keys(subm_fields)];
 
 
-export function SubmissionSubmitForm({ subm0, resubmit, returnTo }) {
-	const isResubmit = resubmit !== undefined;
-
-	const inferType = () => {
-		if (!subm0)
-			return subm_types[0];
-		if (subm0.submission_type && subm_types.includes(subm0.submission_type))
-			return subm0.submission_type;
-
-		for (const t of subm_types)
-			if (subm_fields[t].some(([, , id]) => subm0[id] !== undefined))
-				return t;
-
-		return subm_types[0];
-	};
-	const [submissionType, setSubmissionType] = useState(inferType);
-	const [typeOptions, setTypeOptions] = useState(() => subm_types.map(key => ({ key, name: key })));
-	const [typeListLoaded, setTypeListLoaded] = useState(isResubmit);
+export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo }) {
+	const types = typeList && typeList.length? typeList: subm_types.map(x => { return { key: x, value: x }});
 
 	const defaultData = () => {
-		const obj = {}
-		// for (const ent of subm_fields_common)
-		// 	obj[ent[2]] = '';
+		let obj = {submission_type: types[0].key};
+
 		for (const t of subm_types)
 			for (const ent of subm_fields[t])
 				obj[ent[2]] = '';
 
-		if (!subm0)
-			return obj;
+		if (subm0) {
+			obj = { ...obj, ...form_list_decode(subm0, {
+				witnesses: ['national_id'],
+				complainants: ['national_id'],
+				suggested_suspects: ['national_id'],
+			})}
+		}
 
-		const parsed = { ...obj, ...subm0 };
-		if (subm0.witnesses)
-			parsed.witnesses = subm0.witnesses.map(x => [x.national_id]);
-		if (subm0.complainants)
-			parsed.complainants = subm0.complainants.map(x => [x.national_id]);
-		return parsed;
+		return obj;
 	};
 	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
 	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
 	const setMsg = msg => setMsgs([msg]);
-	const currentTypeFields = subm_fields[submissionType] || [];
-
-	useEffect(() => {
-		if (isResubmit)
-			return;
-
-		setTypeListLoaded(false);
-		session.get('/api/submission/types/')
-		.then(res => {
-				const fromApi = Array.isArray(res.data?.types)? res.data.types: [];
-				const supported = fromApi.filter(ent => subm_fields[ent.key] !== undefined);
-				setTypeOptions(supported);
-				if (supported.length > 0)
-					setSubmissionType(cur => supported.some(ent => ent.key === cur)? cur: supported[0].key);
-				else
-					setMsgs(['No supported submission type is available for this account.']);
-			})
-			.catch(err => setMsgs(error_msg_list(err)))
-			.finally(() => setTypeListLoaded(true));
-	}, [isResubmit]);
+	const fields = subm_fields[data.submission_type];
 
 	const submit = () => {
 		const payload = {};
-		for (const [, , id] of currentTypeFields) {
+		for (const [,, id] of fields)
 			payload[id] = data[id];
+
+		for (const [id1, id2] of [
+				['witnesses', 'witnesses_national_ids'],
+				['complainants', 'complainant_national_ids'],
+				['suggested_suspects', 'suggested_suspects_national_ids'],
+		]) {
+			if (payload[id1]) {
+				payload[id2] = payload[id1].map(([x]) => x);
+				delete payload[id1];
+			}
 		}
-		if (payload.witnesses) {
-			payload.witnesses_national_ids = payload.witnesses.map(([x]) => x);
-			delete payload.witnesses;
-		}
-		if (payload.complainants) {
-			payload.complainant_national_ids = payload.complainants.map(([x]) => x);
-			delete payload.complainants;
-		}
-		if (payload.suggested_suspects) {
-			payload.suggested_suspects_national_ids = payload.suggested_suspects.map(([x]) => x);
-			delete payload.suggested_suspects;
-		}
+
 		for (const id in payload)
 			if (payload[id] === '')
 				delete payload[id];
-		const req = resubmit !== undefined ? { action_type: 'RESUBMIT', payload }: { submission_type: submissionType, payload };
+
+		const req = resubmit !== undefined ? { action_type: 'RESUBMIT', payload }: { submission_type: data.submission_type, payload };
 
 		setPost(true);
 		setMsg('Awaiting response...');
@@ -136,24 +102,21 @@ export function SubmissionSubmitForm({ subm0, resubmit, returnTo }) {
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
-		{ submissionType === 'COMPLAINT' && <h1>Complaint Submission</h1> }
-		{ submissionType === 'CRIME_SCENE' && <h1>Crime Scene Report</h1> }
+		<h1>{resubmit === undefined? 'New Submission': 'Edit Submission'}</h1>
 		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
-			{!isResubmit && SimpleField('Type', (
+			{resubmit === undefined && SimpleField('Type', (
 				<select
 					id='submission_type'
-					value={submissionType}
-					onChange={e => setSubmissionType(e.target.value)}
-					disabled={!typeListLoaded}
-					style={{ width: '100%' }}
+					value={data.submission_type}
+					onChange={ChangeFn('text', 'submission_type')}
 				>
-					{typeOptions.map(ent => (<option key={ent.key} value={ent.key}>{ent.name}</option>))}
+					{types.map(({ key, name }) => (<option key={key} value={key}>{name}</option>))}
 				</select>
 			), { id: 'submission_type' })}
 			{/* {subm_fields_common.map(ent => FieldArr(ent))} */}
-			{currentTypeFields.map(ent => FieldArr(ent))}
-			<button onClick={submit} disabled={post || !typeListLoaded || currentTypeFields.length === 0} style={{ width: '100%' }}>Submit</button>
+			{fields.map(ent => FieldArr(ent))}
+			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
 		</div>
 	</>)
 }
