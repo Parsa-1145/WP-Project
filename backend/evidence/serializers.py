@@ -2,8 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from .models import *
 from cases.models import Case
-
-
+from submissions.service import create_submission
 
 
 class BaseEvidenceSerializer(serializers.ModelSerializer):
@@ -40,6 +39,7 @@ class BioEvidenceImageSerializer(serializers.ModelSerializer):
         
 
 class BioEvidenceSerializer(BaseEvidenceSerializer):
+
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
         write_only=True,
@@ -54,8 +54,14 @@ class BioEvidenceSerializer(BaseEvidenceSerializer):
         read_only_fields = ['recorder', 'coroner_result', 'is_verified']
 
     def create(self, validated_data):
+        from .submissiontypes import BioEvidenceSubmissionType
+
         uploaded_images = validated_data.pop('uploaded_images', [])
         bio_evidence = super().create(validated_data)
+        create_submission(
+            submission_type_cls=BioEvidenceSubmissionType,
+            target=bio_evidence,
+        )
 
         for image in uploaded_images:
             BioEvidenceImage.objects.create(evidence=bio_evidence, image=image)

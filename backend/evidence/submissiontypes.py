@@ -1,3 +1,4 @@
+from accounts.models import User
 from submissions.models import Submission, SubmissionAction
 from submissions.submissiontypes.classes import BaseSubmissionType
 from .models import BioEvidence
@@ -11,6 +12,7 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
     create_permissions = []
     model_class = BioEvidence
     api_request_schema = BioEvidenceSerializer
+    can_be_created_from_request = False
     api_request_payload_example = { # TODO: complete example
         "TODO":""
     }
@@ -55,5 +57,6 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
 
             submission.status = SubmissionStatus.REJECTED
             submission.save()
-
-
+    @classmethod
+    def can_user_submit(cls, user: User) -> bool:
+        return False

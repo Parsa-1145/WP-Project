@@ -110,7 +110,7 @@ class Case(models.Model):
             f"    status: {self.get_status_display() if hasattr(self, 'get_status_display') else self.status} ({self.status})\n"
             f"    lead_detective: {self.lead_detective or 'None'}\n"
             f"    complainants: {complainants_str}\n"
-            f"    witnesses_count: {len(self.witnesses or [])}\n"
+            f"    witnesses_count: {self.witnesses.count()}\n"
         )
 
 class InvestigationResults(models.Model):
