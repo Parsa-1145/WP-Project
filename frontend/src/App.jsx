@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import Health from './Health'
 import { AccountSwitcher, Login, Signup } from './Auth'
@@ -10,9 +10,6 @@ import { CaseList, CaseEditForm, case_decode, case_edit_decode } from './Cases'
 import { session, error_msg } from './session'
 
 const Home = () => {
-	const [, forced_update] = useReducer(c => c + 1, 0);
-	session.listen(forced_update);
-
 	const navigate = useNavigate();
 	return (<>
 		{/* <p>According to all known laws of aviation...</p>
@@ -33,28 +30,23 @@ const Retrieve = ({ msg, path, then }) => {
 	const [str, setStr] = useState(`Retrieving ${msg}...`)
 	const [phase, setPhase] = useState(0);
 	const [res, setRes] = useState(null);
-	const [loadedPath, setLoadedPath] = useState(null)
-	const activeUser = session.activeUser
+	const [resPath, setResPath] = useState(null);
 
-	useEffect(()=>{
-		setPhase(0)
-		setLoadedPath(null)
-		setRes(null)
-	}, [activeUser, path])
+	useEffect(() => session.listen(req), []);
 
 	const req = () => {
 		setPhase(1);
+		setResPath(path);
 		session.get(path)
-			.then(r => {setRes(r.data); setPhase(3); setLoadedPath(path)})
+			.then(r => { setRes(r.data); setPhase(3); })
 			.catch(err => { setStr(error_msg(err)); setPhase(2); })
 	};
 	
-	console.log(res)
-	
-	if (phase === 3 && loadedPath===path)
-		return then(res, () => { setStr(`Reloading ${msg}...`); setPhase(0); });
-	if (phase === 0)
+	if (phase === 0 || path !== resPath)
 		req();
+
+	if (phase === 3 && path === resPath)
+		return then(res, () => { setStr(`Reloading ${msg}...`); req(); });
 
 	return (<>
 		<p>{str}</p>
@@ -82,25 +74,18 @@ const UrlList = (local_path, remote_path, Component, props, decoder, title) => (
 const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
 const App = () => {
-	const [, forceUpdate] = useReducer(c => c + 1, 0);
-	const [frontModules, setModules] = useState([])
-	useEffect(() => session.listen(() => forceUpdate()), []);
-	useEffect(() => {
-		session.get('/api/front-modules')
-			.then(res => {
-				setModules(res.data.modules)
-			})
-	}, [session.activeUser]);
 	return (<BrowserRouter>
 		<div className='w-screen h-screen m-0 px-24 py-24 box-border'>
 			<div className='flex flex-col h-full gap-2'>
 				<div className='shrink w-full flex flex-row'>
 					<div className='flex flex-row grow gap-4 text-xl'>
-						<Link to="/home">Home</Link>
-						<Link to='/submission/inbox'>Inbox</Link>
-						<Link to='/submission/mine'>Submissions</Link>
-						{frontModules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
-						{frontModules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
+						<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
+							<Link to="/home">Home</Link>
+							<Link to='/submission/inbox'>Inbox</Link>
+							<Link to='/submission/mine'>Submissions</Link>
+							{modules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
+							{modules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
+						</>) } />
 					</div>
 					<AccountSwitcher />
 				</div>
