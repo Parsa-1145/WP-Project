@@ -25,7 +25,7 @@ const subm_fields = {
 		['text', 'Origin PK', 'origin_submission_id'],
 	],
 	INVESTIGATION_APPROVAL: [
-		['text', 'Case Id', 'case'],
+		['text', 'Case ID', 'case'],
 		['list !First_Name !Last_Name !Phone .National_ID', 'Suggested Suspects', 'suggested_suspects'],
 	],
 };
@@ -84,7 +84,6 @@ export function SubmissionSubmitForm({ subm0, resubmit, returnTo }) {
 		session.get('/api/submission/types/')
 		.then(res => {
 				const fromApi = Array.isArray(res.data?.types)? res.data.types: [];
-				console.log(fromApi)
 				const supported = fromApi.filter(ent => subm_fields[ent.key] !== undefined);
 				setTypeOptions(supported);
 				if (supported.length > 0)
@@ -169,7 +168,6 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	const [rejMsg, setRejMsg] = useState('');
 	const type = subm.submission_type;
 	const actions = subm.available_actions;
-	console.log(subm)
 	const last_action = subm.actions_history[0] ? subm.actions_history[0]: [];
 	
 	
@@ -188,10 +186,15 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 }
 
 export const subm_decode = subm => {
-	return { ...subm, target: form_list_decode(subm.target, {
-		witnesses   : ['first_name', 'last_name', 'phone_number'],
-		complainants: ['first_name', 'last_name', 'phone_number'],
-	}) };
+	return { ...subm, target: {
+		...form_list_decode(subm.target, {
+			witnesses         : ['first_name', 'last_name', 'phone_number'],
+			complainants      : ['first_name', 'last_name', 'phone_number'],
+			suggested_suspects: ['first_name', 'last_name', 'phone_number'],
+		}),
+		case: subm.target.case_details?.id,
+		//case_details: subm.target.case_details && case_decode(subm.target.case_details),
+	}};
 }
 
 export function SubmissionList({ list, title, onReload, onReturn, create_button=false, description=null }) {
