@@ -267,9 +267,6 @@ class CaseListSerializer(serializers.ModelSerializer):
 # Investigation results
 # ---------------------------------------------------------------------
 
-class InvestigationResultsApprovalPayloadSerializer(serializers.Serializer):
-    case_id = serializers.IntegerField(min_value=1, required=True)
-
 class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
     case_id = serializers.IntegerField(source="id", read_only=True)
 
@@ -278,19 +275,14 @@ class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
         fields = ["case_id", "title", "description", "crime_datetime", "status"]
         read_only_fields = fields
 
-
-class InvestigationSuspectSerializer(serializers.ModelSerializer):
-    name = serializers.SerializerMethodField()
+class InvestigationSuspectSerializer(UserBriefInfoSerializer):
     criminal_record = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["name", "national_id", "criminal_record"]
+        fields = [*UserBriefInfoSerializer.Meta.fields, "criminal_record"]
         read_only_fields = fields
-
-    def get_name(self, obj: User) -> str:
-        return f"{obj.first_name} {obj.last_name}".strip()
-
+        
     def get_criminal_record(self, obj: User) -> SuspectCriminalRecordItemSerializer:
         cases = obj.suspect_cases.all().order_by("id")
         return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
