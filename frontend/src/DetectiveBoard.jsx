@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { EvidenceFrame, EvidenceList } from './Evidence'
 import { ListCompactCtx } from './Forms'
 import { session, error_msg_list } from './session'
+import html2canvas from 'html2canvas'
 
 let drag_button_grab = false;
 
@@ -70,10 +71,10 @@ function Item({ rootRef, children, pos, fns }) {
 }
 
 
-function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons, title }) {
+function DetectiveBoardBoard({ captureRef, evi_list, ls, setLs, cons, setCons, title }) {
 	const refs = useRef([]);
-	const canvasRef = useRef(null);
 	const divRef = useRef(null);
+	const canvasRef = useRef(null);
 
 	useEffect(() => {
 		if (!refs)
@@ -176,7 +177,7 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons, title }) {
 			setCons([].concat(cons.slice(0, con), cons.slice(con + 1)));
 	}
 
-	return (<div className="item" style={{ margin: 'auto', position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
+	return (<div ref={captureRef} className="item" style={{ margin: 'auto', position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
 		<div ref={divRef} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0 }}>
 			<h1>{title}</h1>
 			{ls.map((e, i) => (
@@ -230,6 +231,7 @@ function DetectiveBoard({ evi_list, item_list, con_list, case_id, onReload }) {
 	const [post, setPost] = useState(false);
 	const [msgs, setMsgs] = useState([]);
 	const setMsg = msg => setMsgs([msg]);
+	const captureRef = useRef(null);
 
 	const genId = () => {
 		for (let i = 0;; i++) {
@@ -265,15 +267,23 @@ function DetectiveBoard({ evi_list, item_list, con_list, case_id, onReload }) {
 			.finally(() => setPost(false));
 	};
 
+	const capture = () => html2canvas(captureRef.current, { useCORS: true }).then(canvas => canvas.toBlob(blob => {
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = `case-${case_id}-board.png`;
+		link.click();
+	}));
+
 	return (<>
 		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div className="flex flex-row h-full">
 			<div className="flex flex-col">
 				{ onReload && <button onClick={onReload} disabled={post}>Reload</button> }
 				<button onClick={() => setSelecting(true)}>Add Evi.</button>
+				<button onClick={capture}>Capture</button>
 				<button onClick={submit} disabled={post}>Save</button>
 			</div>
-			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons, title: `Case ${case_id} Board` }}/>
+			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons, captureRef, title: `Case ${case_id} Board` }}/>
 		</div>
 	</>);
 }

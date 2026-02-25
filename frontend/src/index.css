@@ -1,4 +1,13 @@
 @import "tailwindcss";
+
+/* html2canvas doesn't play well with tailwind
+ * this somehow fixes the problem
+ * do not remove
+ */
+img {
+	display: inline-block;
+}
+
 /* @font-face {
   font-family: 'Terminus';
   src:
