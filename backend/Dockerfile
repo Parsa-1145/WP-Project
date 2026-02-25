@@ -28,18 +28,19 @@ WORKDIR /app
 RUN useradd -m appuser
 
 # Copy application code + virtualenv + collected static files from builder
-COPY --from=builder /app/.venv /app/.venv
+COPY --chown=appuser:appuser --from=builder /app/.venv /app/.venv
 
-COPY . .
+COPY --chown=appuser:appuser . .
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
 COPY entrypoint.sh /entrypoint.sh
 
 # Ensure proper ownership
-RUN mkdir -p /app/staticfiles && \
+RUN mkdir -p /app/staticfiles /app/media && \
     chown -R appuser:appuser /app && \
     chmod +x /entrypoint.sh
+    
 USER appuser
 
 EXPOSE 8000
