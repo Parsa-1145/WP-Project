@@ -307,7 +307,6 @@ class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
         help_text="List of suggested suspects national IDs.",
     )
     suggested_suspects = InvestigationSuspectSerializer(
-        source="suspects",
         many=True,
         read_only=True,
     )

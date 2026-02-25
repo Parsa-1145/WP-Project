@@ -581,6 +581,7 @@ class CaseCreationTest(APITestCase):
         crime_scene_investigation_approval_submission = Submission.objects.get(pk=res.json()["id"])
 
         self.client.force_authenticate(self.u6)
+        self.printJ(self.get_submissions_inbox())
         res = self.send_submission_action("APPROVE", {}, crime_scene_investigation_approval_submission.pk)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 

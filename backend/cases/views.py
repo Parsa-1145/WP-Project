@@ -448,3 +448,4 @@ class FrontModulesGetView(APIView):
         items.append("COMPLAINANT_CASES")
 
         return Response({"modules":items})
+

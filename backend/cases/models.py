@@ -147,7 +147,7 @@ class CaseSuspectLink(models.Model):
         default=1,
         validators=[MinValueValidator(0), MaxValueValidator(10)]
     )
-    guilt_state=models.CharField(
+    guilt_status=models.CharField(
         choices=SuspectGuiltStatus.choices,
         default=SuspectGuiltStatus.PENDING_ASSESSMENT
     )
