@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { EvidenceFrame, EvidenceList } from './Evidence'
 import { ListCompactCtx } from './Forms'
+import { session, error_msg_list } from './session'
 
 let drag_button_grab = false;
 
@@ -61,6 +62,7 @@ function Item({ rootRef, children, pos, fns }) {
 				<div style={{ display: 'flex', flexDirection: 'column' }}>
 					<DragButton rootRef={rootRef} ref={handleRef} className="icon-button" onDrag={fns.drag}>🖐️</DragButton>
 					<DragButton rootRef={rootRef} ref={pinRef} className="icon-button" onChange={fns.thread} onDrag={fns.dragThread}>🟢️</DragButton>
+					<button className="icon-button" onClick={fns.remove}>❌️</button>
 				</div>
 			</div>
 		</div>
@@ -68,7 +70,7 @@ function Item({ rootRef, children, pos, fns }) {
 }
 
 
-function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
+function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons, title }) {
 	const refs = useRef([]);
 	const canvasRef = useRef(null);
 	const divRef = useRef(null);
@@ -135,7 +137,6 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 	};
 	const add_vec = (i, name, dx, dy) => ch_vec(i, name, { x: ls[i][name].x + dx, y: ls[i][name].y + dy });
 	const bound = (x, sz, mx) => x < 0? 0: x + sz > mx? mx - sz: x;
-	const bound = (x, sz, mx) => {
 
 	const to_top = i => {
 		if (i + 1 != ls.length) {
@@ -143,6 +144,14 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 			ls = [].concat(ls.slice(0, i), ls.slice(i+1), [ls[i]]);
 			setLs(ls);
 		}
+	};
+
+	const remove = i => {
+		const id = ls[i].id;
+		ls = [].concat(ls.slice(0, i), ls.slice(i + 1));
+		cons = cons.filter(([x, y]) => x !== id && y !== id);
+		setLs(ls);
+		setCons(cons);
 	};
 
 	const try_connect = (id, pos) => {
@@ -169,7 +178,7 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 
 	return (<div className="item" style={{ margin: 'auto', position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
 		<div ref={divRef} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0 }}>
-			<h1>Board</h1>
+			<h1>{title}</h1>
 			{ls.map((e, i) => (
 				<Item
 					key={i}
@@ -195,6 +204,7 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 								ch(i, 'thread', undefined);
 							}
 						},
+						remove: () => remove(i),
 					}}
 				>
 					<div style={{ maxWidth: '300px' }}>
@@ -213,10 +223,13 @@ const DetectiveBoardPicker = ({ evi_list, onSelect }) => EvidenceList({
 	list: evi_list, title: 'Select Evidence', onReturn: () => onSelect(null), onSelect
 });
 
-function DetectiveBoard({ evi_list, item_list, con_list, onReload }) {
+function DetectiveBoard({ evi_list, item_list, con_list, case_id, onReload }) {
 	const [selecting, setSelecting] = useState(false);
 	const [ls, setLs] = useState(item_list || []);
 	const [cons, setCons] = useState(con_list || []);
+	const [post, setPost] = useState(false);
+	const [msgs, setMsgs] = useState([]);
+	const setMsg = msg => setMsgs([msg]);
 
 	const genId = () => {
 		for (let i = 0;; i++) {
@@ -231,16 +244,38 @@ function DetectiveBoard({ evi_list, item_list, con_list, onReload }) {
 			setLs([...ls, { id: genId(), evi_id: evi.id, pos: { x: 0, y: 0 } }]);
 	}});
 
-	return (
+	const submit = () => {
+		const req_fields = [ 'id', 'evi_id', 'pos' ];
+		const req_ls = ls.map(ent => {
+			const res = {};
+			for (const field of req_fields)
+				res[field] = ent[field];
+			return res;
+		});
+		const req = { board_json: { items: req_ls, cons } };
+
+		setPost(true);
+		setMsg('Awaiting response...');
+
+		session.put(`/api/cases/${case_id}/detective-board/`, req)
+			.then(() => {
+				setMsg('Saved successfully');
+			})
+			.catch(err => setMsgs(error_msg_list(err)))
+			.finally(() => setPost(false));
+	};
+
+	return (<>
+		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div className="flex flex-row h-full">
 			<div className="flex flex-col">
-				{ onReload && <button onClick={onReload}>Reload</button> }
+				{ onReload && <button onClick={onReload} disabled={post}>Reload</button> }
 				<button onClick={() => setSelecting(true)}>Add Evi.</button>
-				<button disabled={true}>Save</button>
+				<button onClick={submit} disabled={post}>Save</button>
 			</div>
-			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons }}/>
+			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons, title: `Case ${case_id} Board` }}/>
 		</div>
-	);
+	</>);
 }
 
 export default DetectiveBoard;

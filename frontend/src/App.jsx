@@ -101,8 +101,9 @@ const App = () => {
 									<Retrieve msg="board" path={`/api/cases/${ps.id}/detective-board/`} then={ board => (
 										<DetectiveBoard
 											evi_list={evi_list.map(evi_decode)}
-											item_list={board.board_json && board.board_json.items}
-											con_list={board.board_json && board.board_json.cons}
+											item_list={board.board_json?.items}
+											con_list={board.board_json?.cons}
+											case_id={ps.id}
 											onReload={reload}
 										/>
 									)}/>
