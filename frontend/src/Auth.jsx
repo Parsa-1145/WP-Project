@@ -144,17 +144,17 @@ export const AccountSwitcher = () => {
 								Switch account
 							</div>
 							<div className='flex flex-col gap-1'>
-								{usernames.map(username => (
-									<button
-										key={username}
-										type='button'
-										onClick={() => {
-											if (username !== activeUser)
-												session.switch_account(username);
-										}}
-										className={`flex w-full cursor-pointer items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-white/10 ${
-											username === activeUser
-												? 'bg-white/10 text-white'
+									{usernames.map(username => (
+										<button
+											key={username}
+											type='button'
+											onClick={() => {
+												if (username !== activeUser)
+													session.switch_account(username);
+											}}
+											className={`flex w-full cursor-pointer items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-white/10 ${
+												username === activeUser
+													? 'bg-white/10 text-white'
 												: 'text-white/80'
 										}`}
 									>
@@ -174,6 +174,13 @@ export const AccountSwitcher = () => {
 								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-white/80 hover:bg-white/10'
 							>
 								Add account…
+							</button>
+							<button
+								type='button'
+								onClick={() => navigate('/signup')}
+								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-white/80 hover:bg-white/10'
+							>
+								Sign Up
 							</button>
 							<button
 								type='button'

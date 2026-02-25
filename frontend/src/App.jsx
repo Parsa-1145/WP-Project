@@ -1,11 +1,11 @@
 import { BrowserRouter, Route, Routes, Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useReducer, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import './App.css'
 import Health from './Health'
 import { AccountSwitcher, Login, Signup } from './Auth'
 import DetectiveBoard from './DetectiveBoard'
 import { EvidenceList, EvidenceSubmitForm, evi_decode } from './Evidence'
-import { ComplaintSubmitForm, CrimeSubmitForm, SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
+import { SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
 import { CaseList, CaseEditForm, case_decode, case_edit_decode } from './Cases'
 import { session, error_msg } from './session'
 
@@ -33,15 +33,25 @@ const Retrieve = ({ msg, path, then }) => {
 	const [str, setStr] = useState(`Retrieving ${msg}...`)
 	const [phase, setPhase] = useState(0);
 	const [res, setRes] = useState(null);
+	const [loadedPath, setLoadedPath] = useState(null)
+	const activeUser = session.activeUser
+
+	useEffect(()=>{
+		setPhase(0)
+		setLoadedPath(null)
+		setRes(null)
+	}, [activeUser, path])
 
 	const req = () => {
 		setPhase(1);
 		session.get(path)
-			.then(r => {setRes(r.data); setPhase(3);})
+			.then(r => {setRes(r.data); setPhase(3); setLoadedPath(path)})
 			.catch(err => { setStr(error_msg(err)); setPhase(2); })
 	};
-
-	if (phase === 3)
+	
+	console.log(res)
+	
+	if (phase === 3 && loadedPath===path)
 		return then(res, () => { setStr(`Reloading ${msg}...`); setPhase(0); });
 	if (phase === 0)
 		req();
@@ -71,8 +81,17 @@ const UrlList = (local_path, remote_path, Component, props, decoder, title) => (
 );
 const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
-const App = () => (
-	<BrowserRouter>
+const App = () => {
+	const [, forceUpdate] = useReducer(c => c + 1, 0);
+	const [frontModules, setModules] = useState([])
+	useEffect(() => session.listen(() => forceUpdate()), []);
+	useEffect(() => {
+		session.get('/api/front-modules')
+			.then(res => {
+				setModules(res.data.modules)
+			})
+	}, [session.activeUser]);
+	return (<BrowserRouter>
 		<div className='w-screen h-screen m-0 px-24 py-24 box-border'>
 			<div className='flex flex-col h-full gap-2'>
 				<div className='shrink w-full flex flex-row'>
@@ -80,6 +99,8 @@ const App = () => (
 						<Link to="/home">Home</Link>
 						<Link to='/submission/inbox'>Inbox</Link>
 						<Link to='/submission/mine'>Submissions</Link>
+						{frontModules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
+						{frontModules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
 					</div>
 					<AccountSwitcher />
 				</div>
@@ -109,13 +130,14 @@ const App = () => (
 						<Route path="/login" exact element={<Login/>}/>
 						<Route path="/signup" exact element={<Signup/>}/>
 						<Route path="/evidence/submit" exact element={<EvidenceSubmitForm/>}/>
-						<Route path="/submission/complaint" exact element={<ComplaintSubmitForm/>}/>
-						<Route path="/submission/crime" exact element={<CrimeSubmitForm/>}/>
+						<Route path="/submission/new" exact element={<SubmissionSubmitForm/>}/>
+						<Route path="/submission/complaint" exact element={<SubmissionSubmitForm/>}/>
+						<Route path="/submission/crime" exact element={<SubmissionSubmitForm/>}/>
 
 						<Route path="/submission/:id/edit" exact element={
 							<ParamWrap then={(ps, qs) => (
 								<Retrieve msg="submission" path={`/api/submission/${ps.id}/`}
-									then={subm => (<SubmissionSubmitForm subm0={subm.target} resubmit={subm.id} type={subm.submission_type} returnTo={qs.get('redir')}/>)}
+									then={subm => (<SubmissionSubmitForm subm0={{ ...subm.target, submission_type: subm.submission_type }} resubmit={subm.id} returnTo={qs.get('redir')}/>)}
 								/>
 							)}/>
 						}/>
@@ -130,9 +152,17 @@ const App = () => (
 
 
 						{/* list pages */}
-						{UrlList('/evidence/list', '/api/evidence/', EvidenceList, {}, evi_decode, 'Evidence List')}
-						{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList, {}, subm_decode, 'My Submissions')}
-						{UrlList('/submission/inbox', '/api/submission/inbox/', SubmissionList, {}, subm_decode, 'Submission Inbox')}
+						{UrlList('/evidence/list', '/api/evidence/', EvidenceList,{}, evi_decode, 'Evidence List')}
+						{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList, 
+							{
+								create_button:true,
+								description:"the submissions you have sent"
+							}, 
+							subm_decode, 'My Submissions')}
+						{UrlList('/submission/inbox', '/api/submission/inbox/', SubmissionList, {
+								create_button:false,
+								description:"your submission inbox. people are waiting for you to respond"
+							}, subm_decode, 'Submission Inbox')}
 						{UrlList('/cases/list', '/api/cases/', CaseList, {}, case_decode, 'Case List')}
 						{UrlList('/cases/:id/evidences', '/api/cases/<id>/evidences/', EvidenceList, {}, evi_decode, ps => `Evidences of Case ${ps.id}`)}
 						{UrlList('/cases/:id/submissions', '/api/cases/<id>/submissions/', SubmissionList, {}, chain(e => e.submission, subm_decode), ps => `Submissions of Case ${ps.id}`)}
@@ -144,7 +174,7 @@ const App = () => (
 				</div>
 			</div>
 		</div>
-	</BrowserRouter>
-);
+	</BrowserRouter>)
+};
 
 export default App

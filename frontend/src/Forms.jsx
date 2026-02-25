@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, useRef } from 'react'
 
 export const SimpleField = (name, body, { id, key, compact, style }) => {
 	if (key === undefined) key = id;
@@ -209,21 +209,34 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 }
 
 export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
+	const containerRef = useRef(null);
 	const [width, setWidth] = useState(window.innerWidth);
 	useEffect(() => {
-		const handle = () => setWidth(window.innerWidth);
-		window.addEventListener('resize', handle);
-		return () => window.removeEventListener('resize', handle);
+		const parentElement = containerRef.current?.parentElement;
+		if (!parentElement)
+			return;
+
+		const updateWidth = () => setWidth(parentElement.clientWidth || window.innerWidth);
+		updateWidth();
+
+		if (typeof ResizeObserver !== 'undefined') {
+			const observer = new ResizeObserver(updateWidth);
+			observer.observe(parentElement);
+			return () => observer.disconnect();
+		}
+
+		window.addEventListener('resize', updateWidth);
+		return () => window.removeEventListener('resize', updateWidth);
 	}, []);
 	const rowSize = Math.max(1, Math.floor(width * 0.9 / eleWidth));
 	const divWidth = eleWidth * rowSize;
 	return (
-		<div style={{
+		<div ref={containerRef} style={{
 			display: 'grid',
 			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
 			gridTemplateRows: 'auto',
 			width: divWidth,
-		}}>
+		}} {...props}>
 			{children}
 		</div>
 	);
@@ -262,19 +275,26 @@ export const form_list_encode = (obj, eles) => {
 }
 
 
-export function GenericList({ children, title, onReload, onReturn, msg }) {
+export function GenericList({ children, title, onReload, onReturn, msg, description=null }) {
 	const [compact, setCompact] = useState(true);
 	const eleWidth = compact? 450: 550;
 	return (<>
 		<div className='flex flex-col'>
 			<div className='flex flex-row shrink w-full gap-2'>
-				<h2 className='text-left grow'>{title}</h2>
-				<label>
-					<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
-					Compact View
-				</label>
-				{ onReload && (<button onClick={onReload}>Reload</button>) }
-				{ onReturn && (<button onClick={onReturn}>Return</button>) }
+				<div className='grow'>
+					<h2 className='text-left'>
+						{title}
+					</h2>
+					{description != null?<h3 className='text-left'>{description}</h3>:null}
+				</div>
+				<div className='flex flex-col'>
+					<label>
+						<input type='checkbox' checked={compact} onChange={() => setCompact(!compact)} />
+						Compact View
+					</label>
+					{ onReload && (<button onClick={onReload}>Reload</button>) }
+					{ onReturn && (<button onClick={onReturn}>Return</button>) }
+				</div>
 			</div>
 		</div>
 		{msg && <p>{msg}</p>}

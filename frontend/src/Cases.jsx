@@ -110,13 +110,23 @@ export const case_decode = cas => form_list_decode(cas, {
 export function CaseFrame({ cas, safeOnly, ...props }) {
 	const compact = useContext(ListCompactCtx);
 	const fields = safeOnly? case_fields.filter(([,, id]) => case_safe_fields.includes(id)): case_fields;
+	const navigate = useNavigate();
+	
 
 	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id, compact });
 	const ProcessArr = ent => Process(...ent);
 	return (
-		<div className='item' {...props}>
-			{fields.map(ProcessArr)}
-		</div>
+		<>
+			<div className='item' {...props}>
+				{fields.map(ProcessArr)}
+			<button onClick={() => navigate(`/cases/${cas.id}/edit`)}>
+				edit
+			</button>
+			<button onClick={() => navigate(`/cases/${cas.id}/detective-board`)}>
+				board
+			</button>
+			</div>
+		</>
 	);
 }
 
