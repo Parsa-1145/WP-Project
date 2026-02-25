@@ -144,7 +144,7 @@ export const evi_decode = evi => {
 
 export const EvidenceList = ({ list, title, onReload, onReturn, onSelect }) => (
 	<GenericList title={title} onReload={onReload} onReturn={onReturn}>
-		{list.map((evi, i) => (<EvidenceFrame key={i} evi={evi} onSelect={() => onSelect(evi)}/>))}
+		{list.map((evi, i) => (<EvidenceFrame key={i} evi={evi} onSelect={onSelect && (() => onSelect(evi))}/>))}
 	</GenericList>
 );
 

@@ -216,7 +216,7 @@ export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
 		if (!parentElement)
 			return;
 
-		const updateWidth = () => setWidth(parentElement.clientWidth || window.innerWidth);
+		const updateWidth = () => setWidth(parentElement.clientWidth || window.innerWidth * 0.9);
 		updateWidth();
 
 		if (typeof ResizeObserver !== 'undefined') {
@@ -228,7 +228,7 @@ export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
 		window.addEventListener('resize', updateWidth);
 		return () => window.removeEventListener('resize', updateWidth);
 	}, []);
-	const rowSize = Math.max(1, Math.floor(width * 0.9 / eleWidth));
+	const rowSize = Math.max(1, Math.floor(width / eleWidth));
 	const divWidth = eleWidth * rowSize;
 	return (
 		<div ref={containerRef} style={{
