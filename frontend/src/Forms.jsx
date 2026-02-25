@@ -236,6 +236,7 @@ export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
 			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
 			gridTemplateRows: 'auto',
 			width: divWidth,
+			margin: '0 auto',
 		}} {...props}>
 			{children}
 		</div>

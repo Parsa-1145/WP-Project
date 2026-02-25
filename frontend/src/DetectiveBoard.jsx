@@ -135,6 +135,7 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 	};
 	const add_vec = (i, name, dx, dy) => ch_vec(i, name, { x: ls[i][name].x + dx, y: ls[i][name].y + dy });
 	const bound = (x, sz, mx) => x < 0? 0: x + sz > mx? mx - sz: x;
+	const bound = (x, sz, mx) => {
 
 	const to_top = i => {
 		if (i + 1 != ls.length) {
@@ -166,7 +167,7 @@ function DetectiveBoardBoard({ evi_list, ls, setLs, cons, setCons }) {
 			setCons([].concat(cons.slice(0, con), cons.slice(con + 1)));
 	}
 
-	return (<div className="item"  style={{ position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
+	return (<div className="item" style={{ margin: 'auto', position: 'relative', width: '1200px', height: '800px', padding: 0 }}>
 		<div ref={divRef} style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0 }}>
 			<h1>Board</h1>
 			{ls.map((e, i) => (
@@ -231,10 +232,10 @@ function DetectiveBoard({ evi_list, item_list, con_list, onReload }) {
 	}});
 
 	return (
-		<div style={{ display: 'flex', flexDirection: 'row' }}>
-			<div style={{ display: 'flex', flexDirection: 'column' }}>
+		<div className="flex flex-row h-full">
+			<div className="flex flex-col">
 				{ onReload && <button onClick={onReload}>Reload</button> }
-				<button onClick={() => setSelecting(true)}>Add Evidence</button>
+				<button onClick={() => setSelecting(true)}>Add Evi.</button>
 				<button disabled={true}>Save</button>
 			</div>
 			<DetectiveBoardBoard {...{ evi_list, ls, setLs, cons, setCons }}/>

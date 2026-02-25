@@ -75,7 +75,7 @@ const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
 const App = () => {
 	return (<BrowserRouter>
-		<div className='w-screen h-screen m-0 px-24 py-24 box-border'>
+		<div className='w-screen h-screen m-0 px-18 py-12 box-border'>
 			<div className='flex flex-col h-full gap-2'>
 				<div className='shrink w-full flex flex-row'>
 					<div className='flex flex-row grow gap-4 text-xl'>
