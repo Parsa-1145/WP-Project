@@ -812,6 +812,97 @@ class CaseCreationTest(APITestCase):
                 self.assertEqual(res.status_code, status.HTTP_200_OK)
                 self.assertEqual(res.json(), {"modules": expected_modules})
 
+    def test_most_wanted(self):
+        from .models import Case, CaseSuspectLink
+
+        now = timezone.now()
+        older_than_threshold = now - timedelta(days=60)
+        newer_than_threshold = now - timedelta(days=10)
+
+        # Suspects
+        wanted_high = User.objects.create_user(
+            username="wanted_high",
+            password="pass12345",
+            national_id="9000000001",
+            phone_number="+989121111111",
+            first_name="High",
+            last_name="Risk",
+        )
+        wanted_low = User.objects.create_user(
+            username="wanted_low",
+            password="pass12345",
+            national_id="9000000002",
+            phone_number="+989121111112",
+            first_name="Low",
+            last_name="Risk",
+        )
+        recent_suspect = User.objects.create_user(
+            username="recent_suspect",
+            password="pass12345",
+            national_id="9000000003",
+            phone_number="+989121111113",
+            first_name="Recent",
+            last_name="Suspect",
+        )
+
+        # Cases with different crime levels
+        critical_case = Case.objects.create(
+            title="Critical crime",
+            description="Critical level crime",
+            crime_datetime=now,
+            crime_level=Case.CrimeLevel.CRITICAL,
+        )
+        low_level_case = Case.objects.create(
+            title="Low level crime",
+            description="Low level crime",
+            crime_datetime=now,
+            crime_level=Case.CrimeLevel.LEVEL_1,
+        )
+
+        # Link suspects to cases
+        high_link = CaseSuspectLink.objects.create(
+            user=wanted_high,
+            case=critical_case,
+        )
+        low_link = CaseSuspectLink.objects.create(
+            user=wanted_low,
+            case=low_level_case,
+        )
+        recent_link = CaseSuspectLink.objects.create(
+            user=recent_suspect,
+            case=critical_case,
+        )
+
+        # Manually adjust started_at to control inclusion by 30-day threshold
+        high_link.started_at = older_than_threshold
+        low_link.started_at = older_than_threshold
+        recent_link.started_at = newer_than_threshold
+        high_link.save(update_fields=["started_at"])
+        low_link.save(update_fields=["started_at"])
+        recent_link.save(update_fields=["started_at"])
+
+        url = reverse("most-wanted-list")
+
+        # Endpoint is public
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+
+        # Only suspects older than the 30‑day threshold should appear
+        returned_ids = [item["id"] for item in data]
+        self.assertIn(wanted_high.id, returned_ids)
+        self.assertIn(wanted_low.id, returned_ids)
+        self.assertNotIn(recent_suspect.id, returned_ids)
+
+        # Ordered by wanted_score descending (critical case should rank higher)
+        if len(data) >= 2:
+            self.assertEqual(data[0]["id"], wanted_high.id)
+            self.assertEqual(data[1]["id"], wanted_low.id)
+
+        # reward_amount is proportional to wanted_score for each entry
+        for item in data:
+            self.assertEqual(item["reward_amount"], item["wanted_score"] * 20_000_000)
 # class CaseListAccessTest(APITestCase):
 #     @classmethod
 #     def add_perms(cls, user: User, *codenames):

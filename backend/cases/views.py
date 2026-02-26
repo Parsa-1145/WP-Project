@@ -519,11 +519,12 @@ class MostWanted(generics.ListAPIView):
             )
         )
 
-        users = users.annotate(
-            max_days=Extract("max_duration", "day"),
-        ).annotate(
-            wanted_score=F("max_degree") * F("max_days")
-        ).order_by("-wanted_score")
+        users_list = list(users)
+        for user in users_list:
+            max_days = user.max_duration.days if user.max_duration else 0
+            degree = user.max_degree if user.max_degree else 0
+            user.wanted_score = max_days * degree
 
-
-
+        
+        users_list.sort(key=lambda u: u.wanted_score, reverse=True)
+        return users_list
