@@ -551,6 +551,81 @@ class MostWanted(generics.ListAPIView):
         users_list.sort(key=lambda u: u.wanted_score, reverse=True)
         return users_list
 
+
+
+
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Submit verdicts for a case",
+        description=(
+            "Submit jury verdicts for suspects of a case in trial. "
+            "Only users with `cases.jury_case` permission can submit verdicts. "
+            "Each verdict must target a user who is a suspect in the case; "
+            "`guilt_status` must be GUILTY or CLEARED (not PENDING_ASSESSMENT). "
+            "`title` and `description` are required for each verdict. "
+            "On success, the suspect link is updated and `ended_at` is set."
+        ),
+        request=inline_serializer(
+            name="VerdictRequest",
+            fields={
+                "verdicts": serializers.ListField(
+                    child=inline_serializer(
+                        name="VerdictItem",
+                        fields={
+                            "user_id": serializers.IntegerField(help_text="ID of the suspect (user) to apply the verdict to."),
+                            "guilt_status": serializers.ChoiceField(
+                                choices=[CaseSuspectLink.SuspectGuiltStatus.GUILTY, CaseSuspectLink.SuspectGuiltStatus.CLEARED],
+                                help_text="Verdict: GUILTY or CLEARED. PENDING_ASSESSMENT is not allowed.",
+                            ),
+                            "title": serializers.CharField(help_text="Short title for the verdict."),
+                            "description": serializers.CharField(help_text="Detailed description of the verdict."),
+                        },
+                    ),
+                    help_text="List of verdict objects, one per suspect.",
+                ),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="VerdictSuccessResponse",
+                fields={"detail": serializers.CharField()},
+            ),
+            403: {"description": "Only users with jury permission can submit verdicts."},
+            404: {"description": "Case not found."},
+            400: {"description": "Invalid payload: verdicts required as list, valid user_id/guilt_status/title/description per item."},
+        },
+        examples=[
+            OpenApiExample(
+                name="Submit verdicts request",
+                request_only=True,
+                value={
+                    "verdicts": [
+                        {
+                            "user_id": 2,
+                            "guilt_status": "GUILTY",
+                            "title": "Guilty as charged",
+                            "description": "Evidence supports conviction.",
+                        },
+                        {
+                            "user_id": 3,
+                            "guilt_status": "CLEARED",
+                            "title": "Cleared",
+                            "description": "Insufficient evidence.",
+                        },
+                    ],
+                },
+            ),
+            OpenApiExample(
+                name="Success response",
+                response_only=True,
+                status_codes=["200"],
+                value={"detail": "Verdicts submitted successfully."},
+            ),
+        ],
+    ),
+)
 class CaseVerdictView(APIView):
     permission_classes = [IsAuthenticated]
 
