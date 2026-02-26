@@ -151,6 +151,9 @@ class CaseSuspectLink(models.Model):
         choices=SuspectGuiltStatus.choices,
         default=SuspectGuiltStatus.PENDING_ASSESSMENT
     )
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
     
 
 class CaseSubmissionLink(models.Model):

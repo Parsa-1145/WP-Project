@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
 from drf_spectacular.utils import extend_schema, OpenApiExample, extend_schema_view, inline_serializer
 from rest_framework import serializers
@@ -12,7 +12,11 @@ from .models import Case
 from evidence.models import Evidence  
 
 from .models import Case, CaseSubmissionLink, CaseSuspectLink
-from .serializers import CaseListSerializer, ComplainantCaseListSerializer, CaseUpdateSerializer, CaseLinkedSubmissionSerializer
+from .serializers import (CaseListSerializer, 
+                          ComplainantCaseListSerializer,
+                            CaseUpdateSerializer,
+                              CaseLinkedSubmissionSerializer,
+                              MostWantedSerializer)
 from evidence.models import Evidence
 from evidence.serializers import EvidencePolymorphicSerializer
 
@@ -20,6 +24,8 @@ from investigation.serializers import DetectiveBoardSerializer
 from investigation.permissions import IsDetectiveBoardOwner
 from investigation.models import DetectiveBoard
 from accounts.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 case_list_example = {
                 "id": 12,
@@ -448,4 +454,76 @@ class FrontModulesGetView(APIView):
         items.append("COMPLAINANT_CASES")
 
         return Response({"modules":items})
+
+
+@extend_schema(
+    summary="List most wanted suspects",
+    description=(
+        "Returns a list of suspects ordered by a 'wanted score' calculated based on the severity of their alleged crimes and the duration they've been suspects. "
+        "Only suspects who have been investigated for at least 30 days are included. "
+    ),
+    responses=MostWantedSerializer(many=True),
+    request=None,
+    examples=[
+        OpenApiExample(
+            name="Most wanted suspects response",
+            response_only=True,
+            status_codes=["200"],
+            value=[
+                {
+                    "id": 2,
+                    "username": "userone",
+                    "first_name": "User",
+                    "last_name": "One",
+                    "reward_amount": 40000000,
+                    "wanted_score": 2
+                },
+                {
+                    "id": 3,
+                    "username": "usertwo",
+                    "first_name": "User",
+                    "last_name": "Two",
+                    "reward_amount": 20000000,
+                    "wanted_score": 1
+                }
+            ],
+        )
+    ]
+)
+class MostWanted(generics.ListAPIView):
+    serializer_class = MostWantedSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from django.db.models import (ExpressionWrapper, F, Max, DurationField,Case as DBCase,When, Value,IntegerField)
+        from django.db.models.functions import Now, Coalesce, Extract
+        from .models import Case
+        threshold = timezone.now() - timedelta(days=30)
+        users = User.objects.filter(
+            case_suspect_links__started_at__lt=threshold,
+        ).annotate(
+            max_duration=Max(
+                ExpressionWrapper(
+                    Coalesce(F('case_suspect_links__ended_at'), Now()) - F('case_suspect_links__started_at'),
+                    output_field=DurationField()
+                )
+            ),
+            max_degree=Max(
+                DBCase(
+                    When(case_suspect_links__case__crime_level=Case.CrimeLevel.LEVEL_1, then=Value(1)),
+                    When(case_suspect_links__case__crime_level=Case.CrimeLevel.LEVEL_2, then=Value(2)),
+                    When(case_suspect_links__case__crime_level=Case.CrimeLevel.LEVEL_3, then=Value(3)),
+                    When(case_suspect_links__case__crime_level=Case.CrimeLevel.CRITICAL, then=Value(4)),
+                    output_field=IntegerField(),
+                )
+            )
+        )
+
+        users = users.annotate(
+            max_days=Extract("max_duration", "day"),
+        ).annotate(
+            wanted_score=F("max_degree") * F("max_days")
+        ).order_by("-wanted_score")
+
+
 

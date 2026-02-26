@@ -564,3 +564,13 @@ class GuiltAssesmentPayloadSerializer(serializers.Serializer):
     )
 
     
+class MostWantedSerializer(serializers.ModelSerializer):
+    wanted_score = serializers.IntegerField(read_only=True)
+    reward_amount = serializers.SerializerMethodField()
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name", "reward_amount", "wanted_score"]
+        read_only_fields = fields
+    def get_reward_amount(self, obj) -> int:
+        mul = 20_000_000
+        return mul * obj.wanted_score

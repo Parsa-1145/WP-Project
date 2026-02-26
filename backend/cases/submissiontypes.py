@@ -415,10 +415,11 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
     def handle_submission_action(cls, submission, action, context, **kwargs):
         stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
         target = cls.get_object(submission.object_id)
-
+        from django.utils import timezone
         for s in target.suspect_links.all():
             s: CaseSuspectLink
             s.guilt_state = s.SuspectGuiltStatus.CLEARED
+            s.ended_at = timezone.now()
             s.save()
 
 
