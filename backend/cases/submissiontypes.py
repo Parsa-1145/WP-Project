@@ -383,6 +383,9 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
 
         if (case.lead_detective != user) and (case.supervisor != user):
             raise PermissionDenied("only the lead detective or the supervisor can make this request")
+        
+        if case.suspects.filter(user__status=User.Status.WANTED).exists():
+            raise PermissionDenied("all the suspects should be arrested")
             
     @classmethod
     def create_object(cls, payload, serializer, context):

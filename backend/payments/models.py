@@ -12,9 +12,10 @@ class BailRequest(models.Model):
         ]
 
     class Status(models.TextChoices):
-        PENDING = 'pending', "Pending"
+        PENDING  = 'pending', "Pending"
         APPROVED = 'approved', "Approved"
         REJECTED = 'rejected', "Rejected"
+        PAID     = 'paid'    ,  "Paid"
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     amount = models.IntegerField(null=True, blank=True)  
@@ -68,13 +69,11 @@ class Reward(models.Model):
         return f"Reward {self.unique_code} - {self.user.username}"
 
 class PaymentTransaction(models.Model):
-
     class Status(models.TextChoices):
         PENDING = 'pending', "Pending"
         COMPLETED = 'completed', "Completed"
         FAILED = 'failed', "Failed"
         REFUNDED = 'refunded', "Refunded"
-
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -11,12 +11,32 @@ from drf_spectacular.utils import extend_schema_field
 # base
 # ---------------------------------------------------------------------
 
+class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
+    case_id = serializers.IntegerField(source="id", read_only=True)
+
+    class Meta:
+        model = Case
+        fields = ["case_id", "title", "description", "crime_datetime", "status"]
+        read_only_fields = fields
+
+
 class UserBriefInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "first_name", "last_name", "national_id", "phone_number"]
         read_only_fields = fields
 
+class InvestigationSuspectSerializer(UserBriefInfoSerializer):
+    criminal_record = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [*UserBriefInfoSerializer.Meta.fields, "criminal_record"]
+        read_only_fields = fields
+
+    def get_criminal_record(self, obj: User) -> SuspectCriminalRecordItemSerializer:
+        cases = obj.suspect_cases.all().order_by("id")
+        return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
 
 class SuspectInfoSerializer(UserBriefInfoSerializer):
     id = serializers.IntegerField(source="user.id", read_only=True)
@@ -28,13 +48,20 @@ class SuspectInfoSerializer(UserBriefInfoSerializer):
     supervisor_score = serializers.IntegerField(read_only=True)
     detective_score = serializers.IntegerField(read_only=True)
     status = serializers.CharField(source="user.status", read_only=True)
-    guilt_status = serializers.CharField(source="guilt_state", read_only=True)
+    guilt_status = serializers.CharField( read_only=True)
+    criminal_record=serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = CaseSuspectLink
         fields = ["id", "first_name", "last_name", "national_id",
-                   "suspect_link", "supervisor_score", "detective_score", "status", "phone_number", "guilt_status"]
+                   "suspect_link", "supervisor_score", "detective_score", 
+                   "status", "phone_number", "guilt_status",
+                   "criminal_record"]
         read_only_fields = fields
+
+    def get_criminal_record(self, obj: CaseSuspectLink) -> SuspectCriminalRecordItemSerializer:
+        cases = obj.user.suspect_cases.all().order_by("id")
+        return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
 
 class IndexedErrorsListSerializer(serializers.ListSerializer):
     def run_validation(self, data=serializers.empty):
@@ -93,6 +120,8 @@ class NationalIDUsersListField(IndexedErrorsListField):
             for user in User.objects.filter(national_id__in=national_ids)
         }
         return [users_by_nid[nid] for nid in national_ids if nid in users_by_nid]
+
+
 
 # ---------------------------------------------------------------------
 # complaint
@@ -261,31 +290,13 @@ class CaseListSerializer(serializers.ModelSerializer):
             return "DETECTIVE"
         if obj.supervisor_id == user.id:
             return "SUPERVISOR"
-        return None
+        return "VIEWER"
 
 # ---------------------------------------------------------------------
 # Investigation results
 # ---------------------------------------------------------------------
 
-class SuspectCriminalRecordItemSerializer(serializers.ModelSerializer):
-    case_id = serializers.IntegerField(source="id", read_only=True)
 
-    class Meta:
-        model = Case
-        fields = ["case_id", "title", "description", "crime_datetime", "status"]
-        read_only_fields = fields
-
-class InvestigationSuspectSerializer(UserBriefInfoSerializer):
-    criminal_record = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = [*UserBriefInfoSerializer.Meta.fields, "criminal_record"]
-        read_only_fields = fields
-        
-    def get_criminal_record(self, obj: User) -> SuspectCriminalRecordItemSerializer:
-        cases = obj.suspect_cases.all().order_by("id")
-        return SuspectCriminalRecordItemSerializer(cases, many=True, context=self.context).data
 
 class InvestigationResultsSubmissionSerializer(serializers.ModelSerializer):
     case = serializers.PrimaryKeyRelatedField(

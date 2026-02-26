@@ -14,3 +14,16 @@ from .serializers import classes as customSerializers
 class SignupView(generics.CreateAPIView):
     serializer_class = customSerializers.UserSerializer
     permission_classes = [permissions.AllowAny]
+
+
+@extend_schema(
+    summary="Current user profile",
+    description="Retrieve details of the currently authenticated user.",
+    responses={200: customSerializers.CurrentUserSerializer},
+)
+class CurrentUserView(generics.RetrieveAPIView):
+    serializer_class = customSerializers.CurrentUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

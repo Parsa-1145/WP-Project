@@ -85,7 +85,7 @@ case_list_example = {
     summary="List cases (full details)",
     description=(
         "Returns full case details for users who are assigned as lead detective/supervisor "
-        "or have `cases.view_all_cases`. "
+        "or have `cases.view_case`. "
         "Cases where the caller is a complainant are excluded from this endpoint."
     ),
     responses=CaseListSerializer(many=True),
@@ -111,7 +111,7 @@ class CaseListView(generics.ListAPIView):
         )
 
         # Complainants never receive the full-detail payload from this endpoint.
-        if user.has_perm("cases.view_all_cases"):
+        if user.has_perm("cases.view_case"):
             return queryset.exclude(complainants=user).distinct().order_by("-id")
 
         return (
@@ -188,8 +188,8 @@ class AssignedCaseAccessMixin:
         summary="Retrieve case (full details)",
         description=(
             "Returns full case details for users who are assigned as lead detective/supervisor "
-            "or have `cases.view_all_cases`. "
-            "Complainants are blocked from this endpoint even if they have `cases.view_all_cases`."
+            "or have `cases.view_case`. "
+            "Complainants are blocked from this endpoint even if they have `cases.view_case`."
         ),
         responses=CaseListSerializer,
         examples=[
@@ -253,13 +253,13 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateAPIView):
         if user.id in complainant_ids:
             raise PermissionDenied("Complainants cannot access full case details.")
 
-        if user.has_perm("cases.view_all_cases"):
+        if user.has_perm("cases.view_case"):
             return case
 
         if case.lead_detective_id == user.id or case.supervisor_id == user.id:
             return case
 
-        raise PermissionDenied("Only assigned detective/supervisor or users with view_all_cases can access this case.")
+        raise PermissionDenied("Only assigned detective/supervisor or users with view_case can access this case.")
 
 
 @extend_schema(
@@ -428,7 +428,7 @@ class DetectiveBoardUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateA
             fields={
                 # spectacular treats this as the top-level schema when used as a response
                 "modules": serializers.ListField(
-                    child=serializers.ChoiceField(choices=["ASSIGNED_CASES", "COMPLAINANT_CASES", "AUTOPSY"]),
+                    child=serializers.ChoiceField(choices=["ASSIGNED_CASES", "COMPLAINANT_CASES", "AUTOPSY", "PROFILE"]),
                     allow_empty=True,
                 )
             },
@@ -445,15 +445,36 @@ class FrontModulesGetView(APIView):
 
         items = []
 
-        if user.has_perm("cases.investigate_on_case") or user.has_perm("cases.supervise_case"):
+        if user.has_perm("cases.investigate_on_case") or user.has_perm("cases.supervise_case") or user.has_perm("cases.view_case"):
             items.append("ASSIGNED_CASES")
 
         if user.has_perm("evidence.can_approve_bioevidence"):
             items.append("AUTOPSY")
 
+        if user.has_perm("case.jury_case"):
+            items.append("JURY")
+
         items.append("COMPLAINANT_CASES")
+        items.append("PROFILE")
 
         return Response({"modules":items})
+    
+class GetTrialCases(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CaseListSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.has_perm("cases.jury_case"):
+            raise PermissionDenied("Only users with jury permission can access trial cases.")
+
+        return (
+            Case.objects
+            .filter(status=Case.Status.TRIAL)
+            .select_related("lead_detective", "supervisor")
+            .prefetch_related("complainants", "witnesses", "suspect_links__user")
+            .order_by("-id")
+        )
 
 
 @extend_schema(

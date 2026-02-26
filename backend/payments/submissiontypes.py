@@ -3,6 +3,7 @@ from submissions.models import Submission, SubmissionAction, SubmissionStage, Su
 from .models import BailRequest
 from accounts.models import User
 from .serializers import BailRequestSerializer
+from rest_framework.exceptions import ValidationError
 
 
 
@@ -31,6 +32,12 @@ class BailRequestSubmissionType(BaseSubmissionType["BailRequest"]):
         submission.current_stage = 0
         submission.save()
 
+    @classmethod
+    def validate_submission_action_payload(cls, submission, action_type, payload, context, **kwargs):
+        if action_type == SubmissionActionType.ACCEPT:
+            if "amount" not in payload:
+                raise ValidationError({"payload": {"amount": "This field is required."}})
+        
     @classmethod
     def handle_submission_action(cls, submission, action, context, **kwargs):
         if submission.current_stage == 0:

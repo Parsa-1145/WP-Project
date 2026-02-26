@@ -23,7 +23,6 @@ class CaseCreationTest(APITestCase):
     
     @classmethod
     def setUpTestData(cls):
-        print("asd")
         cls.u1 = User.objects.create_user(
             username="creator",
             password="pass12345",
@@ -966,8 +965,8 @@ class CaseCreationTest(APITestCase):
 #             last_name="Side",
 #         )
 
-#         cls.add_perms(cls.viewer, "view_all_cases")
-#         cls.add_perms(cls.complainant_with_all, "view_all_cases")
+#         cls.add_perms(cls.viewer, "view_case")
+#         cls.add_perms(cls.complainant_with_all, "view_case")
 
 #         cls.case_assigned = Case.objects.create(
 #             title="Assigned Case",

@@ -8,13 +8,12 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 class Case(models.Model):
     class Meta:
         permissions = [
-            ("view_all_cases", "Can view all cases"),
             ("investigate_on_case", "Can investigate on a case"),
             ("supervise_case", "Can supervise a case"),
             ("add_case_acceptance_submission", "Can add a submission to find a lead_detective and a supervisor for a case"),
             ("assess_suspect_guilt", "Can assess whether suspects are guilty or not guilty"),
             ("approve_suspect_guilt_assessment", "Can approve suspect guilt assessments in critical cases"),
-            
+            ("jury_case", "Can judge a case"),
         ]
     class CrimeLevel(models.TextChoices):
         CRITICAL = 'CR', "Critical"

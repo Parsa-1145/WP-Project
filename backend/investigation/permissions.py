@@ -20,7 +20,7 @@ class IsDetectiveBoardOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         
         if isinstance(obj, DetectiveBoard):
-            if request.user.has_perm('cases.view_all_cases'):
+            if request.user.has_perm('cases.view_case'):
                 return True
             
             return obj.case.assigned_detectives.filter(id=request.user.id).exists()

@@ -6,7 +6,7 @@ from submissions.service import create_submission
 
 
 class BaseEvidenceSerializer(serializers.ModelSerializer):
-    def validate_case(self, value):
+    def validate_case(self, value: Case):
         request = self.context.get('request')
 
         if request and not request.user and not request.user.is_authenticated:
@@ -18,6 +18,9 @@ class BaseEvidenceSerializer(serializers.ModelSerializer):
             return value
         
         if Case.objects.filter(id=value.id, complainants__in=[user]).exists():
+            return value
+
+        if (value.lead_detective.id == user.id) or (value.supervisor.id == user.id):
             return value
         raise PermissionDenied("You do not have permission to this case.")
 

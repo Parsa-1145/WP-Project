@@ -8,6 +8,7 @@ from django.shortcuts import redirect,render
 from django.db import transaction
 import logging
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from accounts.models import User
 
 class PaymentView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -182,6 +183,13 @@ class PaymentCallbackView(views.APIView):
                     transaction.gateway_message = response_data.get("message", "")
                     transaction.ref_id = response_data.get("ref_id")
                     transaction.save()
+
+                    user:User = transaction.bail_request.requested_by
+                    user.status = user.Status.RELEASED_ON_BAIL
+                    user.save()
+
+                    transaction.bail_request.status = transaction.bail_request.Status.PAID
+                    transaction.bail_request.save()
                     return render(request, "payment_success.html", {
                             "ref_id": transaction.ref_id,
                             "frontend_dashboard_url": settings.FRONT_DASHBOARD_URL
