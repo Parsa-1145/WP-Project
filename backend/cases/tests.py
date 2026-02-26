@@ -11,7 +11,7 @@ from accounts.models import User
 from submissions.models import Submission, SubmissionActionType, SubmissionStatus
 from evidence.models import OtherEvidence
 
-from .models import Case, CaseSubmissionLink
+from .models import Case, CaseSubmissionLink, CaseSuspectLink
 from .submissiontypes import CaseStaffingSubmissionType 
 import json
 
@@ -904,9 +904,252 @@ class CaseCreationTest(APITestCase):
             self.assertEqual(item["reward_amount"], item["wanted_score"] * 20_000_000)
 
 class VerdictTest(APITestCase):
-    def test_verdict_creation(self):
-        # This is a placeholder test. The actual implementation would depend on the verdict creation logic.
-        self.assertTrue(True)
+    @classmethod
+    def add_perms(cls, user: User, *codenames):
+        for codename in codenames:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.jury_user = User.objects.create_user(
+            username="jury",
+            password="pass12345",
+            first_name="Jury",
+            last_name="User",
+            national_id="8000000001",
+            phone_number="+989128000001",
+        )
+        cls.add_perms(cls.jury_user, "jury_case")
+
+        cls.regular_user = User.objects.create_user(
+            username="regular",
+            password="pass12345",
+            first_name="Regular",
+            last_name="User",
+            national_id="8000000002",
+            phone_number="+989128000002",
+        )
+
+        cls.suspect_one = User.objects.create_user(
+            username="suspect1",
+            password="pass12345",
+            first_name="Suspect",
+            last_name="One",
+            national_id="8000000003",
+            phone_number="+989128000003",
+        )
+        cls.suspect_two = User.objects.create_user(
+            username="suspect2",
+            password="pass12345",
+            first_name="Suspect",
+            last_name="Two",
+            national_id="8000000004",
+            phone_number="+989128000004",
+        )
+
+        cls.case = Case.objects.create(
+            title="Trial Case",
+            description="Case for verdict tests",
+            crime_datetime=timezone.now(),
+            crime_level=Case.CrimeLevel.LEVEL_2,
+            status=Case.Status.TRIAL,
+        )
+        cls.link_one = CaseSuspectLink.objects.create(
+            user=cls.suspect_one,
+            case=cls.case,
+            guilt_status=CaseSuspectLink.SuspectGuiltStatus.PENDING_ASSESSMENT,
+        )
+        cls.link_two = CaseSuspectLink.objects.create(
+            user=cls.suspect_two,
+            case=cls.case,
+            guilt_status=CaseSuspectLink.SuspectGuiltStatus.PENDING_ASSESSMENT,
+        )
+
+    def _verdict_url(self, pk):
+        return reverse("case-verdict", kwargs={"pk": pk})
+
+    def test_verdict_post_requires_authentication(self):
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    "description": "Found guilty.",
+                }
+            ]
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_verdict_post_requires_jury_permission(self):
+        self.client.force_authenticate(self.regular_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    "description": "Found guilty.",
+                }
+            ]
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("jury", response.json().get("detail", "").lower())
+
+    def test_verdict_post_case_not_found_returns_404(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(99999)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    "description": "Found guilty.",
+                }
+            ]
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_verdict_post_success_updates_suspect_link(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty as charged",
+                    "description": "Evidence supports conviction.",
+                }
+            ]
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), {"detail": "Verdicts submitted successfully."})
+
+        self.link_one.refresh_from_db()
+        self.assertEqual(self.link_one.guilt_status, CaseSuspectLink.SuspectGuiltStatus.GUILTY)
+        self.assertEqual(self.link_one.verdict_title, "Guilty as charged")
+        self.assertEqual(self.link_one.verdict_description, "Evidence supports conviction.")
+        self.assertIsNotNone(self.link_one.ended_at)
+
+    def test_verdict_post_success_multiple_verdicts(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    "description": "First suspect guilty.",
+                },
+                {
+                    "user_id": self.suspect_two.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.CLEARED,
+                    "title": "Cleared",
+                    "description": "Second suspect cleared.",
+                },
+            ]
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.link_one.refresh_from_db()
+        self.link_two.refresh_from_db()
+        self.assertEqual(self.link_one.guilt_status, CaseSuspectLink.SuspectGuiltStatus.GUILTY)
+        self.assertEqual(self.link_one.verdict_title, "Guilty")
+        self.assertEqual(self.link_two.guilt_status, CaseSuspectLink.SuspectGuiltStatus.CLEARED)
+        self.assertEqual(self.link_two.verdict_title, "Cleared")
+        self.assertIsNotNone(self.link_one.ended_at)
+        self.assertIsNotNone(self.link_two.ended_at)
+
+    def test_verdict_post_verdicts_required(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(url, data={}, format="json")
+        self.assertIn("verdicts", str(ctx.exception))
+
+    def test_verdict_post_verdicts_must_be_list(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(
+                url, data={"verdicts": "not a list"}, format="json"
+            )
+        self.assertIn("verdicts", str(ctx.exception))
+
+    def test_verdict_post_user_must_be_suspect_in_case(self):
+        outsider = User.objects.create_user(
+            username="outsider",
+            password="pass12345",
+            national_id="8000000005",
+            phone_number="+989128000005",
+        )
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": outsider.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    "description": "Not a suspect.",
+                }
+            ]
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(url, data=payload, format="json")
+        self.assertIn("not a suspect", str(ctx.exception))
+
+    def test_verdict_post_invalid_guilt_status_rejected(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.PENDING_ASSESSMENT,
+                    "title": "Pending",
+                    "description": "Still pending.",
+                }
+            ]
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(url, data=payload, format="json")
+        self.assertIn("guilt_status", str(ctx.exception))
+
+    def test_verdict_post_title_and_description_required(self):
+        self.client.force_authenticate(self.jury_user)
+        url = self._verdict_url(self.case.pk)
+        payload = {
+            "verdicts": [
+                {
+                    "user_id": self.suspect_one.id,
+                    "guilt_status": CaseSuspectLink.SuspectGuiltStatus.GUILTY,
+                    "title": "Guilty",
+                    # description missing
+                }
+            ]
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(url, data=payload, format="json")
+        self.assertIn("title", str(ctx.exception))
+        self.assertIn("description", str(ctx.exception))
+
+        payload["verdicts"][0]["description"] = "Has description"
+        del payload["verdicts"][0]["title"]
+        with self.assertRaises(ValueError) as ctx:
+            self.client.post(url, data=payload, format="json")
+        self.assertIn("title", str(ctx.exception))
+        self.assertIn("description", str(ctx.exception))
 # class CaseListAccessTest(APITestCase):
 #     @classmethod
 #     def add_perms(cls, user: User, *codenames):
