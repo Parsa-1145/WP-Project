@@ -8,6 +8,7 @@ import { EvidenceList, EvidenceSubmitForm, evi_decode } from './Evidence'
 import { SubmissionSubmitForm, SubmissionList, subm_decode } from './Submission'
 import { CaseList, CaseEditForm, case_decode, case_edit_decode } from './Cases'
 import { session, error_msg } from './session'
+import MostWantedList from './pages/most-wanted'
 
 const Home = () => {
 	const navigate = useNavigate();
@@ -85,6 +86,7 @@ const App = () => {
 							<Link to='/submission/mine'>Submissions</Link>
 							{modules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
 							{modules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
+							<Link to='/most-wanted'>Most Wanted</Link>
 						</>) } />
 					</div>
 					<AccountSwitcher />
@@ -153,6 +155,7 @@ const App = () => {
 								description:"your submission inbox. people are waiting for you to respond"
 							}, subm_decode, 'Submission Inbox')}
 						{UrlList('/cases/list', '/api/cases/', CaseList, {}, case_decode, 'Case List')}
+						{UrlList('/most-wanted', '/api/cases/most-wanted/', MostWantedList, {}, x => x, 'Most Wanted')}
 						{UrlList('/cases/:id/evidences', '/api/cases/<id>/evidences/', EvidenceList, {}, evi_decode, ps => `Evidences of Case ${ps.id}`)}
 						{UrlList('/cases/:id/submissions', '/api/cases/<id>/submissions/', SubmissionList, {}, chain(e => e.submission, subm_decode), ps => `Submissions of Case ${ps.id}`)}
 						{UrlList('/cases/complainant', '/api/cases/complainant/', CaseList, { safeOnly: true }, case_decode, 'Complainant in')}
