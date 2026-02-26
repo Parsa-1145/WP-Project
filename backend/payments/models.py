@@ -1,6 +1,7 @@
 from django.db import models
 from core import settings
 import uuid
+from django.utils import timezone
 
 
 class BailRequest(models.Model):
@@ -67,6 +68,16 @@ class Reward(models.Model):
 
     def __str__(self):
         return f"Reward {self.unique_code} - {self.user.username}"
+
+    def claim(self):
+        """
+        Mark this reward as claimed if it is still pending.
+        """
+        if self.status == self.Status.CLAIMED:
+            raise ValueError("Reward has already been claimed.")
+        self.status = self.Status.CLAIMED
+        self.claimed_at = timezone.now()
+        self.save(update_fields=["status", "claimed_at"])
 
 class PaymentTransaction(models.Model):
     class Status(models.TextChoices):
