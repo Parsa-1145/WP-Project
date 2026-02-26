@@ -1,13 +1,42 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react'
+import { formatDate } from './utils';
+
+const FORM_DATETIME_TZ = '+03:30';
+
+const toDatetimeLocalValue = (value) => {
+	if (typeof value !== 'string')
+		return '';
+
+	const trimmed = value.trim();
+	if (!trimmed)
+		return '';
+
+	const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+	if (match)
+		return `${match[1]}T${match[2]}`;
+
+	return trimmed.slice(0, 16);
+};
+
+export const SimpleInputField = (name, body, { id, key, compact, style }) => {
+	if (key === undefined) key = id;
+	return (
+		<div key={key} className='flex flex-col gap-1 grow'>
+			<div className='grow flex flex-row gap-2 items-center'>
+				<span className='datetime-prefix'>&gt;</span>
+				<label htmlFor={id} className='grow'>{name} </label>
+			</div>
+			{body}
+		</div>
+	);
+};
 
 export const SimpleField = (name, body, { id, key, compact, style }) => {
 	if (key === undefined) key = id;
 	return (
-		<div key={key} style={{ position: 'relative' }}>
-			<label htmlFor={id} style={{ ...style, position: 'absolute', left: 0 }}>{name}: </label>
-			<div style={{ ...style, marginLeft: compact >= 2? '110px': '180px', textAlign: 'left' }}>
-				{body}
-			</div>
+		<div key={key} className='grid grid-cols-2'>
+			<label htmlFor={id} className='grow'>{name} : </label>
+			{body}
 		</div>
 	);
 };
@@ -26,13 +55,13 @@ const parse_list = (type, input) =>
 export const FormInputField = (type, name, value, onChange, { id, key }) => {
 	if (key === undefined) key = id;
 
-	const Simple = body => SimpleField(name, body, { id, key });
+	const Simple = body => SimpleInputField(name, body, { id, key });
 
 	if (type === 'textarea')
-		return Simple((<textarea id={id} value={value} onChange={onChange}/>));
+		return Simple((<textarea id={id} value={value} onChange={onChange} className='input  w-full'/>));
 
 	else if (type === 'file')
-		return Simple((<input id={id} type={'file'} onChange={onChange}/>));
+		return Simple((<input id={id} type={'file'} onChange={onChange} />));
 
 	else if (type === 'files')
 		return (
@@ -63,44 +92,57 @@ export const FormInputField = (type, name, value, onChange, { id, key }) => {
 		);
 
 	else if (type === 'datetime') {
-		// TODO: determine timezone
-		// 2026-02-18T17:51:45.491058+03:30
-		// 2026-02-19T02:12
-		const value_small = value.split(':').slice(0, 2).join(':');
-		return Simple((<div><input id={id} type={'datetime-local'} value={value_small} onChange={onChange}/>UTC+03:30</div>));
+		const valueSmall = toDatetimeLocalValue(value);
+		return Simple((
+				<div className='flex flex-row'>
+					<input
+						id={id}
+						type='datetime-local'
+						value={valueSmall}
+						onChange={onChange}
+						className='input grow'
+					/>
+					{/* <span className='datetime-tz'>[UTC{FORM_DATETIME_TZ}]</span> */}
+				</div>
+		));
 	}
 
 	else if (is_list(type)) {
 		const eles = parse_list(type, true);
 		return (
-			<div key={id} style={{ position: 'relative' }}>
-				<label htmlFor={id} style={{ position: 'absolute', left: 0 }}>{name}: </label>
-
-				<div id={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'left', marginLeft: '180px' }}>
+			<div key={id} className='flex flex-col'>
+				<div className='grow flex flex-row gap-2 items-center'>
+					<span className='datetime-prefix'>&gt;</span>
+					<label htmlFor={id} className='grow'>{name} </label>
+				</div>
+				<div id={id} className='flex flex-col gap-2 border-1 border-dotted p-2'>
 					{value && value.map((ent, i) => (
 						<div
-							key={i}
-							style={{ display: 'flex', flexDirection: 'row' }}
+						key={i}
+						className='w-full flex flex-row gap-2'
 						>
 							{eles.map((ele, j) => (
-								<input key={j} value={ent[j]} placeholder={ele} type='text' onChange={e => {
+								<input key={j} value={ent[j]} placeholder={ele} type='text'
+								 onChange={e => {
 									const ent2 = [...ent];
 									ent2[j] = e.target.value;
 									onChange([i, ent2])
-								}} />
+								}} 
+								className='grow input'
+								/>
 							))}
-							<button onClick={() => onChange(i)}>Remove</button>
+							<button className='btn btn-sm' onClick={() => onChange(i)}>x</button>
 						</div>
 					))}
 
-					<button onClick={() => onChange([value.length, eles.map(() => '')])}>New</button>
+					<button className='btn btn-sm w-full' onClick={() => onChange([value.length, eles.map(() => '')])}>Add</button>
 				</div>
 			</div>
 		);
 	}
 
 	else
-		return Simple((<input id={id} type={type} value={value} onChange={onChange}/>));
+		return Simple((<input id={id} type={type} value={value} onChange={onChange} className='input w-full'/>));
 };
 
 export const FormInputChangeFn = (data, setData, type, name) => e => {
@@ -116,10 +158,7 @@ export const FormInputChangeFn = (data, setData, type, name) => e => {
 	}
 
 	else if (type === 'datetime') {
-		// TODO: determine timezone
-		// 2026-02-18T17:51:45.491058+03:30
-		// 2026-02-19T02:12
-		data2[name] = e.target.value + ":00+03:30";
+		data2[name] = e.target.value ? `${e.target.value}:00${FORM_DATETIME_TZ}` : '';
 	}
 
 	else if (is_list(type)) {
@@ -172,8 +211,13 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			);
 		}
 
-		else
+		else{
+			if (type === 'datetime')
+				value = formatDate(value, 
+			{options: {hour: '2-digit', minute: '2-digit', year: 'numeric',month: 'short',day: 'numeric'},
+			showRelative:true});
 			return SimpleField(name, (<p>{value||'<empty>'}</p>), { id, key });
+		}
 	}
 
 	else {
@@ -202,7 +246,9 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 			if (type === 'textarea')
 				value = value.length > 128? value.slice(0, 128) + '...': value;
 			if (type === 'datetime')
-				value = value.replace(/\:\d{2}(\.\d+)?(?=[+-]|$)/, '').replace(/T/g, ' ');
+				value = formatDate(value, 
+			{options: {hour: '2-digit', minute: '2-digit', year: 'numeric',month: 'short',day: 'numeric'},
+			showRelative:false});
 			return SimpleField(name, (<div>{value||'<empty>'}</div>), { id, key, style: divStyle, compact });
 		}
 	}

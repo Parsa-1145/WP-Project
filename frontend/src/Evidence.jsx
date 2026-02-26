@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, SimpleInputField, GenericList, ListCompactCtx } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 
 // type, name, id
@@ -108,7 +108,7 @@ export function EvidenceSubmitForm({ returnTo, case_id }) {
 		<h1>Evidence Submission</h1>
 		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
-			{SimpleField('Type', (
+			{SimpleInputField('Type', (
 				<select value={data.type} onChange={ChangeFn('text', 'type')}>
 					{evi_types.map(type => (<option key={type} id={type}>{type}</option>))}
 				</select>

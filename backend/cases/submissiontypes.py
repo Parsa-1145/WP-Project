@@ -338,11 +338,9 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
             case.status = Case.Status.INTEROGATING_SUSPECTS
             case.suspects.set(target.suggested_suspects.all())
 
-
             for user in case.suspects.all():
                 user.status = user.Status.WANTED
                 user.save(update_fields=["status"])
-
 
             case.save()
 

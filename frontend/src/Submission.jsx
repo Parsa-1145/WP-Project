@@ -1,9 +1,10 @@
 import { useState, useEffect, useContext } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router'
-import { FormInputField, FormInputChangeFn, FormField, SimpleField, GenericList, ListCompactCtx, form_list_decode } from './Forms'
+import { FormInputField, FormInputChangeFn, FormField, GenericList, ListCompactCtx, form_list_decode } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 import { useModal } from './modals/ModalHost';
 import { formatDate, NormalizationType, normalizeString } from './utils';
+import { Retrieve } from './App';
 // type, name, id
 const subm_fields_common = [
 	['text', 'Title (optional)', 'title'],
@@ -141,21 +142,32 @@ export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo, onSu
 
 	return (<>
 		{/* <h1>{resubmit === undefined? 'New Submission': 'Edit Submission'}</h1> */}
-		{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
-		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
-			{resubmit === undefined && !fixedType && SimpleField('Type', (
-				<select
-					id='submission_type'
-					value={data.submission_type}
-					onChange={ChangeFn('text', 'submission_type')}
-				>
-					{types.map(({ key, name }) => (<option key={key} value={key}>{name}</option>))}
-				</select>
-			), { id: 'submission_type' })}
-			{/* {subm_fields_common.map(ent => FieldArr(ent))} */}
-			{fields.filter(([, , id]) => !isFixedField(id)).map(ent => FieldArr(ent))}
-			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
+		<div className='absolute translate-y-full -bottom-2 bg-black'>
+			{msgs.map((x, i) => <p key={i} style={{ textAlign: 'center' }}>{x}</p>)}
 		</div>
+		<div className='flex flex-col gap-7'>
+			{resubmit === undefined && !fixedType ? (
+				<div className='submission-type-panel'>
+					<select
+						id='submission_type'
+						value={data.submission_type}
+						onChange={ChangeFn('text', 'submission_type')}
+						className='input submission-type-select w-full'
+					>
+						{types.map(({ key, name, value }) => (
+							<option key={key} value={key}>{name ?? value ?? key}</option>
+						))}
+					</select>
+				</div>
+			) : null}
+			<div className='flex flex-col gap-2'>
+				{fields.filter(([, , id]) => !isFixedField(id)).map(ent => FieldArr(ent))}
+			</div>
+			<div>
+				<button className='btn w-full' onClick={submit} disabled={post}>Submit</button>
+			</div>
+		</div>
+			{/* {subm_fields_common.map(ent => FieldArr(ent))} */}
 	</>)
 }
 
@@ -395,6 +407,14 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		);
 	};
 
+	const openSubmissionCreateModal = () => {
+		modalApi.openNewModal(
+			<Retrieve msg="submission types" path='/api/submission/types/'
+				then={({ types }) => (<SubmissionSubmitForm typeList={types} onSubmitted={modalApi.closeTop} />)}
+			/>
+		);
+	}
+
 	const getSubmissionCaseId = subm =>
 		subm?.target?.case_id
 		?? subm?.target?.case
@@ -435,7 +455,7 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 				<GenericList title={title} onReload={onReload} onReturn={onReturn} msg={str} description={description}>
 					{list.map((subm, i) => (<SubmissionFrame key={i} subm={subm} onAction={onAction(subm)}/>))}
 				</GenericList>
-			{create_button?<Link to='/submission/new' className='absolute right-2 bottom-2'>create</Link>:null}
+			{create_button?<button onClick={openSubmissionCreateModal} className='absolute right-2 bottom-2 btn btn-lg'>create</button>:null}
 		</div>
 	)
 }
