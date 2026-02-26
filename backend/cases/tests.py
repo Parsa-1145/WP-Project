@@ -796,12 +796,12 @@ class CaseCreationTest(APITestCase):
 
     def test_front_modules(self):
         expected_modules_by_user = [
-            (self.u1, ["ASSIGNED_CASES", "AUTOPSY", "COMPLAINANT_CASES"]),
-            (self.u2, ["COMPLAINANT_CASES"]),
-            (self.u3, ["COMPLAINANT_CASES"]),
-            (self.u4, ["COMPLAINANT_CASES"]),
-            (self.u5, ["ASSIGNED_CASES", "COMPLAINANT_CASES"]),
-            (self.u6, ["ASSIGNED_CASES", "COMPLAINANT_CASES"]),
+            (self.u1, ["ASSIGNED_CASES", "AUTOPSY", "COMPLAINANT_CASES", "PROFILE"]),
+            (self.u2, ["COMPLAINANT_CASES", "PROFILE"]),
+            (self.u3, ["COMPLAINANT_CASES", "PROFILE"]),
+            (self.u4, ["COMPLAINANT_CASES", "PROFILE"]),
+            (self.u5, ["ASSIGNED_CASES", "COMPLAINANT_CASES", "PROFILE"]),
+            (self.u6, ["ASSIGNED_CASES", "COMPLAINANT_CASES", "PROFILE"]),
         ]
 
         for user, expected_modules in expected_modules_by_user:
