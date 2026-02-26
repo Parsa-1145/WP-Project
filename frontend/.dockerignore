@@ -11,10 +11,6 @@ dist/
 .gitmodules/
 
 
-# env files
-.env*
-
-
 README.md
 LICENSE
 # logs
