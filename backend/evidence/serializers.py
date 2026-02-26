@@ -64,6 +64,7 @@ class BioEvidenceSerializer(BaseEvidenceSerializer):
         create_submission(
             submission_type_cls=BioEvidenceSubmissionType,
             target=bio_evidence,
+            created_by=self.context["request"].user
         )
 
         for image in uploaded_images:

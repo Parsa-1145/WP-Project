@@ -5,6 +5,7 @@ import { session, error_msg, error_msg_list } from './session'
 import { useModal } from './modals/ModalHost';
 import { formatDate, NormalizationType, normalizeString } from './utils';
 import { Retrieve } from './App';
+import { CustomSelect } from './CustomSelect';
 // type, name, id
 const subm_fields_common = [
 	['text', 'Title (optional)', 'title'],
@@ -148,7 +149,7 @@ export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo, onSu
 		<div className='flex flex-col gap-7'>
 			{resubmit === undefined && !fixedType ? (
 				<div className='submission-type-panel'>
-					<select
+					{/* <select
 						id='submission_type'
 						value={data.submission_type}
 						onChange={ChangeFn('text', 'submission_type')}
@@ -157,15 +158,24 @@ export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo, onSu
 						{types.map(({ key, name, value }) => (
 							<option key={key} value={key}>{name ?? value ?? key}</option>
 						))}
-					</select>
+					</select> */}
+						<CustomSelect
+							id="submission_type"
+							name="submission_type"
+							value={data.submission_type}
+							onChange={ChangeFn("text", "submission_type")}
+							options={types}
+							className="w-full"
+							buttonClassName="custom-select-button"
+							menuClassName="custom-select-menu"
+							optionClassName="custom-select-option"
+						/>
 				</div>
 			) : null}
 			<div className='flex flex-col gap-2'>
 				{fields.filter(([, , id]) => !isFixedField(id)).map(ent => FieldArr(ent))}
 			</div>
-			<div>
-				<button className='btn w-full' onClick={submit} disabled={post}>Submit</button>
-			</div>
+			<button className='btn w-full' onClick={submit} disabled={post}>Submit</button>
 		</div>
 			{/* {subm_fields_common.map(ent => FieldArr(ent))} */}
 	</>)
@@ -191,29 +201,30 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	const ProcessArr = data => (ent) => Process(data)(...ent);
 	return (
 		<div className='generic-list-item' {...props}>
-			<div>
-				{/* {meta_fields.map(ProcessArr(subm))} */}
-				<div className='flex flex-row'>
-					<h2 className='text-left grow'>
-						{type_normalized}
-					</h2>
-					<h3 style={{ color: statusColor }} >
-						{normalizeString(subm.status, NormalizationType.LOWER_CASE)}
-					</h3>
-				</div>
-					<p title={subm.created_at ?? ''} className='text-gray-400'>
-						{createdAtFormatted}
-					</p>
+				<div className='flex flex-col gap-0'>
+					<div className='flex flex-row'>
+						<h2 className='text-left grow'>
+							{type_normalized}
+						</h2>
+						<h3 style={{ color: statusColor }} >
+							{normalizeString(subm.status, NormalizationType.LOWER_CASE)}
+						</h3>
+					</div>
+					<div>
+						<p title={subm.created_at ?? ''} className='text-gray-400'>
+							date
+							{createdAtFormatted}
+						</p>
+					</div>
 				</div>
 				<div className='grow'>
-					{/* {subm_fields_common.map(ProcessArr(subm.target))} */}
 					{subm_fields[type].map(ProcessArr(subm.target))}
 					{last_action && last_action.action_type === 'REJECT' && FormField('text', 'Last Message', last_action.payload.message, {})}
 				</div>
 				<div className='w-full flex flex-row gap-2 justify-end'>
 					{actions.map((act, idx) => (<button className='btn btn-sm' key={idx} onClick={() => onAction(act)}>{normalizeString(act)}</button>))}
 				</div>
-			</div>
+		</div>
 		);
 	}
 

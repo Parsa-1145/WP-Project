@@ -17,7 +17,7 @@ export default function Modal({ children, close }: Props) {
       onClick={close}
     >
       <div
-        className="max-w-80 sm:max-w-150 min-w-100 h-min min-h-50 p-4 bg-gray-500/40 border-1 relative"
+        className="max-w-80 sm:max-w-150 min-w-100 h-min p-4 bg-[var(--c-surface)]  border-1 border-[var(--c-border)] relative"
         onClick={(e) => e.stopPropagation()}
       >
         {children}

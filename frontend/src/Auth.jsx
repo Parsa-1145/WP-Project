@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router'
 import { FormInputField, FormInputChangeFn } from './Forms'
-import { session, error_msg_list, error_msg } from './session.jsx'
+import { session, error_msg_list } from './session.jsx'
 import { ChevronDown } from 'lucide-react'
 
 export function Signup() {
@@ -49,9 +49,8 @@ export function Signup() {
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
-		<h1>Signup Page</h1>
 		{msgs.map((x, i) => <p key={i}>{x}</p>)}
-		<div style={{ maxWidth: '500px', margin: '0 auto' }}>
+		<div className='flex flex-col gap-2'>
 			{fields.map(FieldArr)}
 			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
 		</div>
@@ -59,38 +58,49 @@ export function Signup() {
 }
 
 export function Login() {
-	const [user, setUser] = useState('');
-	const [pass, setPass] = useState('');
-	const [str, setStr] = useState('');
+	const fields = [
+		['text', 'Username', 'username'],
+		['password', 'Password', 'password'],
+	];
+	const defaultData = () => {
+		const obj = {};
+		fields.forEach(e => obj[e[2]] = '');
+		return obj;
+	};
+	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
+	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
+	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
-		setStr('Awaiting response...');
+		setMsg('Awaiting response...');
 		setPost(true);
 
 		const req_body = {
-			username: user,
-			password: pass,
+			username: data.username,
+			password: data.password,
 		};
 
 		session.post('/api/auth/login/', req_body)
 			.then(res => {
-				setStr('Login successful');
-				session.login(user, res.data.access);
+				setMsg('Login successful');
+				session.login(data.username, res.data.access);
 				navigate('/home');
 			})
-			.catch(err => setStr(error_msg(err)))
+			.catch(err => setMsgs(error_msg_list(err)))
 			.finally(() => setPost(false));
 	}
 
+	const ChangeFn = name => FormInputChangeFn(data, setData, 'text', name);
+	const Field = (type, name, id) => FormInputField(type, name, data[id], ChangeFn(id), { id: id });
+	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
+
 	return (<>
-		<h1>Login Page</h1>
-		{str && <p>{str}</p>}
-		<div style={{ display: 'flex', flexDirection: 'column' }}>
-			<input type="text" placeholder="Username" value={user} onChange={e => setUser(e.target.value)} />
-			<input type="password" placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} />
-			<button onClick={submit} disabled={post}>Submit</button>
+		{msgs.map((x, i) => <p key={i}>{x}</p>)}
+		<div className='flex flex-col gap-2'>
+			{fields.map(FieldArr)}
+			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
 		</div>
 	</>)
 }

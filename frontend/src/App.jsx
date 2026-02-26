@@ -291,7 +291,7 @@ const App = () => {
 						</div>
 						<AccountSwitcher />
 				</div>
-				<div className='grow border-2 border-white p-8 overflow-y-scroll'>
+				<div className='grow p-8 overflow-y-scroll'>
 						<Routes>
 							<Route path="/home" exact element={<Home/>}/>
 							<Route path="/health" exact element={<Health/>}/>

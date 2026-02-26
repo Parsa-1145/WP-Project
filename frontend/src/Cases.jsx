@@ -2,12 +2,12 @@ import { useState, useEffect, useContext, useEffectEvent, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router'
 import { form_list_decode, form_list_encode, FormInputField, FormInputChangeFn, FormField, GenericList, ListCompactCtx } from './Forms'
 import { session, error_msg_list } from './session'
-import EvidenceList, { evi_decode } from './Evidence';
+import EvidenceList, { EvidenceSubmitForm, evi_decode } from './Evidence';
 import { Retrieve } from './App';
 import { useModal } from './modals/ModalHost';
 import { SubmissionSubmitForm } from './Submission';
 import ConfirmDialog from './modals/ConfirmDialog';
-import { formatDate, normalizeString } from './utils';
+import { formatDate, NormalizationType, normalizeString } from './utils';
 
 // due to case being a keyword, we use cas instead
 
@@ -298,6 +298,34 @@ function InvestigationApprovalModal({ caseId, onClose, onSubmitted }) {
 	);
 }
 
+function EvidenceCreateModal({ caseId, onClose, onSubmitted }) {
+	return (
+		<div style={{ width: 'min(40rem, 100%)' }}>
+			{/* <div className='flex flex-row items-center justify-between mb-2'>
+				<h2 className='m-0'>Create Evidence</h2>
+				<button className='btn whitespace-nowrap' onClick={onClose}>close</button>
+			</div> */}
+			<EvidenceSubmitForm
+				case_id={caseId}
+				onSubmitted={onSubmitted}
+			/>
+		</div>
+	);
+}
+
+function TitledBox({title, className, children}){
+	return(
+		<div className=''>
+				<div className='mb-2 bg-[var(--c-primary)] text-black text-2xl p-1 w-min'>
+					{title}
+				</div>
+			<div className={className + " p-2 border-1 border-[var(--c-primary)]"}>
+				{children}
+			</div>
+		</div>
+	)
+}
+
 export function CaseDetail({ cas, onReload }) {
 	const [newComplainantNid, setNewComplainantNid] = useState('');
 	const [newWitnessNid, setNewWitnessNid] = useState('');
@@ -507,6 +535,28 @@ export function CaseDetail({ cas, onReload }) {
 		);
 	};
 
+	const openEvidenceCreateModal = () => {
+		if (saving)
+			return;
+
+		let modalId = '';
+		const closeModal = () => {
+			if (modalId) modalApi.close(modalId);
+		};
+
+		modalId = modalApi.openNewModal(
+			<EvidenceCreateModal
+				caseId={cas.id}
+				onClose={closeModal}
+				onSubmitted={() => {
+					closeModal();
+					setMsgs(['Evidence created successfully.']);
+					if (onReload) onReload();
+				}}
+			/>
+		);
+	};
+
 	const submitGuiltAssesment = () => {
 		if (saving)
 			return;
@@ -582,7 +632,6 @@ export function CaseDetail({ cas, onReload }) {
 							:null}
 						</div>
 					</div>
-
 				<div className=''>
 					<div className='w-full border-1 p-1'>
 						<h2>Details</h2>
@@ -618,62 +667,49 @@ export function CaseDetail({ cas, onReload }) {
 					</div>
 				</div>
 				{/* <div className='border-dotted border-1 p-2 flex flex-col gap-4'> */}
-					<div className='flex flex-col'>
-						<div className='bg-white w-64 text-black text-xl px-2 text-center'>
-							Suspects
-						</div>
-						<div className='p-2 border-1 border-white flex flex-row flex-wrap gap-2'>
-								{
-									(cas.suspects || []).map((sus) => (
-										<SuspectCard
-											your_role={cas.your_role}
-											key={sus.id || sus.national_id}
-											user={sus}
-											onScoreUpdate={updateSuspectScore}
-											onMarkArrested={markSuspectArrested}
-											onViewCriminalRecord={openSuspectCriminalRecord}
-											cas={cas}
-										/>
-									))
-								}
-						</div>
-					</div>
-					<div className='flex flex-col'>
-
-						<div className='bg-white w-64 text-black text-xl px-2 text-center'>
-							Complainants
-						</div>
-						<div className='p-2 border-1 border-white flex flex-row flex-wrap gap-2'>
+					<TitledBox title={"Suspects"} className='min-h-40'>
+						{(cas.suspects || []).length === 0 ? (
+							<h2>No suspects yet</h2>
+						) : (
+							(cas.suspects || []).map((sus) => (
+								<SuspectCard
+									your_role={cas.your_role}
+									key={sus.id || sus.national_id}
+									user={sus}
+									onScoreUpdate={updateSuspectScore}
+									onMarkArrested={markSuspectArrested}
+									onViewCriminalRecord={openSuspectCriminalRecord}
+									cas={cas}
+								/>
+							))
+						)}
+					</TitledBox>
+					<TitledBox title={"Complainants"} className=' flex flex-row flex-wrap gap-2'>
 							{
 								complainants.map((com)=>{
 									return (
 										<UserCard key={com.id || com.national_id} user={com} onDelete={removeComplainant}/>
 									)
 								})
-								}
-								<div className='user-card'>
-									<div className='grow'>
-										Add a complainant
-									</div>
-									<div className='flex flex-row gap-1'>
-										<input
-											className='input grow'
-											placeholder='national id'
-											value={newComplainantNid}
-											onChange={e => setNewComplainantNid(e.target.value)}
-										/>
-										<button className='btn float-right' onClick={addComplainant} disabled={saving}>
-											Add
-										</button>
-									</div>
+							}
+							<div className='user-card'>
+								<div className='grow'>
+									Add a complainant
 								</div>
-						</div>
-					</div>
-					<div className='flex flex-col'>
-						<div className='bg-white w-64 text-black text-xl px-2 text-center'>
-							Witnesses
-						</div>
-						<div className='p-2 border-1 border-white flex flex-row flex-wrap gap-2'>
+								<div className='flex flex-row gap-1'>
+									<input
+										className='input grow'
+										placeholder='national id'
+										value={newComplainantNid}
+										onChange={e => setNewComplainantNid(e.target.value)}
+									/>
+									<button className='btn float-right' onClick={addComplainant} disabled={saving}>
+										Add
+									</button>
+								</div>
+							</div>
+					</TitledBox>
+					<TitledBox title={"Witnesses"} className='flex flex-row flex-wrap gap-2'>
 							{
 								witnesses.map((com)=>{
 									return(<UserCard key={com.id || com.national_id} user={com} onDelete={removeWitness}/>)
@@ -695,29 +731,19 @@ export function CaseDetail({ cas, onReload }) {
 									</button>
 								</div>
 							</div>
-						</div>
-					</div>
-
-					<div className='flex flex-col'>
-						<div className='w-60 flex flex-row'>
-							<div className='bg-white text-black text-xl px-2 text-center'>
-								evidence
-							</div>
-						</div>
-						<div className='p-4 border-1 border-white flex flex-col gap-2'>
-							<div>
-								<Retrieve msg="evidence" path={`/api/cases/${cas.id}/evidences/`} then={
-									(res, onReload) => (<EvidenceList list={res.map(evi_decode)}/>)
-								}/>
-							</div>
+					</TitledBox>
+					<TitledBox title={"evidence"} className='min-h-40'>
+						<>
+							<Retrieve msg="evidence" path={`/api/cases/${cas.id}/evidences/`} then={
+								(res, onReload) => (<EvidenceList list={res.map(evi_decode)}/>)
+							}/>
 							<div className='w-full text-right'>
-								<button className="btn btn-lg" onClick={() => navigate(`/cases/${cas.id}/evidences/submit`)}>
+								<button className="btn btn-lg" onClick={openEvidenceCreateModal}>
 									create
 								</button>
 							</div>
-						</div>
-					</div>
-					
+						</>
+					</TitledBox>
 				{/* </div> */}
 
 			</div>
@@ -727,21 +753,40 @@ export function CaseDetail({ cas, onReload }) {
 
 export function CaseFrame({ cas, safeOnly, ...props }) {
 	const compact = useContext(ListCompactCtx);
-	const fields = safeOnly? case_fields.filter(([,, id]) => case_safe_fields.includes(id)): case_fields;
+	const hiddenFields = ['title', 'description', 'status', 'crime_datetime'];
+	const fields = (safeOnly
+		? case_fields.filter(([,, id]) => case_safe_fields.includes(id))
+		: case_fields
+	).filter(([,, id]) => !hiddenFields.includes(id));
 	const navigate = useNavigate();
 	
-
 	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id, compact });
 	const ProcessArr = ent => Process(...ent);
+
+	console.log(cas)
+
 	return (
 		<>
-			<div
-				className='item'
-				onClick={() => navigate(`/cases/${cas.id}`)}
-				style={{ cursor: 'pointer' }}
-				{...props}
-			>
-				{fields.map(ProcessArr)}
+			<div className='generic-list-item case-list-item' {...props} onClick={() => navigate(`/cases/${cas.id}`)}>
+				<div className='flex flex-col gap-0'>
+					<div className='flex flex-row'>
+						<h2 className='text-left grow'>
+							{cas.title}
+						</h2>
+						<h3>
+							{normalizeString(cas.status, NormalizationType.LOWER_CASE)}
+						</h3>
+					</div>
+					<h3>
+						{cas.description}
+					</h3>
+					<div className='text-(--c-text-muted)'>
+						crime date: {formatDate(cas.crime_datetime)}
+					</div>
+				</div>
+				<div className='grow'>
+					{fields.map(ProcessArr)}
+				</div>
 			</div>
 		</>
 	);

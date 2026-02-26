@@ -8,12 +8,64 @@ img {
 	display: inline-block;
 }
 
+@font-face {
+  font-family: 'vt323';
+  src:
+    url('/assets/fonts/vt323-latin-400-normal.woff2') format('woff2'),
+    url('/assets/fonts/vt323-latin-400-normal.woff') format('woff'),
+    url('/assets/fonts/vt323-latin-400-normal.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Terminus';
+  src:
+    url('/assets/fonts/terminus-webfont.woff2') format('woff2'),
+    url('/assets/fonts/terminus-webfont.woff') format('woff'),
+    url('/assets/fonts/Terminus.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --c-bg: #0b1210;
+  --c-surface: #122019;
+  --c-surface-2: #1a2d24;
+  --c-border: #2f4a3d;
+  --c-text: #d9ffe8;
+  --c-text-muted: #8fb9a0;
+  --c-primary: #5cff9d;
+  --c-primary-strong: #34e27c;
+  --c-success: #6dffb1;
+  --c-warning: #ffd166;
+  --c-danger: #ff6b6b;
+
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: var(--c-text);
+  background-color: var(--c-bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 @layer components {
   .input{
-    @apply outline-0 border-1 border-white pl-1 min-w-0;
+    @apply text-lg outline-0 border-1 pl-1 min-w-0 bg-[var(--c-surface-2)] border-[var(--c-border)];
   }
-
-  
+  .input::placeholder{
+    @apply text-[var(--c-text-muted)];
+  }
+  .input:focus{
+    border-color: var(--c-primary-strong);
+    box-shadow: 0 0 0 1px var(--c-primary-strong);
+  }
   .btn{
     @apply whitespace-nowrap w-min p-0 border-1 border-white/50 bg-white/20 px-2;
   }
@@ -29,7 +81,7 @@ img {
   }
 
   .user-card{
-    @apply flex flex-col gap-2 w-full md:w-60 min-h-40 bg-red-50 p-2 border-1 border-white bg-white/30 box-border;
+    @apply flex flex-col gap-2 w-full md:w-60 min-h-40 bg-[var(--c-surface)] p-2 border-1 border-[var(--c-border)] box-border;
   }
 
   .tab-list{
@@ -73,44 +125,57 @@ img {
   }
 
   .generic-list-item{
-    @apply border-1 border-white flex flex-col gap-2 h-full p-2
+    @apply border-1 border-(--c-border) bg-(--c-surface) flex flex-col gap-2 h-full p-2 max-h-80 overflow-scroll;
   }
 
+  .case-list-item{
+    @apply cursor-pointer
+  }
+
+  .custom-select-button{
+    @apply p-1 w-full text-left cursor-pointer text-lg outline-0 border-1 m-0 min-w-0 bg-(--c-surface-2) border-(--c-border);
+  }
+
+  .custom-select-menu{
+    @apply border-1 border-[var(--c-border)] bg-[var(--c-surface)];
+  }
+
+  .custom-select-option{
+    @apply rounded-none cursor-pointer p-1;
+  }
+
+  .custom-select-option:hover{
+    background-color: var(--c-surface-2);
+  }
+
+  .custom-select-option[aria-selected="true"]{
+    background-color: var(--c-primary);
+    color: #000;
+  }
+
+  .custom-select-option[aria-disabled="true"]{
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+
+}
+.select-themed {
+  background-color: var(--c-card-green);
+  color: #000;
+  border: 1px solid #2d4f3d;
 }
 
-@font-face {
-  font-family: 'vt323';
-  src:
-    url('/assets/fonts/vt323-latin-400-normal.woff2') format('woff2'),
-    url('/assets/fonts/vt323-latin-400-normal.woff') format('woff'),
-    url('/assets/fonts/vt323-latin-400-normal.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
+.select-themed:focus {
+  border-color: var(--c-primary-strong);
+  box-shadow: 0 0 0 1px var(--c-primary-strong);
 }
-@font-face {
-  font-family: 'Terminus';
-  src:
-    url('/assets/fonts/terminus-webfont.woff2') format('woff2'),
-    url('/assets/fonts/terminus-webfont.woff') format('woff'),
-    url('/assets/fonts/Terminus.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-:root {
-  line-height: 1.5;
-  font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.select-themed option {
+  background-color: var(--c-card-green);
+  color: #000;
 }
+
 #root {
   /* max-width: 1280px; */
   margin: 0;
@@ -119,11 +184,11 @@ img {
 }
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--c-primary);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--c-primary-strong);
 }
 
 body {
@@ -132,7 +197,9 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  /* font-family: 'terminus', 'Courier New', monospace; */
+  font-family: 'terminus', 'Courier New', monospace;
+  color: var(--c-text);
+  background-color: var(--c-bg);
 }
 
 h1 {
@@ -159,7 +226,9 @@ h2 {
 	border: 1px solid;
 	padding: 1em;
 	/* margin: 0.5em; */
-	background-color: #242424;
+	background-color: var(--c-surface);
+  border-color: var(--c-border);
+  color: var(--c-text);
   /* height: 100%; */
 }
 
@@ -169,7 +238,9 @@ h2 {
 	border-width: 2px;
 	padding: 0.5em;
 	margin: 0.5em;
-	background-color: #242424;
+	background-color: var(--c-surface-2);
+  border-color: var(--c-border);
+  color: var(--c-text);
 }
 
 .icon-button {
@@ -178,11 +249,8 @@ h2 {
 	width: 32px;
 	height: 32px;
 }
-<<<<<<< HEAD
 
 .tab-widget{
   display: flex;
   flex-direction: column;
 }
-=======
->>>>>>> 501b5a3 (yet another beutiful commit message, following the linux kernel conventions)
