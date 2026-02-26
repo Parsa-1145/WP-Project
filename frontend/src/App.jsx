@@ -270,27 +270,11 @@ const Breadcrumbs = () => {
 };
 
 const App = () => {
-<<<<<<< HEAD
-	return (<BrowserRouter>
-		<div className='w-screen h-screen m-0 px-18 py-12 box-border'>
-			<div className='flex flex-col h-full gap-2'>
-				<div className='shrink w-full flex flex-row'>
-					<div className='flex flex-row grow gap-4 text-xl'>
-						<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-							<Link to="/home">Home</Link>
-							<Link to='/submission/inbox'>Inbox</Link>
-							<Link to='/submission/mine'>Submissions</Link>
-							{modules.includes("COMPLAINANT_CASES")?<Link to='/cases/complainant'>My Cases</Link>:null}
-							{modules.includes("ASSIGNED_CASES")?<Link to='/cases/list'>Assigned Cases</Link>:null}
-							<Link to='/most-wanted'>Most Wanted</Link>
-						</>) } />
-=======
 	return (
 		<div className='w-screen h-screen m-0 px-18 py-12 box-border overflow-hidden'>
 				<div className='flex flex-col h-full gap-2 '>
 					<div className='shrink'>
 						<Breadcrumbs />
->>>>>>> 501b5a3 (yet another beutiful commit message, following the linux kernel conventions)
 					</div>
 					<div className='shrink w-full flex flex-row'>
 						<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
@@ -298,6 +282,7 @@ const App = () => {
 								<TabLink to="/home">Home</TabLink>
 								<TabLink to='/submission/inbox'>Inbox</TabLink>
 								<TabLink to='/submission/mine'>Submissions</TabLink>
+								<TabLink to='/most-wanted'>Most Wanted</TabLink>
 								
 								{modules.includes("PROFILE")?<TabLink to='/profile'>Profile</TabLink>:null}
 								{modules.includes("COMPLAINANT_CASES")?<TabLink to='/cases/complainant'>My Cases</TabLink>:null}

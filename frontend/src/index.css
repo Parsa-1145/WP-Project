@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-<<<<<<< HEAD
 /* html2canvas doesn't play well with tailwind
  * this somehow fixes the problem
  * do not remove
@@ -9,8 +8,6 @@ img {
 	display: inline-block;
 }
 
-/* @font-face {
-=======
 @layer components {
   .input{
     @apply outline-0 border-1 border-white pl-1 min-w-0;
@@ -92,7 +89,6 @@ img {
   font-display: swap;
 }
 @font-face {
->>>>>>> 501b5a3 (yet another beutiful commit message, following the linux kernel conventions)
   font-family: 'Terminus';
   src:
     url('/assets/fonts/terminus-webfont.woff2') format('woff2'),
