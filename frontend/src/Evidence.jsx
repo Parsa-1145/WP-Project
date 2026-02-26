@@ -10,7 +10,7 @@ const evi_fields_auto = [
 	['number', 'Recorder PK', 'recorder'],
 ];
 const evi_fields_common = [
-	['number', 'Case PK', 'case'],
+	// ['number', 'Case PK', 'case'],
 	['text', 'Title', 'title'],
 	['textarea', 'Description', 'description'],
 ];
@@ -44,7 +44,7 @@ const evi_field_info = {
 }
 const evi_types = [...Object.keys(evi_fields)];
 
-export function EvidenceSubmitForm({ returnTo }) {
+export function EvidenceSubmitForm({ returnTo, case_id }) {
 	const defaultData = () => {
 		const obj = {type: evi_types[0]};
 		for (const ent of evi_fields_common)
@@ -82,6 +82,9 @@ export function EvidenceSubmitForm({ returnTo }) {
 
 		setPost(true);
 		setMsg('Awaiting response...');
+		
+		formData.append("case", case_id)
+		console.log(formData)
 
 		session.post('/api/evidence/', formData)
 			.then(res => {

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+<<<<<<< HEAD
 /* html2canvas doesn't play well with tailwind
  * this somehow fixes the problem
  * do not remove
@@ -9,6 +10,88 @@ img {
 }
 
 /* @font-face {
+=======
+@layer components {
+  .input{
+    @apply outline-0 border-1 border-white pl-1 min-w-0;
+  }
+
+  
+  .btn{
+    @apply whitespace-nowrap w-min p-0 border-1 border-white/50 bg-white/20 px-2;
+  }
+  .btn-sm{
+    @apply text-base;
+  }
+  .btn-lg{
+    @apply text-2xl;
+  }
+
+  .btn:hover{
+    @apply bg-white text-black no-underline;
+  }
+
+  .user-card{
+    @apply flex flex-col gap-2 w-full md:w-60 min-h-40 bg-red-50 p-2 border-1 border-white bg-white/30 box-border;
+  }
+
+  .tab-list{
+    @apply flex flex-row items-end gap-1 border-b border-white/40;
+  }
+
+  .tab-link{
+    @apply text-lg px-3 py-1 border border-white/40 border-b-0 bg-white/10 text-white/80 no-underline;
+  }
+
+  .tab-link:hover{
+    @apply bg-white/20 text-white no-underline;
+  }
+
+  .tab-link-active{
+    @apply bg-white text-black border-white;
+  }
+
+  .breadcrumb-bar{
+    @apply flex flex-row flex-wrap items-center gap-1 text-lg text-white/80;
+  }
+
+  .breadcrumb-item{
+    @apply flex flex-row items-center gap-1;
+  }
+
+  .breadcrumb-link{
+    @apply text-white/80 no-underline;
+  }
+
+  .breadcrumb-link:hover{
+    @apply text-white underline;
+  }
+
+  .breadcrumb-sep{
+    @apply text-white/60;
+  }
+
+  .breadcrumb-current{
+    @apply text-white;
+  }
+
+  .generic-list-item{
+    @apply border-1 border-white flex flex-col gap-2 h-full p-2
+  }
+}
+
+@font-face {
+  font-family: 'vt323';
+  src:
+    url('/assets/fonts/vt323-latin-400-normal.woff2') format('woff2'),
+    url('/assets/fonts/vt323-latin-400-normal.woff') format('woff'),
+    url('/assets/fonts/vt323-latin-400-normal.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+>>>>>>> 501b5a3 (yet another beutiful commit message, following the linux kernel conventions)
   font-family: 'Terminus';
   src:
     url('/assets/fonts/terminus-webfont.woff2') format('woff2'),
@@ -17,7 +100,7 @@ img {
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-} */
+}
 :root {
   line-height: 1.5;
   font-weight: 400;
@@ -35,7 +118,7 @@ img {
   /* max-width: 1280px; */
   margin: 0;
   padding: 0;
-  text-align: center;
+  /* text-align: center; */
 }
 a {
   font-weight: 500;
@@ -52,7 +135,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  /* font-family: 'Terminus', 'Courier New', monospace; */
+  /* font-family: 'terminus', 'Courier New', monospace; */
 }
 
 h1 {
@@ -65,21 +148,22 @@ h2 {
   line-height: 1.1;
 }
 
-button {
+/* button {
   font-family: inherit;
   background-color: transparent;
   border: 0;
   outline: 0;
-}
+} */
 
 .item {
 	/* background-color: #ACB6BF; */
 	/* border-color: #7f7f7f; */
 	text-align: center;
-	border: solid;
+	border: 1px solid;
 	padding: 1em;
-	margin: 0.5em;
+	/* margin: 0.5em; */
 	background-color: #242424;
+  /* height: 100%; */
 }
 
 .subitem {
@@ -97,8 +181,11 @@ button {
 	width: 32px;
 	height: 32px;
 }
+<<<<<<< HEAD
 
 .tab-widget{
   display: flex;
   flex-direction: column;
 }
+=======
+>>>>>>> 501b5a3 (yet another beutiful commit message, following the linux kernel conventions)

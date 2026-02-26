@@ -209,35 +209,39 @@ export const FormField = (type, name, value, { id, key, compact }) => {
 }
 
 export const ResponsiveGrid = ({ eleWidth, children, ...props }) => {
-	const containerRef = useRef(null);
-	const [width, setWidth] = useState(window.innerWidth);
-	useEffect(() => {
-		const parentElement = containerRef.current?.parentElement;
-		if (!parentElement)
-			return;
+	// const containerRef = useRef(null);
+	// const [width, setWidth] = useState(window.innerWidth);
+	// useEffect(() => {
+	// 	const parentElement = containerRef.current?.parentElement;
+	// 	if (!parentElement)
+	// 		return;
 
-		const updateWidth = () => setWidth(parentElement.clientWidth || window.innerWidth * 0.9);
-		updateWidth();
+	// 	const updateWidth = () => setWidth(parentElement.clientWidth || window.innerWidth * 0.9);
+	// 	updateWidth();
 
-		if (typeof ResizeObserver !== 'undefined') {
-			const observer = new ResizeObserver(updateWidth);
-			observer.observe(parentElement);
-			return () => observer.disconnect();
-		}
+	// 	if (typeof ResizeObserver !== 'undefined') {
+	// 		const observer = new ResizeObserver(updateWidth);
+	// 		observer.observe(parentElement);
+	// 		return () => observer.disconnect();
+	// 	}
 
-		window.addEventListener('resize', updateWidth);
-		return () => window.removeEventListener('resize', updateWidth);
-	}, []);
-	const rowSize = Math.max(1, Math.floor(width / eleWidth));
-	const divWidth = eleWidth * rowSize;
+	// 	window.addEventListener('resize', updateWidth);
+	// 	return () => window.removeEventListener('resize', updateWidth);
+	// }, []);
+	// const rowSize = Math.max(1, Math.floor(width / eleWidth));
+	// const divWidth = eleWidth * rowSize;
 	return (
-		<div ref={containerRef} style={{
-			display: 'grid',
-			gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
-			gridTemplateRows: 'auto',
-			width: divWidth,
-			margin: '0 auto',
-		}} {...props}>
+		// <div ref={containerRef} style={{
+		// 	display: 'grid',
+		// 	gridTemplateColumns: 'repeat(' + rowSize + ', 1fr)',
+		// 	gridTemplateRows: 'auto',
+		// 	width: divWidth,
+		// 	margin: '0 auto',
+		// 	gap:'0.5rem'
+		// }} {...props}>
+		// 	{children}
+		// </div>
+		<div className='flex flex-row flex-wrap gap-2'>
 			{children}
 		</div>
 	);
@@ -299,11 +303,13 @@ export function GenericList({ children, title, onReload, onReturn, msg, descript
 			</div>
 		</div>
 		{msg && <p>{msg}</p>}
-		<ResponsiveGrid eleWidth={eleWidth}>
-			<ListCompactCtx.Provider value={compact}>
-				{children.map((child, i) => (<div key={i} style={{ width: eleWidth }}>{child}</div>))}
-			</ListCompactCtx.Provider>
-		</ResponsiveGrid>
+		<div className='mt-4'>
+			<ResponsiveGrid eleWidth={eleWidth}>
+				<ListCompactCtx.Provider value={compact}>
+					{children.map((child, i) => (<div key={i} style={{ width: eleWidth }}>{child}</div>))}
+				</ListCompactCtx.Provider>
+			</ResponsiveGrid>
+		</div>
 	</>)
 }
 
