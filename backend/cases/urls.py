@@ -10,4 +10,5 @@ urlpatterns = [
     path("<int:pk>/", views.CaseUpdateView.as_view(), name="case-update"),
     path("<int:pk>/detective-board/", views.DetectiveBoardUpdateView.as_view(), name="case-detective-board"),
     path("most-wanted/", views.MostWanted.as_view(), name="most-wanted-list"),
+    path("<int:pk>/verdict/",  views.CaseVerdictView.as_view(), name="case-verdict"),
 ]   

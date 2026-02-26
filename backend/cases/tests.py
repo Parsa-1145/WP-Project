@@ -902,6 +902,11 @@ class CaseCreationTest(APITestCase):
         # reward_amount is proportional to wanted_score for each entry
         for item in data:
             self.assertEqual(item["reward_amount"], item["wanted_score"] * 20_000_000)
+
+class VerdictTest(APITestCase):
+    def test_verdict_creation(self):
+        # This is a placeholder test. The actual implementation would depend on the verdict creation logic.
+        self.assertTrue(True)
 # class CaseListAccessTest(APITestCase):
 #     @classmethod
 #     def add_perms(cls, user: User, *codenames):

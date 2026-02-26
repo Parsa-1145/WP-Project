@@ -1,6 +1,6 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from rest_framework import generics,status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -26,6 +26,7 @@ from investigation.models import DetectiveBoard
 from accounts.models import User
 from django.utils import timezone
 from datetime import timedelta
+
 
 case_list_example = {
                 "id": 12,
@@ -549,3 +550,45 @@ class MostWanted(generics.ListAPIView):
         
         users_list.sort(key=lambda u: u.wanted_score, reverse=True)
         return users_list
+
+class CaseVerdictView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        case: Case = get_object_or_404(Case, pk=pk)
+        user: User = request.user
+        if not user.has_perm("cases.jury_case"):
+            raise PermissionDenied("Only users with jury permission can submit verdicts.")
+        
+        users = case.suspects.filter(case_suspect_links__case=case, case_suspect_links__guilt_status=CaseSuspectLink.SuspectGuiltStatus.GUILTY)
+        verdicts = request.data.get("verdicts")
+        if verdicts is None or not isinstance(verdicts, list):
+            raise ValueError("verdicts field is required and should be a list of verdict objects.")
+        
+        for verdict in verdicts:
+            user_id = verdict.get("user_id")
+            
+            if not User.objects.filter(id=user_id, case_suspect_links__case=case).exists():
+                raise ValueError(f"User with id {user_id} is not a suspect in this case.")
+            
+            user = User.objects.get(id=user_id)
+            suspect_link = CaseSuspectLink.objects.get(user=user, case=case)
+            guilt_status = verdict.get("guilt_status")
+            title = verdict.get("title")
+            description = verdict.get("description")
+
+
+            if guilt_status not in CaseSuspectLink.SuspectGuiltStatus.values or guilt_status == CaseSuspectLink.SuspectGuiltStatus.PENDING_ASSESSMENT:
+                raise ValueError(f"Invalid guilt_status: {guilt_status} should be one of 'GUILTY' or 'CLEARED'.")
+            
+            if title is None or description is None:
+                raise ValueError("Both title and description are required for the verdict.")
+
+
+            suspect_link.guilt_status = guilt_status
+            suspect_link.verdict_title = title
+            suspect_link.verdict_description = description
+            suspect_link.ended_at = timezone.now()
+            suspect_link.save()
+        
+        return Response({"detail": "Verdicts submitted successfully."}, status=status.HTTP_200_OK)

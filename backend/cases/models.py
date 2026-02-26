@@ -151,6 +151,16 @@ class CaseSuspectLink(models.Model):
         default=SuspectGuiltStatus.PENDING_ASSESSMENT
     )
 
+    verdict_title = models.CharField(
+        blank=True,
+        null=True,
+    )
+    verdict_description = models.TextField(
+        blank=True,
+        null=True,
+    )
+
+
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     
