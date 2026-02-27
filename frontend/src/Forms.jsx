@@ -35,7 +35,7 @@ export const SimpleField = (name, body, { id, key, compact, style }) => {
 	if (key === undefined) key = id;
 	return (
 		<div key={key} className='grid grid-cols-2'>
-			<div htmlFor={id} className='grow'>{name} : </div>
+			<div htmlFor={id} className='grow'>{name}: </div>
 			{body}
 		</div>
 	);

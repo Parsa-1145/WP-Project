@@ -31,7 +31,7 @@ const subm_fields = {
 		['text', 'Level', 'crime_level'],
 		['text', 'Lead Detective', 'lead_detective'],
 		['text', 'Supervisor', 'supervisor'],
-		['text', 'Origin PK', 'origin_submission_id'],
+		['text', 'Case Title', 'title'],
 	],
 	INVESTIGATION_APPROVAL: [
 		['text', 'Case ID', 'case'],
