@@ -1,4 +1,4 @@
-import { Route, Routes, NavLink, Navigate, Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Route, Routes, NavLink, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import Health from './Health'
@@ -10,94 +10,6 @@ import { CaseList, CaseDetail, CaseEditForm, SuspectCriminalRecordPage, case_dec
 import { session, error_msg } from './session'
 import MostWantedList from './pages/most-wanted'
 
-const homeModuleCards = Object.freeze({
-	PROFILE: {
-		title: 'Profile',
-		description: 'View account details and bail status.',
-		path: '/profile',
-	},
-	COMPLAINANT_CASES: {
-		title: 'My Cases',
-		description: 'Track the cases you reported as a complainant.',
-		path: '/cases/complainant',
-	},
-	ASSIGNED_CASES: {
-		title: 'Assigned Cases',
-		description: 'Investigate and supervise your assigned cases.',
-		path: '/cases/list',
-	},
-	JUDICARY: {
-		title: 'Judicary',
-		description: 'Review trial cases and submit verdicts.',
-		path: '/judicary',
-	},
-	AUTOPSY: {
-		title: 'Autopsy Queue',
-		description: 'Review evidence-related submissions in your inbox.',
-		path: '/submission/inbox',
-	},
-});
-
-const Home = () => {
-	const navigate = useNavigate();
-	return (
-		<Retrieve msg="modules" path='/api/front-modules/' then={({ modules = [] }, onReload) => {
-			const knownModules = modules
-				.filter(moduleKey => homeModuleCards[moduleKey])
-				.map(moduleKey => ({ key: moduleKey, ...homeModuleCards[moduleKey] }));
-			const isAuthenticated = modules.length > 0;
-
-			return (
-				<div className='text-left flex flex-col gap-4'>
-					<div className='flex flex-row items-center gap-2'>
-						<h1 className='m-0'>Home</h1>
-						<button className='btn' onClick={onReload}>reload</button>
-					</div>
-
-					{!isAuthenticated ? (
-						<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-4 flex flex-col gap-3 w-full max-w-120'>
-							<h2 className='m-0'>Welcome</h2>
-							<p className='m-0 text-[var(--c-text-muted)]'>
-								Log in or sign up to access your modules.
-							</p>
-							<div className='flex flex-row gap-2'>
-								<button className='btn' onClick={() => navigate('/login')}>login</button>
-								<button className='btn' onClick={() => navigate('/signup')}>signup</button>
-							</div>
-						</div>
-					) : null}
-
-					{isAuthenticated ? (
-						<>
-							<p className='m-0 text-[var(--c-text-muted)]'>
-								Available modules for your account:
-							</p>
-							<div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
-								{knownModules.map(module => (
-									<button
-										key={module.key}
-										className='text-left border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2 hover:border-[var(--c-primary-strong)]'
-										onClick={() => navigate(module.path)}
-									>
-										<div className='text-sm text-[var(--c-primary)]'>{module.key}</div>
-										<div className='text-2xl'>{module.title}</div>
-										<div className='text-sm text-[var(--c-text-muted)]'>{module.description}</div>
-									</button>
-								))}
-							</div>
-							{knownModules.length === 0 ? (
-								<div className='border-1 border-[var(--c-warning)] bg-[var(--c-warning)]/10 p-3'>
-									No module cards are configured for your current permissions.
-								</div>
-							) : null}
-						</>
-					) : null}
-				</div>
-			);
-		}}/>
-	);
-}
-
 const ProfileContent = ({ user, onReload }) => {
 	const [submittingBail, setSubmittingBail] = useState(false);
 	const [openingPayment, setOpeningPayment] = useState(false);
@@ -107,6 +19,16 @@ const ProfileContent = ({ user, onReload }) => {
 	const hasPendingBailRequest = bailStatus === 'pending';
 	const hasApprovedBailRequest = bailStatus === 'approved' && !!user?.bail_request_id;
 	const canSendBailRequest = isArrested && !hasPendingBailRequest && !hasApprovedBailRequest;
+	const statusBadgeClass = isArrested
+		? 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10'
+		: 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10';
+	const bailBadgeClass = bailStatus === 'approved'
+		? 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10'
+		: bailStatus === 'pending'
+			? 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10'
+			: bailStatus === 'rejected'
+				? 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10'
+				: 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
 
 	const submitBailRequest = () => {
 		if (submittingBail)
@@ -147,25 +69,74 @@ const ProfileContent = ({ user, onReload }) => {
 	};
 
 	return (
-		<div className='text-left flex flex-col gap-2'>
-			<h2 className='m-0'>Profile</h2>
-			<div>username: {user.username}</div>
-			<div>first name: {user.first_name}</div>
-			<div>last name: {user.last_name}</div>
-			<div>email: {user.email}</div>
-			<div>national id: {user.national_id}</div>
-			<div>phone: {user.phone_number}</div>
-			<div>status: {user.status}</div>
-			<div>has bail request: {user.has_bail_request ? 'yes' : 'no'}</div>
-			<div>bail request id: {user.bail_request_id ?? '-'}</div>
-			<div>bail request status: {user.bail_request_status ?? '-'}</div>
+		<div className='text-left flex flex-col gap-4'>
+			<div className='flex flex-row items-center gap-2'>
+				<h2 className='m-0 grow'>Profile</h2>
+				<button className='btn' onClick={onReload}>reload</button>
+			</div>
+
+			<div className='grid gap-3 lg:grid-cols-2'>
+				<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2'>
+					<div className='text-xl'>Identity</div>
+					<div className='grid gap-2'>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>username</div><div>{user.username}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>first name</div><div>{user.first_name}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>last name</div><div>{user.last_name}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>email</div><div className='break-all'>{user.email}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>national id</div><div>{user.national_id}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>phone</div><div>{user.phone_number}</div>
+						</div>
+					</div>
+				</div>
+
+				<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-3'>
+					<div className='text-xl'>Case / Bail Status</div>
+					<div className='flex flex-col gap-2'>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 flex flex-row items-center justify-between gap-2'>
+							<div className='text-[var(--c-text-muted)]'>status</div>
+							<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${statusBadgeClass}`}>
+								{String(user.status || '-')}
+							</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 flex flex-row items-center justify-between gap-2'>
+							<div className='text-[var(--c-text-muted)]'>bail request status</div>
+							<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${bailBadgeClass}`}>
+								{user.bail_request_status ?? '-'}
+							</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>has bail request</div><div>{user.has_bail_request ? 'yes' : 'no'}</div>
+						</div>
+						<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 grid grid-cols-[11rem_1fr] gap-2'>
+							<div className='text-[var(--c-text-muted)]'>bail request id</div><div>{user.bail_request_id ?? '-'}</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2'>
+				<div className='text-xl'>Actions</div>
+				<div className='flex flex-row flex-wrap gap-2'>
 			{canSendBailRequest
 				? <button className='btn w-fit' onClick={submitBailRequest} disabled={submittingBail}>Send Bail Request</button>
 				: null}
 			{hasApprovedBailRequest
 				? <button className='btn w-fit' onClick={openPaymentLink} disabled={openingPayment}>Go To Payment Link</button>
 				: null}
-			{bailMsg ? <p>{bailMsg}</p> : null}
+				</div>
+				{bailMsg ? <p className='m-0 text-[var(--c-text-muted)]'>{bailMsg}</p> : null}
+			</div>
 		</div>
 	);
 };
@@ -258,104 +229,13 @@ const TabLink = ({ to, children }) => (
 	</NavLink>
 );
 
-const Breadcrumbs = () => {
-	const { pathname } = useLocation();
-	const crumbs = [{ label: 'Home', to: '/home' }];
-
-	if (pathname === '/' || pathname === '/home')
-		return (
-			<nav className='breadcrumb-bar' aria-label='Breadcrumb'>
-				<span className='breadcrumb-current'>Home</span>
-			</nav>
-		);
-
-	if (pathname === '/health')
-		crumbs.push({ label: 'Health', to: '/health' });
-	else if (pathname === '/profile')
-		crumbs.push({ label: 'Profile', to: '/profile' });
-	else if (pathname === '/login')
-		crumbs.push({ label: 'Login', to: '/login' });
-	else if (pathname === '/signup')
-		crumbs.push({ label: 'Signup', to: '/signup' });
-	else if (pathname.startsWith('/submission/')) {
-		crumbs.push({ label: 'Submissions', to: '/submission/mine' });
-		if (pathname === '/submission/inbox')
-			crumbs.push({ label: 'Inbox', to: '/submission/inbox' });
-		else if (pathname === '/submission/new')
-			crumbs.push({ label: 'New', to: '/submission/new' });
-		else {
-			const match = pathname.match(/^\/submission\/([^/]+)\/edit$/);
-			if (match) {
-				crumbs.push({ label: match[1], to: `/submission/${match[1]}/edit` });
-				crumbs.push({ label: 'Edit', to: `/submission/${match[1]}/edit` });
-			}
-		}
-	} else if (pathname.startsWith('/cases/')) {
-		crumbs.push({ label: 'Cases', to: '/cases/list' });
-		if (pathname === '/cases/list')
-			null;
-		else if (pathname === '/cases/complainant')
-			crumbs.push({ label: 'My Cases', to: '/cases/complainant' });
-		else {
-			const match = pathname.match(/^\/cases\/([^/]+)(?:\/(.*))?$/);
-			if (match) {
-				const caseId = match[1];
-				const tail = match[2] || '';
-				crumbs.push({ label: caseId, to: `/cases/${caseId}` });
-
-				if (tail === 'edit')
-					crumbs.push({ label: 'Edit', to: `/cases/${caseId}/edit` });
-				else if (tail === 'detective-board')
-					crumbs.push({ label: 'Detective Board', to: `/cases/${caseId}/detective-board` });
-				else if (tail === 'evidences')
-					crumbs.push({ label: 'Evidences', to: `/cases/${caseId}/evidences` });
-				else if (tail === 'evidences/submit') {
-					crumbs.push({ label: 'Evidences', to: `/cases/${caseId}/evidences` });
-					crumbs.push({ label: 'Submit', to: `/cases/${caseId}/evidences/submit` });
-				} else if (tail === 'submissions')
-					crumbs.push({ label: 'Submissions', to: `/cases/${caseId}/submissions` });
-				else {
-					const recordMatch = tail.match(/^suspects\/([^/]+)\/criminal-record$/);
-					if (recordMatch) {
-						crumbs.push({ label: recordMatch[1], to: null });
-						crumbs.push({ label: 'Criminal Record', to: `/cases/${caseId}/suspects/${recordMatch[1]}/criminal-record` });
-					}
-				}
-			}
-		}
-	} else if (pathname.startsWith('/evidence/')) {
-		crumbs.push({ label: 'Evidence', to: '/evidence/list' });
-		if (pathname === '/evidence/submit')
-			crumbs.push({ label: 'Submit', to: '/evidence/submit' });
-		else if (pathname === '/evidence/list')
-			crumbs.push({ label: 'List', to: '/evidence/list' });
-	}
-
-	return (
-		<nav className='breadcrumb-bar' aria-label='Breadcrumb'>
-			{crumbs.map((crumb, idx) => (
-				<span key={`${crumb.label}-${idx}`} className='breadcrumb-item'>
-					{idx > 0 ? <span className='breadcrumb-sep'>{'>'}</span> : null}
-					{idx === crumbs.length - 1 || !crumb.to
-						? <span className='breadcrumb-current'>{crumb.label}</span>
-						: <Link to={crumb.to} className='breadcrumb-link'>{crumb.label}</Link>}
-				</span>
-			))}
-		</nav>
-	);
-};
-
 const App = () => {
 	return (
 		<div className='w-screen h-screen m-0 px-18 py-12 box-border overflow-hidden'>
 				<div className='flex flex-col h-full gap-2 '>
-					<div className='shrink'>
-						<Breadcrumbs />
-					</div>
 					<div className='shrink w-full flex flex-row'>
 						<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
 							<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-								<TabLink to="/home">Home</TabLink>
 								<TabLink to='/submission/inbox'>Inbox</TabLink>
 								<TabLink to='/submission/mine'>Submissions</TabLink>
 								<TabLink to='/most-wanted'>Most Wanted</TabLink>
@@ -370,7 +250,6 @@ const App = () => {
 				</div>
 				<div className='grow p-8 overflow-y-scroll'>
 						<Routes>
-							<Route path="/home" exact element={<Home/>}/>
 							<Route path="/health" exact element={<Health/>}/>
 							<Route path="/profile" exact element={<Profile/>}/>
 

@@ -101,30 +101,6 @@ img {
     @apply bg-white text-black border-white;
   }
 
-  .breadcrumb-bar{
-    @apply flex flex-row flex-wrap items-center gap-1 text-lg text-white/80;
-  }
-
-  .breadcrumb-item{
-    @apply flex flex-row items-center gap-1;
-  }
-
-  .breadcrumb-link{
-    @apply text-white/80 no-underline;
-  }
-
-  .breadcrumb-link:hover{
-    @apply text-white underline;
-  }
-
-  .breadcrumb-sep{
-    @apply text-white/60;
-  }
-
-  .breadcrumb-current{
-    @apply text-white;
-  }
-
   .generic-list-item{
     @apply border-1 border-(--c-border) bg-(--c-surface) flex flex-col gap-2 h-full p-2 max-h-80 overflow-scroll;
   }

@@ -23,6 +23,9 @@ const subm_fields = {
 		['list !First_Name !Last_Name !Phone .National_ID', 'Complainants', 'complainants'],
 	],
 	BIO_EVIDENCE: [],
+	DATA_REWARD: [
+		['textarea', 'Details', 'description'],
+	],
 	BAIL_REQUEST: [],
 	CASE_STAFFING: [
 		['text', 'Level', 'crime_level'],
@@ -221,6 +224,14 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 			</div>
 			<div className='grow'>
 				{subm_fields[type].map(ProcessArr(subm.target))}
+				{type === 'DATA_REWARD'
+					? (
+						<>
+							{FormField('text', 'Related Case', subm.target?.data_reward_case_id ?? '-', { key: 'data_reward_case_id', compact })}
+							{FormField('text', 'Reward Amount', subm.target?.data_reward_reward_amount_display ?? '-', { key: 'data_reward_reward_amount_display', compact })}
+						</>
+					)
+					: null}
 				{last_action && last_action.action_type === 'REJECT' && FormField('text', 'Last Message', last_action.payload.message, {})}
 			</div>
 			<div className='w-full flex flex-row gap-2 justify-end'>
@@ -231,6 +242,20 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	}
 
 export const subm_decode = subm => {
+	const actionsHistory = Array.isArray(subm?.actions_history) ? subm.actions_history : [];
+	const findPayloadValue = key => {
+		for (const action of actionsHistory) {
+			const payload = action?.payload;
+			if (payload && payload[key] !== undefined && payload[key] !== null && payload[key] !== '')
+				return payload[key];
+		}
+		return null;
+	};
+	const rewardAmountValue = findPayloadValue('reward_amount')
+		?? subm?.target?.reward_amount
+		?? subm?.target?.reward?.amount
+		?? null;
+
 	return { ...subm, target: {
 		...form_list_decode(subm.target, {
 			witnesses         : ['first_name', 'last_name', 'phone_number'],
@@ -239,6 +264,9 @@ export const subm_decode = subm => {
 		}),
 		case: subm.target.case_details?.id,
 		case_id: subm.target.case_id ?? subm.target.id,
+		data_reward_case_id: findPayloadValue('case_id') ?? '-',
+		data_reward_reward_amount: rewardAmountValue,
+		data_reward_reward_amount_display: rewardAmountValue === null ? '-' : String(rewardAmountValue),
 		//case_details: subm.target.case_details && case_decode(subm.target.case_details),
 	}};
 }
@@ -365,6 +393,74 @@ function AcceptBailRequestModal({ onCancel, onSubmit }) {
 	);
 }
 
+function DataRewardCaseSelectModal({ onCancel, onSubmit }) {
+	const [caseId, setCaseId] = useState('');
+	const parsedCaseId = Number(caseId);
+	const validCaseId = Number.isInteger(parsedCaseId) && parsedCaseId > 0;
+
+	return (
+		<div className='flex flex-col gap-3'>
+			<div>
+				<h2 className='m-0'>Approve Data Reward</h2>
+				<p className='m-0'>Enter the related case ID for this report:</p>
+			</div>
+			<input
+				type='number'
+				min='1'
+				step='1'
+				placeholder='Case ID'
+				className='input'
+				value={caseId}
+				onChange={e => setCaseId(e.target.value)}
+			/>
+			<div className='flex justify-end flex-row gap-2'>
+				<button className='btn btn-red' onClick={onCancel}>Cancel</button>
+				<button
+					className='btn btn-green'
+					disabled={!validCaseId}
+					onClick={() => onSubmit(parsedCaseId)}
+				>
+					Submit
+				</button>
+			</div>
+		</div>
+	);
+}
+
+function DataRewardAmountModal({ onCancel, onSubmit }) {
+	const [amount, setAmount] = useState('');
+	const parsedAmount = Number(amount);
+	const validAmount = Number.isInteger(parsedAmount) && parsedAmount > 0;
+
+	return (
+		<div className='flex flex-col gap-3'>
+			<div>
+				<h2 className='m-0'>Set Reward Amount</h2>
+				<p className='m-0'>Enter how much reward this user should receive:</p>
+			</div>
+			<input
+				type='number'
+				min='1'
+				step='1'
+				placeholder='Reward Amount'
+				className='input'
+				value={amount}
+				onChange={e => setAmount(e.target.value)}
+			/>
+			<div className='flex justify-end flex-row gap-2'>
+				<button className='btn btn-red' onClick={onCancel}>Cancel</button>
+				<button
+					className='btn btn-green'
+					disabled={!validAmount}
+					onClick={() => onSubmit(parsedAmount)}
+				>
+					Submit
+				</button>
+			</div>
+		</div>
+	);
+}
+
 function BioEvidenceModal({ evidence, onClose }) {
 	const baseEvidence = evidence || {};
 	const decodedEvidence = evi_decode({
@@ -447,6 +543,30 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		);
 	};
 
+	const openDataRewardCaseSelectModal = id => {
+		modalApi.openNewModal(
+			<DataRewardCaseSelectModal
+				onCancel={modalApi.closeTop}
+				onSubmit={caseId => {
+					submitAction(id, 'ACCEPT', { case_id: caseId });
+					modalApi.closeTop();
+				}}
+			/>
+		);
+	};
+
+	const openDataRewardAmountModal = id => {
+		modalApi.openNewModal(
+			<DataRewardAmountModal
+				onCancel={modalApi.closeTop}
+				onSubmit={rewardAmount => {
+					submitAction(id, 'ACCEPT', { reward_amount: rewardAmount });
+					modalApi.closeTop();
+				}}
+			/>
+		);
+	};
+
 	const openBioEvidenceModal = subm => {
 		modalApi.openNewModal(
 			<BioEvidenceModal
@@ -480,6 +600,17 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		window.scrollTo(0, 0);
 		if (act === 'ACCEPT' && subm.submission_type === 'BAIL_REQUEST') {
 			openBailAmountModal(id);
+		} else if (act === 'ACCEPT' && subm.submission_type === 'DATA_REWARD') {
+			const hasCaseLinked = (subm?.actions_history || []).some(action =>
+				action?.action_type === 'ACCEPT'
+				&& action?.payload
+				&& action.payload.case_id !== undefined
+				&& action.payload.case_id !== null
+			);
+			if (hasCaseLinked)
+				openDataRewardAmountModal(id);
+			else
+				openDataRewardCaseSelectModal(id);
 		} else if (act === 'ACCEPT' || act === 'APPROVE') {
 			submitAction(id, act);
 		} else if (act === 'REJECT') {

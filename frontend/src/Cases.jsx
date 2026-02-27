@@ -43,6 +43,21 @@ const case_crime_level_name = {
 	"CR": "Critical"
 }
 
+function getCaseStatusClass(status) {
+	const key = String(status || '').trim().toUpperCase();
+
+	if (['OPEN', 'AWAITING_INVESTIGATOR', 'AWAITING_SUPERVISOR', 'INTEROGATION', 'GUILT_ASSESMENT'].includes(key))
+		return 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10';
+
+	if (['TRIAL'].includes(key))
+		return 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10';
+		
+	if (['CLOSED'].includes(key))
+		return 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10';
+
+	return 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
+}
+
 export const case_edit_decode = cas => form_list_decode(cas, {
 	witnesses   : ['national_id'],
 	complainants: ['national_id'],
@@ -985,6 +1000,7 @@ export function CaseFrame({ cas, safeOnly, canJury, onReload, ...props }) {
 		: case_fields
 	).filter(([,, id]) => !hiddenFields.includes(id));
 	const navigate = useNavigate();
+	const caseStatusClass = getCaseStatusClass(cas.status);
 
 	console.log(cas)
 
@@ -1019,9 +1035,9 @@ export function CaseFrame({ cas, safeOnly, canJury, onReload, ...props }) {
 						<h2 className='text-left grow'>
 							{cas.title}
 						</h2>
-						<h3>
+						<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${caseStatusClass}`}>
 							{normalizeString(cas.status, NormalizationType.LOWER_CASE)}
-						</h3>
+						</div>
 					</div>
 					<h3>
 						{cas.description}
