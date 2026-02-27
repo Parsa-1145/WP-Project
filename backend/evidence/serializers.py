@@ -9,15 +9,20 @@ class BaseEvidenceSerializer(serializers.ModelSerializer):
     def validate_case(self, value: Case):
         request = self.context.get('request')
 
-        if request is None or not request.user or not request.user.is_authenticated:
+        if request and not request.user and not request.user.is_authenticated:
             raise PermissionDenied("Authentication required.")
         
         user = request.user
 
-        if value.lead_detective_id == user.id or value.supervisor_id == user.id:
+        if user.has_perm('cases.view_case', value):
+            return value
+        
+        if Case.objects.filter(id=value.id, complainants__in=[user]).exists():
             return value
 
-        raise PermissionDenied("Only the case lead detective or supervisor can create evidence for this case.")
+        if (value.lead_detective.id == user.id) or (value.supervisor.id == user.id):
+            return value
+        raise PermissionDenied("You do not have permission to this case.")
 
 
 class WitnessEvidenceSerializer(BaseEvidenceSerializer):
