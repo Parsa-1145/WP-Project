@@ -6,6 +6,7 @@ import { useModal } from './modals/ModalHost';
 import { formatDate, NormalizationType, normalizeString } from './utils';
 import { Retrieve } from './App';
 import { CustomSelect } from './CustomSelect';
+import { EvidenceFrame, evi_decode } from './Evidence';
 // type, name, id
 const subm_fields_common = [
 	['text', 'Title (optional)', 'title'],
@@ -39,7 +40,8 @@ const subm_fields = {
 };
 
 const subm_secondary_actions = {
-	GUILT_ASSESMENT: ["VIEW_CASE_DETAILS"]
+	GUILT_ASSESMENT: ["VIEW_CASE_DETAILS"],
+	BIO_EVIDENCE: ["VIEW_EVIDENCE"],
 }
 const subm_types = [...Object.keys(subm_fields)];
 const submissionStatusClassMap = Object.freeze({
@@ -363,6 +365,33 @@ function AcceptBailRequestModal({ onCancel, onSubmit }) {
 	);
 }
 
+function BioEvidenceModal({ evidence, onClose }) {
+	const baseEvidence = evidence || {};
+	const decodedEvidence = evi_decode({
+		...baseEvidence,
+		resource_type: baseEvidence.resource_type || 'BioEvidence',
+	});
+	const evidenceForFrame = {
+		...decodedEvidence,
+		type: decodedEvidence.type || 'bio',
+	};
+
+	return (
+		<div style={{ width: 'min(56rem, 100%)' }}>
+			<div className='flex flex-row items-center justify-between mb-2'>
+				<h2 className='m-0'>Bio Evidence</h2>
+				<button className='btn' onClick={onClose}>close</button>
+			</div>
+			<div className='h-[70vh] max-h-[70vh] min-h-120'>
+				<EvidenceFrame
+					evi={evidenceForFrame}
+					className='border-1 border-(--c-border) bg-(--c-surface) flex flex-col gap-2 h-full p-2 overflow-hidden'
+				/>
+			</div>
+		</div>
+	);
+}
+
 export function SubmissionList({ list, title, onReload, onReturn, create_button=false, description=null }) {
 	const [phase, setPhase] = useState(2);
 	const [str, setStr] = useState('');
@@ -418,6 +447,15 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		);
 	};
 
+	const openBioEvidenceModal = subm => {
+		modalApi.openNewModal(
+			<BioEvidenceModal
+				evidence={subm?.target}
+				onClose={modalApi.closeTop}
+			/>
+		);
+	};
+
 	const openSubmissionCreateModal = () => {
 		modalApi.openNewModal(
 			<Retrieve msg="submission types" path='/api/submission/types/'
@@ -457,6 +495,12 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 				return;
 			}
 			navigate(`/cases/${caseId}/`);
+		} else if (act === 'VIEW_EVIDENCE') {
+			if (subm.submission_type !== 'BIO_EVIDENCE') {
+				setStr('This submission is not linked to an evidence item.');
+				return;
+			}
+			openBioEvidenceModal(subm);
 		} else {
 			alert('Unimplemented: ' + act);
 		}
