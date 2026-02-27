@@ -2,9 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, PolymorphicProxySerializer, OpenApiExample
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import IsAuthenticated
 
 from .serializers import *
-from .permissions import IsRecorderOrDjangoModelPermissions
 
 
 serializers_map = {
@@ -204,7 +204,7 @@ class EvidenceViewSet(viewsets.ModelViewSet):
         "otherevidence"
     )
     serializer_class = EvidencePolymorphicSerializer
-    permission_classes = [IsRecorderOrDjangoModelPermissions]
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
