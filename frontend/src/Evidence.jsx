@@ -46,21 +46,41 @@ const evi_field_info = {
 }
 const evi_types = [...Object.keys(evi_fields)];
 
-const getEvidenceStatusClass = statusRaw => {
+const getEvidenceStatusBadgeStyle = statusRaw => {
 	const status = String(statusRaw || '').toUpperCase();
 	if (!status)
-		return 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
+		return {
+			color: 'var(--c-text-muted)',
+			borderColor: 'var(--c-border)',
+			backgroundColor: 'var(--c-surface-2)',
+		};
 
 	if (['REJECTED', 'GUILTY', 'FAILED', 'NOT_VERIFIED'].includes(status))
-		return 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10';
+		return {
+			color: 'var(--c-danger)',
+			borderColor: 'var(--c-danger)',
+			backgroundColor: 'rgba(255, 107, 107, 0.1)',
+		};
 
 	if (['APPROVED', 'ACCEPTED', 'CLEARED', 'VERIFIED'].includes(status))
-		return 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10';
+		return {
+			color: 'var(--c-primary)',
+			borderColor: 'var(--c-primary)',
+			backgroundColor: 'rgba(92, 255, 157, 0.1)',
+		};
 
 	if (['PENDING', 'PENDING_ASSESSMENT', 'IN_REVIEW'].includes(status))
-		return 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10';
+		return {
+			color: 'var(--c-warning)',
+			borderColor: 'var(--c-warning)',
+			backgroundColor: 'rgba(255, 209, 102, 0.1)',
+		};
 
-	return 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
+	return {
+		color: 'var(--c-text-muted)',
+		borderColor: 'var(--c-border)',
+		backgroundColor: 'var(--c-surface-2)',
+	};
 };
 
 export function EvidenceSubmitForm({ returnTo, case_id, onSubmitted }) {
@@ -162,7 +182,7 @@ export function EvidenceFrame({ evi, onSelect, className, ...props }) {
 			: (typeof evi.is_verified === 'boolean'
 				? (evi.is_verified ? 'VERIFIED' : 'NOT_VERIFIED')
 				: '');
-	const reviewStatusClass = getEvidenceStatusClass(reviewStatusRaw);
+	const reviewStatusStyle = getEvidenceStatusBadgeStyle(reviewStatusRaw);
 	const reviewStatusLabel = reviewStatusRaw === 'NOT_VERIFIED'
 		? 'Not Verified'
 		: normalizeString(reviewStatusRaw, NormalizationType.LOWER_CASE);
@@ -174,12 +194,19 @@ export function EvidenceFrame({ evi, onSelect, className, ...props }) {
 						<h2 className='text-left grow'>
 							{evi.title}
 						</h2>
-						<div className='border-1 border-[var(--c-primary)] bg-[var(--c-primary)]/10 text-[var(--c-primary)] px-2 py-0.5 text-sm whitespace-nowrap'>
+						<div
+							className='border-1 px-2 py-0.5 text-sm whitespace-nowrap'
+							style={{
+								borderColor: 'var(--c-primary)',
+								backgroundColor: 'rgba(92, 255, 157, 0.1)',
+								color: 'var(--c-primary)',
+							}}
+						>
 							{normalizeString(evi.type, NormalizationType.LOWER_CASE)}
 						</div>
 						{reviewStatusRaw
 							? (
-								<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${reviewStatusClass}`}>
+								<div className='border-1 px-2 py-0.5 text-sm whitespace-nowrap' style={reviewStatusStyle}>
 									{reviewStatusLabel}
 								</div>
 							)

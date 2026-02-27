@@ -72,7 +72,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
             submission=submission,
             target_permission="payments.can_approve_data_reward",
             order=0,
-            allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.SEND_TO_DETECTIVE, SubmissionActionType.REJECT]
         )
         submission.current_stage = 0
         submission.save()
@@ -88,7 +88,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
                     submission=submission,
                     target_user=lead_detective,
                     order=1,
-                    allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
+                    allowed_actions=[SubmissionActionType.SET_REWARD, SubmissionActionType.REJECT]
                 )
                 submission.current_stage = 1
                 submission.save()
@@ -113,7 +113,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
                 submission.save()
     @classmethod
     def validate_submission_action_payload(cls, submission, action_type, payload, context, **kwargs):
-        if submission.current_stage == 0 and action_type == SubmissionActionType.ACCEPT:
+        if submission.current_stage == 0 and action_type == SubmissionActionType.SEND_TO_DETECTIVE:
             if "case_id" not in payload:
                 raise ValidationError({"payload": {"case_id": "This field is required."}})
             try:
@@ -124,7 +124,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
             if not case.lead_detective:
                 raise ValidationError({"payload": {"case_id": "The specified case does not have a lead detective assigned."}})
         
-        if submission.current_stage == 1 and action_type == SubmissionActionType.ACCEPT:
+        if submission.current_stage == 1 and action_type == SubmissionActionType.SET_REWARD:
             if "reward_amount" not in payload:
                 raise ValidationError({"payload": {"reward_amount": "This field is required."}})
             try:
