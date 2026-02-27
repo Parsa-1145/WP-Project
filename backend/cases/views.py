@@ -190,8 +190,7 @@ class AssignedCaseAccessMixin:
         summary="Retrieve case (full details)",
         description=(
             "Returns full case details for users who are assigned as lead detective/supervisor "
-            "or have `cases.view_case`. "
-            "Complainants are blocked from this endpoint even if they have `cases.view_case`."
+            "or have `cases.view_case` permission."
         ),
         responses=CaseListSerializer,
         examples=[
@@ -207,7 +206,7 @@ class AssignedCaseAccessMixin:
         summary="Update case",
         description=(
             "Partially update a case. "
-            "Only the assigned lead detective can update case data."
+            "Only the assigned lead detective or supervisor can update case data."
         ),
         request=CaseUpdateSerializer,
         responses=CaseUpdateSerializer,
@@ -247,21 +246,17 @@ class CaseUpdateView(AssignedCaseAccessMixin, generics.RetrieveUpdateAPIView):
         user = self.request.user
 
         if self.request.method == "PATCH":
-            case = self.get_case()
+            case = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+            if case.lead_detective_id != user.id and case.supervisor_id != user.id:
+                raise PermissionDenied("Only the assigned lead detective or supervisor can update this case.")
             return case
 
         case = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
-        complainant_ids = {complainant.id for complainant in case.complainants.all()}
-        if user.id in complainant_ids:
-            raise PermissionDenied("Complainants cannot access full case details.")
-
         if user.has_perm("cases.view_case"):
             return case
-
         if case.lead_detective_id == user.id or case.supervisor_id == user.id:
             return case
-
-        raise PermissionDenied("Only assigned detective/supervisor or users with view_case can access this case.")
+        raise PermissionDenied("Only assigned lead detective/supervisor or users with `cases.view_case` can retrieve this case.")
 
 
 @extend_schema(

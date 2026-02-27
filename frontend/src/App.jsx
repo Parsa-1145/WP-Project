@@ -45,8 +45,8 @@ const ProfileContent = ({ user, onReload }) => {
 				if (onReload)
 					onReload();
 			})
-				.catch(err => setBailMsg(error_msg(err)))
-				.finally(() => setSubmittingBail(false));
+			.catch(err => setBailMsg(error_msg(err)))
+			.finally(() => setSubmittingBail(false));
 	};
 
 	const openPaymentLink = () => {
@@ -128,12 +128,12 @@ const ProfileContent = ({ user, onReload }) => {
 			<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2'>
 				<div className='text-xl'>Actions</div>
 				<div className='flex flex-row flex-wrap gap-2'>
-			{canSendBailRequest
-				? <button className='btn w-fit' onClick={submitBailRequest} disabled={submittingBail}>Send Bail Request</button>
-				: null}
-			{hasApprovedBailRequest
-				? <button className='btn w-fit' onClick={openPaymentLink} disabled={openingPayment}>Go To Payment Link</button>
-				: null}
+					{canSendBailRequest
+						? <button className='btn w-fit' onClick={submitBailRequest} disabled={submittingBail}>Send Bail Request</button>
+						: null}
+					{hasApprovedBailRequest
+						? <button className='btn w-fit' onClick={openPaymentLink} disabled={openingPayment}>Go To Payment Link</button>
+						: null}
 				</div>
 				{bailMsg ? <p className='m-0 text-[var(--c-text-muted)]'>{bailMsg}</p> : null}
 			</div>
@@ -144,7 +144,7 @@ const ProfileContent = ({ user, onReload }) => {
 const Profile = () => (
 	<Retrieve msg="profile" path="/api/auth/me/" then={(user, onReload) => (
 		<ProfileContent user={user} onReload={onReload} />
-	)}/>
+	)} />
 )
 
 const ParamWrap = ({ then }) => {
@@ -213,11 +213,11 @@ const UrlList = (local_path, remote_path, Component, props, decoder, title) => (
 
 			return (
 				<Retrieve msg="evidence" path={remote_path} then={
-					(res, onReload) => (<Component {...props} list={res.map(decoder)} title={title} onReload={onReload}/>)
-				}/>
+					(res, onReload) => (<Component {...props} list={res.map(decoder)} title={title} onReload={onReload} />)
+				} />
 			);
-		}}/>
-	}/>
+		}} />
+	} />
 );
 const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
 
@@ -225,31 +225,31 @@ const App = () => {
 	const navigate = useNavigate()
 	return (
 		<div className='w-screen h-screen m-0 px-18 py-12 box-border overflow-hidden'>
-				<div className='flex flex-col h-full gap-2 items-center'>
-					<div className='shrink w-full flex flex-row justify-center'>
-						<div className='grow flex flex-row  gap-4' >
-							<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/inbox')}>Inbox</button>
-								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/mine')}>Submissions</button>
-								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/most-wanted')}>Most Wanted</button>
-								
-								{modules.includes("PROFILE")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/profile')}>Profile</button>:null}
-								{modules.includes("COMPLAINANT_CASES")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/complainant')}>My Cases</button>:null}
-								{modules.includes("ASSIGNED_CASES")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/list')}>Assigned Cases</button>:null}
-								{modules.includes("JUDICARY")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/judicary')}>Judicary</button>:null}
-							</>) } />
-						</div>
-						<AccountSwitcher />
+			<div className='flex flex-col h-full gap-2 '>
+				<div className='shrink w-full flex flex-row'>
+					<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
+						<Retrieve msg="modules" path={`/api/front-modules/`} then={({ modules }) => (<>
+							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/inbox')}>Inbox</button>
+							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/mine')}>Submissions</button>
+							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/most-wanted')}>Most Wanted</button>
+
+							{modules.includes("PROFILE") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/profile')}>Profile</button> : null}
+							{modules.includes("COMPLAINANT_CASES") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/complainant')}>My Cases</button> : null}
+							{modules.includes("ASSIGNED_CASES") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/list')}>Assigned Cases</button> : null}
+							{modules.includes("JUDICARY") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/judicary')}>Judicary</button> : null}
+						</>)} />
 					</div>
+					<AccountSwitcher />
+				</div>
 				<div className='grow p-8 overflow-y-scroll'>
-						<Routes>
-						<Route path="/health" exact element={<Health/>}/>
-						<Route path="/profile" exact element={<Profile/>}/>
+					<Routes>
+						<Route path="/health" exact element={<Health />} />
+						<Route path="/profile" exact element={<Profile />} />
 
 						<Route path="/cases/:id/detective-board" exact element={
 							<ParamWrap then={ps => (
-								<Retrieve msg="evidences" path={`/api/cases/${ps.id}/evidences/`} then={ (evi_list, reload) => (
-									<Retrieve msg="board" path={`/api/cases/${ps.id}/detective-board/`} then={ board => (
+								<Retrieve msg="evidences" path={`/api/cases/${ps.id}/evidences/`} then={(evi_list, reload) => (
+									<Retrieve msg="board" path={`/api/cases/${ps.id}/detective-board/`} then={board => (
 										<DetectiveBoard
 											evi_list={evi_list.map(evi_decode)}
 											item_list={board.board_json?.items}
@@ -257,71 +257,71 @@ const App = () => {
 											case_id={ps.id}
 											onReload={reload}
 										/>
-									)}/>
-								)}/>
-							)}/>
-						}/>
+									)} />
+								)} />
+							)} />
+						} />
 
 						{/* submit pages */}
-						<Route path="/login" exact element={<Login/>}/>
-						<Route path="/signup" exact element={<Signup/>}/>
-						<Route path="/evidence/submit" exact element={<EvidenceSubmitForm/>}/>
+						<Route path="/login" exact element={<Login />} />
+						<Route path="/signup" exact element={<Signup />} />
+						<Route path="/evidence/submit" exact element={<EvidenceSubmitForm />} />
 
 						<Route path="/submission/new" exact element={
 							<Retrieve msg="submission types" path='/api/submission/types/'
 								then={({ types }) => (<SubmissionSubmitForm typeList={types} />)}
 							/>
-						}/>
+						} />
 
 						<Route path="/submission/:id/edit" exact element={
 							<ParamWrap then={(ps, qs) => (
 								<Retrieve msg="submission" path={`/api/submission/${ps.id}/`}
-									then={subm => (<SubmissionSubmitForm subm0={{ ...subm.target, submission_type: subm.submission_type }} resubmit={subm.id} returnTo={qs.get('redir')}/>)}
+									then={subm => (<SubmissionSubmitForm subm0={{ ...subm.target, submission_type: subm.submission_type }} resubmit={subm.id} returnTo={qs.get('redir')} />)}
 								/>
-							)}/>
-						}/>
+							)} />
+						} />
 
 						<Route path="/cases/:id/evidences/submit" exact element={
 							<ParamWrap then={(ps, qs) => (
-								<EvidenceSubmitForm case_id={ps.id}/>
-							)}/>
-						}/>
+								<EvidenceSubmitForm case_id={ps.id} />
+							)} />
+						} />
 
 						<Route path="/cases/:id/edit" exact element={
 							<ParamWrap then={(ps, qs) => (
 								<Retrieve msg="case" path={`/api/cases/${ps.id}/`}
-									then={cas => (<CaseEditForm case0={case_edit_decode(cas)} returnTo={qs.get('redir')}/>)}
+									then={cas => (<CaseEditForm case0={case_edit_decode(cas)} returnTo={qs.get('redir')} />)}
 								/>
-							)}/>
-						}/>
+							)} />
+						} />
 						<Route path="/cases/:id/suspects/:suspect_id/criminal-record" exact element={
 							<ParamWrap then={ps => (
 								<Retrieve msg="case" path={`/api/cases/${ps.id}/`}
 									then={cas => (<SuspectCriminalRecordPage cas={cas} suspectId={ps.suspect_id} />)}
 								/>
-							)}/>
-						}/>
+							)} />
+						} />
 						<Route path="/cases/:id" exact element={
 							<ParamWrap then={ps => (
 								<Retrieve msg="case" path={`/api/cases/${ps.id}/`}
-									then={(cas, onReload) => (<CaseDetail cas={cas} onReload={onReload}/>)}
+									then={(cas, onReload) => (<CaseDetail cas={cas} onReload={onReload} />)}
 								/>
-							)}/>
-						}/>
+							)} />
+						} />
 
 
 						{/* list pages */}
-						{UrlList('/evidence/list', '/api/evidence/', EvidenceList,{}, evi_decode, 'Evidence List')}
-						{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList, 
+						{UrlList('/evidence/list', '/api/evidence/', EvidenceList, {}, evi_decode, 'Evidence List')}
+						{UrlList('/submission/mine', '/api/submission/mine/', SubmissionList,
 							{
-								create_button:true,
-								description:"the submissions you have sent"
-							}, 
+								create_button: true,
+								description: "the submissions you have sent"
+							},
 							subm_decode, 'My Submissions')}
 						{UrlList('/submission/inbox', '/api/submission/inbox/', SubmissionList, {
-								create_button:false,
-								description:"your submission inbox. people are waiting for you to respond"
-							}, subm_decode, 'Submission Inbox')}
+							create_button: false,
+							description: "your submission inbox. people are waiting for you to respond"
+						}, subm_decode, 'Submission Inbox')}
 						{UrlList('/cases/list', '/api/cases/', CaseList, {}, case_decode, 'Case List')}
 						{UrlList('/most-wanted', '/api/cases/most-wanted/', MostWantedList, {}, x => x, 'Most Wanted')}
 						{UrlList('/cases/:id/evidences', '/api/cases/<id>/evidences/', EvidenceList, {}, evi_decode, ps => `Evidences of Case ${ps.id}`)}
