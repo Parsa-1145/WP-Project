@@ -42,16 +42,16 @@ const subm_secondary_actions = {
 	GUILT_ASSESMENT: ["VIEW_CASE_DETAILS"]
 }
 const subm_types = [...Object.keys(subm_fields)];
-const submissionStatusColorMap = Object.freeze({
-	APPROVED: '#22c55e',
-	ACCEPTED: '#22c55e',
-	REJECTED: '#ef4444',
-	PENDING: '#f59e0b',
+const submissionStatusClassMap = Object.freeze({
+	APPROVED: 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10',
+	ACCEPTED: 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10',
+	REJECTED: 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10',
+	PENDING: 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10',
 });
 
-function getSubmissionStatusColor(status) {
+function getSubmissionStatusClass(status) {
 	const key = String(status ?? '').trim().toUpperCase();
-	return submissionStatusColorMap[key] ?? '#d1d5db';
+	return submissionStatusClassMap[key] ?? 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
 }
 
 export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo, onSubmitted, submissionType, fixedFields }) {
@@ -194,7 +194,7 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	const actions = [...secondary_actions, ...subm.available_actions];
 	const last_action = subm.actions_history[0] ? subm.actions_history[0]: [];
 	const createdAtFormatted = formatDate(subm.created_at);
-	const statusColor = getSubmissionStatusColor(subm.status);
+	const statusClassName = getSubmissionStatusClass(subm.status);
 	
 	
 	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
@@ -206,9 +206,9 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 					<h2 className='text-left grow'>
 						{type_normalized}
 					</h2>
-					<h3 style={{ color: statusColor }} >
+					<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${statusClassName}`}>
 						{normalizeString(subm.status, NormalizationType.LOWER_CASE)}
-					</h3>
+					</div>
 				</div>
 				<div>
 					<p title={subm.created_at ?? ''} className='text-gray-400'>

@@ -10,16 +10,92 @@ import { CaseList, CaseDetail, CaseEditForm, SuspectCriminalRecordPage, case_dec
 import { session, error_msg } from './session'
 import MostWantedList from './pages/most-wanted'
 
+const homeModuleCards = Object.freeze({
+	PROFILE: {
+		title: 'Profile',
+		description: 'View account details and bail status.',
+		path: '/profile',
+	},
+	COMPLAINANT_CASES: {
+		title: 'My Cases',
+		description: 'Track the cases you reported as a complainant.',
+		path: '/cases/complainant',
+	},
+	ASSIGNED_CASES: {
+		title: 'Assigned Cases',
+		description: 'Investigate and supervise your assigned cases.',
+		path: '/cases/list',
+	},
+	JUDICARY: {
+		title: 'Judicary',
+		description: 'Review trial cases and submit verdicts.',
+		path: '/judicary',
+	},
+	AUTOPSY: {
+		title: 'Autopsy Queue',
+		description: 'Review evidence-related submissions in your inbox.',
+		path: '/submission/inbox',
+	},
+});
+
 const Home = () => {
 	const navigate = useNavigate();
-	return (<>
-		{/* <p>According to all known laws of aviation...</p>
-		{ session.username && <p>Logged in as {session.username}</p> }
-		<button onClick={() => navigate('/health')}>Health Check</button>
-		{ !session.username && <button onClick={() => navigate('/login')}>Login</button> }
-		{ !session.username && <button onClick={() => navigate('/signup')}>Signup</button> }
-		{  session.username && <button onClick={() => session.set_creds()}>Logout</button> } */}
-	</>)
+	return (
+		<Retrieve msg="modules" path='/api/front-modules/' then={({ modules = [] }, onReload) => {
+			const knownModules = modules
+				.filter(moduleKey => homeModuleCards[moduleKey])
+				.map(moduleKey => ({ key: moduleKey, ...homeModuleCards[moduleKey] }));
+			const isAuthenticated = modules.length > 0;
+
+			return (
+				<div className='text-left flex flex-col gap-4'>
+					<div className='flex flex-row items-center gap-2'>
+						<h1 className='m-0'>Home</h1>
+						<button className='btn' onClick={onReload}>reload</button>
+					</div>
+
+					{!isAuthenticated ? (
+						<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-4 flex flex-col gap-3 w-full max-w-120'>
+							<h2 className='m-0'>Welcome</h2>
+							<p className='m-0 text-[var(--c-text-muted)]'>
+								Log in or sign up to access your modules.
+							</p>
+							<div className='flex flex-row gap-2'>
+								<button className='btn' onClick={() => navigate('/login')}>login</button>
+								<button className='btn' onClick={() => navigate('/signup')}>signup</button>
+							</div>
+						</div>
+					) : null}
+
+					{isAuthenticated ? (
+						<>
+							<p className='m-0 text-[var(--c-text-muted)]'>
+								Available modules for your account:
+							</p>
+							<div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
+								{knownModules.map(module => (
+									<button
+										key={module.key}
+										className='text-left border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2 hover:border-[var(--c-primary-strong)]'
+										onClick={() => navigate(module.path)}
+									>
+										<div className='text-sm text-[var(--c-primary)]'>{module.key}</div>
+										<div className='text-2xl'>{module.title}</div>
+										<div className='text-sm text-[var(--c-text-muted)]'>{module.description}</div>
+									</button>
+								))}
+							</div>
+							{knownModules.length === 0 ? (
+								<div className='border-1 border-[var(--c-warning)] bg-[var(--c-warning)]/10 p-3'>
+									No module cards are configured for your current permissions.
+								</div>
+							) : null}
+						</>
+					) : null}
+				</div>
+			);
+		}}/>
+	);
 }
 
 const ProfileContent = ({ user, onReload }) => {
@@ -279,7 +355,6 @@ const App = () => {
 					<div className='shrink w-full flex flex-row'>
 						<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
 							<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-							{console.log(modules)}
 								<TabLink to="/home">Home</TabLink>
 								<TabLink to='/submission/inbox'>Inbox</TabLink>
 								<TabLink to='/submission/mine'>Submissions</TabLink>
