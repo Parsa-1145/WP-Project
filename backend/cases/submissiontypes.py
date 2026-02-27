@@ -416,17 +416,17 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
         stage = SubmissionStage.objects.filter(submission=submission, order=submission.current_stage).first()
         target = cls.get_object(submission.object_id)
         from django.utils import timezone
+
         for s in target.suspect_links.all():
             s: CaseSuspectLink
-            s.guilt_state = s.SuspectGuiltStatus.CLEARED
+            s.guilt_status = s.SuspectGuiltStatus.CLEARED
             s.ended_at = timezone.now()
             s.save()
-
 
         if stage.order == 0:
             for sid in action.payload["guilty_suspects_ids"]:
                 link = CaseSuspectLink.objects.get(pk=sid)
-                link.guilt_state = CaseSuspectLink.SuspectGuiltStatus.GUILTY
+                link.guilt_status = CaseSuspectLink.SuspectGuiltStatus.GUILTY
                 link.save()
             if target.crime_level != target.CrimeLevel.CRITICAL:
                 target.status = target.Status.TRIAL
@@ -436,13 +436,11 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
             else:
                 submission.current_stage=1
                 submission.save()
-
-
         if stage.order == 1:
             if action.action_type == SubmissionActionType.REJECT:
                 for s in target.suspect_links.all():
                     s: CaseSuspectLink
-                    s.guilt_state = s.SuspectGuiltStatus.PENDING_ASSESSMENT
+                    s.guilt_status = s.SuspectGuiltStatus.PENDING_ASSESSMENT
                     s.save()
                 submission.current_stage=0
                 submission.save()

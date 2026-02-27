@@ -454,7 +454,7 @@ class FrontModulesGetView(APIView):
             items.append("AUTOPSY")
 
         if user.has_perm("cases.jury_case"):
-            items.append("JURY")
+            items.append("JUDICARY")
 
         items.append("COMPLAINANT_CASES")
         items.append("PROFILE")
@@ -551,11 +551,6 @@ class MostWanted(generics.ListAPIView):
         
         users_list.sort(key=lambda u: u.wanted_score, reverse=True)
         return users_list
-
-
-
-
-
 
 @extend_schema_view(
     post=extend_schema(
@@ -667,4 +662,7 @@ class CaseVerdictView(APIView):
             suspect_link.ended_at = timezone.now()
             suspect_link.save()
         
+        case.status = case.Status.CLOSED
+        case.save()
+
         return Response({"detail": "Verdicts submitted successfully."}, status=status.HTTP_200_OK)

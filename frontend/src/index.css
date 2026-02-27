@@ -41,6 +41,7 @@ img {
   --c-success: #6dffb1;
   --c-warning: #ffd166;
   --c-danger: #ff6b6b;
+  --c-card-green: #9be7b8;
 
   line-height: 1.5;
   font-weight: 400;
@@ -157,8 +158,6 @@ img {
     opacity: 0.5;
     cursor: not-allowed;
   }
-
-
 }
 .select-themed {
   background-color: var(--c-card-green);

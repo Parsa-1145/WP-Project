@@ -279,6 +279,7 @@ const App = () => {
 					<div className='shrink w-full flex flex-row'>
 						<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
 							<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
+							{console.log(modules)}
 								<TabLink to="/home">Home</TabLink>
 								<TabLink to='/submission/inbox'>Inbox</TabLink>
 								<TabLink to='/submission/mine'>Submissions</TabLink>
@@ -287,6 +288,7 @@ const App = () => {
 								{modules.includes("PROFILE")?<TabLink to='/profile'>Profile</TabLink>:null}
 								{modules.includes("COMPLAINANT_CASES")?<TabLink to='/cases/complainant'>My Cases</TabLink>:null}
 								{modules.includes("ASSIGNED_CASES")?<TabLink to='/cases/list'>Assigned Cases</TabLink>:null}
+								{modules.includes("JUDICARY")?<TabLink to='/judicary'>Judicary</TabLink>:null}
 							</>) } />
 						</div>
 						<AccountSwitcher />
@@ -378,7 +380,7 @@ const App = () => {
 						{UrlList('/cases/:id/evidences', '/api/cases/<id>/evidences/', EvidenceList, {}, evi_decode, ps => `Evidences of Case ${ps.id}`)}
 						{UrlList('/cases/:id/submissions', '/api/cases/<id>/submissions/', SubmissionList, {}, chain(e => e.submission, subm_decode), ps => `Submissions of Case ${ps.id}`)}
 						{UrlList('/cases/complainant', '/api/cases/complainant/', CaseList, { safeOnly: true }, case_decode, 'Complainant in')}
-
+						{UrlList('/judicary', '/api/cases/trial/', CaseList, { canJury: true }, case_decode, 'Complainant in')}
 						{/* redirect any invalid link to home */}
 						<Route path="*" element={<Navigate to="/home" replace />} />
 					</Routes>

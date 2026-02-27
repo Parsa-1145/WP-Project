@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router'
 import { FormInputField, FormInputChangeFn } from './Forms'
 import { session, error_msg_list } from './session.jsx'
 import { ChevronDown } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export function Signup() {
 	const fields = [
@@ -22,25 +23,23 @@ export function Signup() {
 	}
 	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
-	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
-
-	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
 		if (data.password !== data.pass2) {
-			setMsg("ERR: Passwords don't match");
+			toast.error("Passwords don't match");
 			return;
 		}
-		setMsg('Awaiting response...');
 		setPost(true);
 
 		session.post('/api/auth/signup/', { ...data, pass2: undefined })
 			.then(res => {
-				setMsg('Signup successful');
+				toast.success('Signup successful');
 				navigate('/login');
 			})
-			.catch(err => setMsgs(error_msg_list(err)))
+			.catch(err => {
+				toast.error(error_msg_list(err));
+			})
 			.finally(() => setPost(false));
 	}
 
@@ -49,10 +48,16 @@ export function Signup() {
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
-		{msgs.map((x, i) => <p key={i}>{x}</p>)}
-		<div className='flex flex-col gap-2'>
-			{fields.map(FieldArr)}
-			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
+		<div className='w-full h-full flex flex-col justify-center items-center'>
+			<div className='flex flex-col gap-7 bg-(--c-surface) p-4 border-(--c-border) border-1 relative h-min w-80'>
+				<h2>
+					Sign Up
+				</h2>
+				<div className='flex flex-col gap-3'>
+					{fields.map(FieldArr)}
+				</div>
+				<button className='btn w-full'onClick={submit} disabled={post}>Submit</button>
+			</div>
 		</div>
 	</>)
 }
@@ -69,12 +74,9 @@ export function Login() {
 	};
 	const [data, setData] = useState(defaultData);
 	const [post, setPost] = useState(false);
-	const [msgs, setMsgs] = useState([]);
 	const navigate = useNavigate();
-	const setMsg = msg => setMsgs([msg]);
 
 	const submit = () => {
-		setMsg('Awaiting response...');
 		setPost(true);
 
 		const req_body = {
@@ -84,11 +86,13 @@ export function Login() {
 
 		session.post('/api/auth/login/', req_body)
 			.then(res => {
-				setMsg('Login successful');
+				toast.success('Login successful');
 				session.login(data.username, res.data.access);
 				navigate('/home');
 			})
-			.catch(err => setMsgs(error_msg_list(err)))
+			.catch(err => {
+				toast.error(error_msg_list(err))
+			})
 			.finally(() => setPost(false));
 	}
 
@@ -97,10 +101,16 @@ export function Login() {
 	const FieldArr = arr => Field(arr[0], arr[1], arr[2]);
 
 	return (<>
-		{msgs.map((x, i) => <p key={i}>{x}</p>)}
-		<div className='flex flex-col gap-2'>
-			{fields.map(FieldArr)}
-			<button onClick={submit} disabled={post} style={{ width: '100%' }}>Submit</button>
+		<div className='w-full h-full flex flex-col justify-center items-center'>
+			<div className='flex flex-col gap-7 bg-(--c-surface) p-4 border-(--c-border) border-1 relative h-min w-80'>
+				<h2>
+					Login
+				</h2>
+				<div className='flex flex-col gap-3'>
+					{fields.map(FieldArr)}
+				</div>
+				<button className='btn w-full'onClick={submit} disabled={post}>Submit</button>
+			</div>
 		</div>
 	</>)
 }

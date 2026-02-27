@@ -201,29 +201,29 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	const ProcessArr = data => (ent) => Process(data)(...ent);
 	return (
 		<div className='generic-list-item' {...props}>
-				<div className='flex flex-col gap-0'>
-					<div className='flex flex-row'>
-						<h2 className='text-left grow'>
-							{type_normalized}
-						</h2>
-						<h3 style={{ color: statusColor }} >
-							{normalizeString(subm.status, NormalizationType.LOWER_CASE)}
-						</h3>
-					</div>
-					<div>
-						<p title={subm.created_at ?? ''} className='text-gray-400'>
-							date
-							{createdAtFormatted}
-						</p>
-					</div>
+			<div className='flex flex-col gap-0'>
+				<div className='flex flex-row'>
+					<h2 className='text-left grow'>
+						{type_normalized}
+					</h2>
+					<h3 style={{ color: statusColor }} >
+						{normalizeString(subm.status, NormalizationType.LOWER_CASE)}
+					</h3>
 				</div>
-				<div className='grow'>
-					{subm_fields[type].map(ProcessArr(subm.target))}
-					{last_action && last_action.action_type === 'REJECT' && FormField('text', 'Last Message', last_action.payload.message, {})}
+				<div>
+					<p title={subm.created_at ?? ''} className='text-gray-400'>
+						date
+						{createdAtFormatted}
+					</p>
 				</div>
-				<div className='w-full flex flex-row gap-2 justify-end'>
-					{actions.map((act, idx) => (<button className='btn btn-sm' key={idx} onClick={() => onAction(act)}>{normalizeString(act)}</button>))}
-				</div>
+			</div>
+			<div className='grow'>
+				{subm_fields[type].map(ProcessArr(subm.target))}
+				{last_action && last_action.action_type === 'REJECT' && FormField('text', 'Last Message', last_action.payload.message, {})}
+			</div>
+			<div className='w-full flex flex-row gap-2 justify-end'>
+				{actions.map((act, idx) => (<button className='btn btn-sm' key={idx} onClick={() => onAction(act)}>{normalizeString(act)}</button>))}
+			</div>
 		</div>
 		);
 	}

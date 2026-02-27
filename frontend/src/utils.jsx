@@ -9,9 +9,7 @@ export const NormalizationType = Object.freeze({
 const submissionDateFormat = {
     locale: undefined,
     options: {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year: 'numeric',month: 'long',day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
     },

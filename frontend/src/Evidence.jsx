@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { FormInputField, FormInputChangeFn, FormField, SimpleInputField, GenericList, ListCompactCtx } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 import { CustomSelect } from './CustomSelect'
-import { NormalizationType, normalizeString } from './utils'
+import { NormalizationType, normalizeString, formatDate } from './utils'
 
 // type, name, id
 const evi_fields_auto = [
@@ -45,6 +45,23 @@ const evi_field_info = {
 	other: { res_type: 'OtherEvidence' },
 }
 const evi_types = [...Object.keys(evi_fields)];
+
+const getEvidenceStatusClass = statusRaw => {
+	const status = String(statusRaw || '').toUpperCase();
+	if (!status)
+		return 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
+
+	if (['REJECTED', 'GUILTY', 'FAILED', 'NOT_VERIFIED'].includes(status))
+		return 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10';
+
+	if (['APPROVED', 'ACCEPTED', 'CLEARED', 'VERIFIED'].includes(status))
+		return 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10';
+
+	if (['PENDING', 'PENDING_ASSESSMENT', 'IN_REVIEW'].includes(status))
+		return 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10';
+
+	return 'text-[var(--c-text-muted)] border-[var(--c-border)] bg-[var(--c-surface-2)]';
+};
 
 export function EvidenceSubmitForm({ returnTo, case_id, onSubmitted }) {
 	const defaultData = () => {
@@ -137,32 +154,54 @@ export function EvidenceFrame({ evi, onSelect, className, ...props }) {
 	const compact = useContext(ListCompactCtx);
 	const Process = (type, name, id) => FormField(type, name, evi[id], { key: id, compact });
 	const ProcessArr = (ent) => Process(...ent);
+	const frameClassName = className || 'border-1 border-(--c-border) bg-(--c-surface) flex flex-col gap-2 h-full p-2 max-h-80 overflow-hidden';
+	const reviewStatusRaw = evi.status
+		? String(evi.status).toUpperCase()
+		: evi.approval_status
+			? String(evi.approval_status).toUpperCase()
+			: (typeof evi.is_verified === 'boolean'
+				? (evi.is_verified ? 'VERIFIED' : 'NOT_VERIFIED')
+				: '');
+	const reviewStatusClass = getEvidenceStatusClass(reviewStatusRaw);
+	const reviewStatusLabel = reviewStatusRaw === 'NOT_VERIFIED'
+		? 'Not Verified'
+		: normalizeString(reviewStatusRaw, NormalizationType.LOWER_CASE);
 	return (
-		// <div className={className || 'generic-list-item'} {...props}>
-		// 	{Process('text', 'Type', 'type')}
-		// 	{!compact && evi_fields_auto.map(ProcessArr)}
-		// 	{evi_fields_common.map(ProcessArr)}
-		// 	{evi_fields[evi.type].map(ProcessArr)}
-		// 	{ onSelect && <button onClick={onSelect}>Select</button> }
-		// </div>
 		<>
-			<div className={className || 'generic-list-item'} {...props}>
-				<div className='flex flex-col gap-0'>
-					<div className='flex flex-row'>
+			<div className={frameClassName} {...props}>
+				<div className='flex flex-col gap-2'>
+					<div className='flex flex-row items-start gap-2'>
 						<h2 className='text-left grow'>
 							{evi.title}
 						</h2>
-						<h3>
+						<div className='border-1 border-[var(--c-primary)] bg-[var(--c-primary)]/10 text-[var(--c-primary)] px-2 py-0.5 text-sm whitespace-nowrap'>
 							{normalizeString(evi.type, NormalizationType.LOWER_CASE)}
-						</h3>
+						</div>
+						{reviewStatusRaw
+							? (
+								<div className={`border-1 px-2 py-0.5 text-sm whitespace-nowrap ${reviewStatusClass}`}>
+									{reviewStatusLabel}
+								</div>
+							)
+							: null}
 					</div>
-					<h3 className='text-(--c-text-muted)'>
+					<h3 className='text-(--c-text-muted) m-0'>
 						{evi.description}
 					</h3>
+					{evi.created_at
+						? <div className='text-sm text-[var(--c-text-muted)]'>recorded: {formatDate(evi.created_at)}</div>
+						: null}
 				</div>
-				<div className='grow'>
+				<div className='grow min-h-0 overflow-y-auto pr-1'>
 					{evi_fields[evi.type].map(ProcessArr)}
 				</div>
+				{onSelect
+					? (
+						<div className='w-full text-right'>
+							<button className='btn' onClick={onSelect}>select</button>
+						</div>
+					)
+					: null}
 			</div>
 		</>
 	)

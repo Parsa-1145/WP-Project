@@ -163,28 +163,77 @@ function UserCard({user, fields=[], onDelete=null}){
 	const user_name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.national_id;
 	return(
 		<>
-			<div className='user-card'>
-				<div className='grow'>
-					<div className='text-2xl p-0 m-0'>{user_name}</div>
-					<div className='text-lg m-0 '>national id: <span className=''>{user.national_id}</span></div>
-					<div className='m-0 p-0'>phone: <span className=''>{user.phone_number}</span></div>
+			<div className='w-full md:w-72 border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-3'>
+				<div className='min-w-0'>
+					<h3 className='m-0 text-2xl leading-tight break-words'>{user_name}</h3>
+					<div className='text-sm text-[var(--c-text-muted)] break-all'>
+						{user.national_id || 'No national id'}
+					</div>
 				</div>
-				<div className='flex flex-row gap-2 justify-end'>
-					<button className='btn' onClick={() => onDelete && onDelete(user)}>delete</button>
+
+				<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2'>
+					<div className='text-sm text-[var(--c-text-muted)]'>Phone</div>
+					<div>{user.phone_number || '-'}</div>
 				</div>
+
+				{onDelete
+					? (
+						<div className='flex flex-row gap-2 justify-end'>
+							<button className='btn' onClick={() => onDelete(user)}>delete</button>
+						</div>
+					)
+					: null}
 			</div>
 		</>
 	)
 }
 
+function AddParticipantCard({ title, value, onChange, onAdd, disabled }) {
+	return (
+		<div className='w-full md:w-72 border-1 border-[var(--c-primary)] bg-[var(--c-surface-2)] p-3 flex flex-col gap-3'>
+			<div className='text-xl leading-tight'>
+				{title}
+			</div>
+			<div className='text-sm text-[var(--c-text-muted)]'>
+				Enter national ID
+			</div>
+			<div className='flex flex-row gap-1'>
+				<input
+					className='input grow'
+					placeholder='national id'
+					value={value}
+					onChange={onChange}
+				/>
+				<button className='btn' onClick={onAdd} disabled={disabled}>
+					Add
+				</button>
+			</div>
+		</div>
+	);
+}
+
 function SuspectCard({user, your_role, fields=[], onScoreUpdate, onMarkArrested, onViewCriminalRecord, cas}){
 	const user_name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.national_id;
-	const status = (user.status || '').toLowerCase().replace(/_/g, ' ');
+	const statusRaw = String(user.status || '').toUpperCase();
+	const status = statusRaw.toLowerCase().replace(/_/g, ' ');
 	const role = (your_role || '').toLowerCase();
+	const guiltStatusRaw = String(user.guilt_status || '').toUpperCase();
+	const guiltStatus = guiltStatusRaw.toLowerCase().replace(/_/g, ' ');
 	const currentScore = role === 'detective'
 		? user.detective_score
 		: user.supervisor_score;
 	const scoreInput = useRef(null)
+	const canUpdateInInterogation = (role=="detective" || role=="supervisor") && cas.status=="interogation";
+	const statusToneClass = statusRaw === 'WANTED'
+		? 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10'
+		: statusRaw === 'ARRESTED'
+			? 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10'
+			: 'text-[var(--c-success)] border-[var(--c-success)] bg-[var(--c-success)]/10';
+	const guiltToneClass = guiltStatusRaw === 'GUILTY'
+		? 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10'
+		: guiltStatusRaw === 'CLEARED'
+			? 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10'
+			: 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10';
 
 	const submitScoreUpdate = () => {
 		if (!onScoreUpdate)
@@ -199,31 +248,55 @@ function SuspectCard({user, your_role, fields=[], onScoreUpdate, onMarkArrested,
 
 	return(
 		<>
-			<div className='user-card'>
-				<div className='grow'>
-					<div className='text-2xl p-0 m-0'>{user_name}</div>
-					<div>status: {status}</div>
-					<div>detective score: {user.detective_score}</div>
-					<div>supervisor score: {user.supervisor_score}</div>
+			<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-3'>
+				<div className='flex flex-row items-start gap-2'>
+					<div className='grow min-w-0'>
+						<h3 className='m-0 text-2xl leading-tight break-words'>{user_name}</h3>
+						<div className='text-sm text-[var(--c-text-muted)] break-all'>
+							{user.national_id}
+						</div>
+					</div>
+					<div className={`w-fit border-1 px-2 py-0.5 text-sm whitespace-nowrap ${statusToneClass}`}>
+						{normalizeString(status)}
+					</div>
 				</div>
-				<div className='flex flex-col gap-1'>
+
+				<div className='grid gap-2 md:grid-cols-2'>
+					<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2'>
+						<div className='text-sm text-[var(--c-text-muted)]'>Detective Score</div>
+						<div>{user.detective_score ?? '-'}</div>
+					</div>
+					<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2'>
+						<div className='text-sm text-[var(--c-text-muted)]'>Supervisor Score</div>
+						<div>{user.supervisor_score ?? '-'}</div>
+					</div>
+				</div>
+
+				<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2 flex flex-row items-center gap-2'>
+					<div className='text-sm text-[var(--c-text-muted)] grow'>Guilt Status:</div>
+					<div className={`w-fit border-1 px-2 py-0.5 text-sm whitespace-nowrap ${guiltToneClass}`}>
+						{normalizeString(guiltStatus)}
+					</div>
+				</div>
+
+				<div className='flex flex-col gap-2'>
 					{onViewCriminalRecord
 						? <button className='btn w-full text-base' onClick={() => onViewCriminalRecord(user)}>criminal record</button>
 						: null}
-					{(role=="detective" || role=="supervisor") && cas.status=="interogation" ? (
+					{canUpdateInInterogation ? (
 						<>
 							{status === 'wanted' && onMarkArrested
 								? <button className='btn w-full text-base' onClick={() => onMarkArrested(user)}>mark arrested</button>
-								: null}
-							<div className='flex flex-row gap-1'>
-								<input
-									placeholder='score'
-									defaultValue={currentScore}
-									className='input grow'
-									ref={scoreInput}
-								/>
-								<button className='btn' onClick={submitScoreUpdate}>ok</button>
-							</div>
+								: <div className='flex flex-row gap-1'>
+									<input
+										placeholder='score'
+										defaultValue={currentScore}
+										className='input grow'
+										ref={scoreInput}
+									/>
+									<button className='btn' onClick={submitScoreUpdate}>ok</button>
+								</div>
+							}
 						</>
 					) : null}
 				</div>
@@ -233,22 +306,60 @@ function SuspectCard({user, your_role, fields=[], onScoreUpdate, onMarkArrested,
 	}
 
 function CriminalRecordCard({rec}){
-	console.log(rec)
+	const guiltStatus = String(rec.guilt_status || '').toUpperCase();
+	const isGuilty = guiltStatus === 'GUILTY';
+	const isCleared = guiltStatus === 'CLEARED';
+	const guiltToneClass = isGuilty
+		? 'text-[var(--c-danger)] border-[var(--c-danger)] bg-[var(--c-danger)]/10'
+		: isCleared
+			? 'text-[var(--c-primary)] border-[var(--c-primary)] bg-[var(--c-primary)]/10'
+			: 'text-[var(--c-warning)] border-[var(--c-warning)] bg-[var(--c-warning)]/10';
+
 	return(
 		<>
-			<div className='border-1 p-2'>
-				<h1>
-					{rec.title}
-				</h1>
-				<h3>
+			<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-3'>
+				<div className='flex flex-row items-start gap-2'>
+					<div className='grow'>
+						<h3 className='m-0 text-2xl leading-tight'>
+							{rec.title}
+						</h3>
+						<div className='text-sm text-[var(--c-text-muted)]'>
+							case #{rec.case_id ?? '-'}
+						</div>
+					</div>
+					<div className='border-1 border-[var(--c-border)] bg-[var(--c-surface-2)] px-2 py-1 text-sm whitespace-nowrap'>
+						{normalizeString(rec.status)}
+					</div>
+				</div>
+
+				<p className='m-0 whitespace-pre-wrap text-[var(--c-text-muted)]'>
 					{rec.description}
-				</h3>
-				<h2>
-					Case Status: {normalizeString(rec.status)}
-				</h2>
-				<h2>
-					Crime Date: {formatDate(rec.crime_datetime)}
-				</h2>
+				</p>
+
+				<div className='grid gap-2 md:grid-cols-2'>
+					<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2'>
+						<div className='text-sm text-[var(--c-text-muted)]'>Crime Date</div>
+						<div>{formatDate(rec.crime_datetime)}</div>
+					</div>
+					<div className='border-1 border-dotted border-[var(--c-primary-strong)] p-2'>
+						<div className='text-sm text-[var(--c-text-muted)]'>Guilt Status</div>
+						<div className={`w-fit border-1 px-2 py-0.5 ${guiltToneClass}`}>
+							{normalizeString(rec.guilt_status || 'pending_assessment')}
+						</div>
+					</div>
+				</div>
+
+				{isGuilty ? (
+					<div className='border-1 border-[var(--c-primary)] bg-[var(--c-surface-2)] p-2 flex flex-col gap-1'>
+						<div className='text-xl uppercase tracking-wide text-[var(--c-primary)]'>Verdict</div>
+						<div className='text-xl leading-tight'>
+							{rec.verdict_title || 'No verdict title'}
+						</div>
+						<p className='m-0 whitespace-pre-wrap text-[var(--c-text-muted)]'>
+							{rec.verdict_description || 'No verdict description.'}
+						</p>
+					</div>
+				) : null}
 			</div>
 		</>
 	)
@@ -277,7 +388,6 @@ export function SuspectCriminalRecordPage({ cas, suspectId }) {
 		</div>
 	);
 }
-
 
 function InvestigationApprovalModal({ caseId, onClose, onSubmitted }) {
 	return (
@@ -309,6 +419,138 @@ function EvidenceCreateModal({ caseId, onClose, onSubmitted }) {
 				case_id={caseId}
 				onSubmitted={onSubmitted}
 			/>
+		</div>
+	);
+}
+
+function CaseVerdictModal({ cas, onClose, onSubmitted }) {
+	const guiltySuspects = (cas?.suspects || []).filter(
+		suspect => String(suspect?.guilt_status || '').toUpperCase() === 'GUILTY'
+	);
+						{console.log(cas)}
+
+	const [verdictInputs, setVerdictInputs] = useState(() => {
+		const initial = {};
+		for (const suspect of guiltySuspects) {
+			const suspectId = getSuspectId(suspect);
+			if (suspectId === null || suspectId === undefined)
+				continue;
+			initial[String(suspectId)] = { title: '', description: '' };
+		}
+		return initial;
+	});
+	const [submitting, setSubmitting] = useState(false);
+	const [msgs, setMsgs] = useState([]);
+
+	const updateVerdictField = (suspectId, field, value) => {
+		const key = String(suspectId);
+		setVerdictInputs(prev => ({
+			...prev,
+			[key]: {
+				...(prev[key] || { title: '', description: '' }),
+				[field]: value,
+			},
+		}));
+	};
+
+	const submitVerdicts = () => {
+		if (submitting)
+			return;
+
+		if (guiltySuspects.length === 0) {
+			setMsgs(['No guilty suspects found for this case.']);
+			return;
+		}
+
+		const verdicts = [];
+		for (const suspect of guiltySuspects) {
+			const suspectIdRaw = getSuspectId(suspect);
+			const suspectId = Number(suspectIdRaw);
+			const suspectName = [suspect.first_name, suspect.last_name].filter(Boolean).join(' ') || suspect.national_id || suspectIdRaw;
+
+			if (suspectIdRaw === null || suspectIdRaw === undefined || suspectIdRaw === '' || !Number.isInteger(suspectId) || suspectId <= 0) {
+				setMsgs([`Invalid suspect id for ${suspectName}.`]);
+				return;
+			}
+
+			const row = verdictInputs[String(suspectId)] || {};
+			const title = String(row.title || '').trim();
+			const description = String(row.description || '').trim();
+
+			if (!title || !description) {
+				setMsgs([`Verdict title and description are required for ${suspectName}.`]);
+				return;
+			}
+
+			verdicts.push({
+				user_id: suspectId,
+				guilt_status: 'GUILTY',
+				title,
+				description,
+			});
+		}
+
+		setSubmitting(true);
+		setMsgs(['Submitting verdicts...']);
+		session.post(`/api/cases/${cas.id}/verdict/`, { verdicts })
+			.then(() => {
+				if (onSubmitted)
+					onSubmitted();
+				if (onClose)
+					onClose();
+			})
+			.catch(err => setMsgs(error_msg_list(err)))
+			.finally(() => setSubmitting(false));
+	};
+
+	return (
+		<div style={{ width: 'min(48rem, 100%)' }}>
+			<div className='flex flex-row items-center justify-between mb-2'>
+				<h2 className='m-0'>Judge Case</h2>
+				<button className='btn whitespace-nowrap' onClick={onClose} disabled={submitting}>close</button>
+			</div>
+			<p className='m-0 mb-2'>Case: {cas.title}</p>
+			{guiltySuspects.length === 0
+				? <p>No guilty suspects found for this case.</p>
+				: (
+					<div className='flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1'>
+						{guiltySuspects.map(suspect => {
+							const suspectId = getSuspectId(suspect);
+							const key = String(suspectId ?? suspect.national_id ?? suspect.id);
+							const suspectName = [suspect.first_name, suspect.last_name].filter(Boolean).join(' ') || suspect.national_id || key;
+							const row = verdictInputs[String(suspectId)] || { title: '', description: '' };
+							return (
+								<div key={key} className='border-1 border-[var(--c-border)] p-2 flex flex-col gap-2'>
+									<h3 className='m-0'>{suspectName}</h3>
+									<input
+										className='input w-full'
+										placeholder='verdict title'
+										value={row.title}
+										onChange={e => updateVerdictField(suspectId, 'title', e.target.value)}
+										disabled={submitting}
+									/>
+									<textarea
+										className='w-full'
+										rows={4}
+										placeholder='verdict description'
+										value={row.description}
+										onChange={e => updateVerdictField(suspectId, 'description', e.target.value)}
+										disabled={submitting}
+									/>
+								</div>
+							);
+						})}
+					</div>
+				)}
+			{msgs.map((msg, idx) => (
+				<p key={idx} className='m-0 mt-2'>{msg}</p>
+			))}
+			<div className='flex justify-end flex-row gap-2 mt-2'>
+				<button className='btn btn-red' onClick={onClose} disabled={submitting}>cancel</button>
+				<button className='btn btn-green' onClick={submitVerdicts} disabled={submitting || guiltySuspects.length === 0}>
+					submit verdicts
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -644,11 +886,11 @@ export function CaseDetail({ cas, onReload }) {
 							className='grid gap-2 h-full'
 							style={{ gridTemplateRows: '2fr 1fr' }}
 						>
-							<div className='border-dotted border-1  p-2'>
+							<div className='border-dotted border-1 border-[var(--c-primary-strong)] p-2'>
 								<h2>Status: {normalizeString(cas.status)}</h2>
 								<p>{case_status_description[cas.status]}</p>
 							</div>
-							<div className='border-dotted border-1 flex flex-col justify-center p-2'>
+							<div className='border-dotted border-1 border-[var(--c-primary-strong)] flex flex-col justify-center p-2'>
 								<h2>Crime Level: {case_crime_level_name[cas.crime_level]}</h2>
 							</div>
 						</div>
@@ -656,10 +898,10 @@ export function CaseDetail({ cas, onReload }) {
 							className='grid gap-2 h-full'
 							style={{ gridTemplateRows: '1fr 2fr' }}
 						>
-							<div className='border-dotted border-1 flex flex-col justify-center p-2'>
+							<div className='border-dotted border-1 border-[var(--c-primary-strong)] flex flex-col justify-center p-2'>
 								<h2>Role: {cas.your_role.toLowerCase()}</h2>
 							</div>
-							<div className='border-dotted border-1 flex flex-col justify-center p-2'>
+							<div className='border-dotted border-1 border-[var(--c-primary-strong)] flex flex-col justify-center p-2'>
 								<h2>Lead Detective: {cas.lead_detective}</h2>
 								<h2>Supervisor: {cas.supervisor}</h2>
 							</div>
@@ -667,7 +909,7 @@ export function CaseDetail({ cas, onReload }) {
 					</div>
 				</div>
 				{/* <div className='border-dotted border-1 p-2 flex flex-col gap-4'> */}
-					<TitledBox title={"Suspects"} className='min-h-40'>
+					<TitledBox title={"Suspects"} className='min-h-40 flex flex-row flex-wrap gap-2'>
 						{(cas.suspects || []).length === 0 ? (
 							<h2>No suspects yet</h2>
 						) : (
@@ -692,22 +934,13 @@ export function CaseDetail({ cas, onReload }) {
 									)
 								})
 							}
-							<div className='user-card'>
-								<div className='grow'>
-									Add a complainant
-								</div>
-								<div className='flex flex-row gap-1'>
-									<input
-										className='input grow'
-										placeholder='national id'
-										value={newComplainantNid}
-										onChange={e => setNewComplainantNid(e.target.value)}
-									/>
-									<button className='btn float-right' onClick={addComplainant} disabled={saving}>
-										Add
-									</button>
-								</div>
-							</div>
+							<AddParticipantCard
+								title='Add a complainant'
+								value={newComplainantNid}
+								onChange={e => setNewComplainantNid(e.target.value)}
+								onAdd={addComplainant}
+								disabled={saving}
+							/>
 					</TitledBox>
 					<TitledBox title={"Witnesses"} className='flex flex-row flex-wrap gap-2'>
 							{
@@ -715,22 +948,13 @@ export function CaseDetail({ cas, onReload }) {
 									return(<UserCard key={com.id || com.national_id} user={com} onDelete={removeWitness}/>)
 								})
 							}
-							<div className='user-card'>
-								<div className='grow'>
-									Add a witness
-								</div>
-								<div className='flex flex-row gap-1'>
-									<input
-										className='input grow'
-										placeholder='national id'
-										value={newWitnessNid}
-										onChange={e => setNewWitnessNid(e.target.value)}
-									/>
-									<button className='btn float-right' onClick={addWitness} disabled={saving}>
-										Add
-									</button>
-								</div>
-							</div>
+							<AddParticipantCard
+								title='Add a witness'
+								value={newWitnessNid}
+								onChange={e => setNewWitnessNid(e.target.value)}
+								onAdd={addWitness}
+								disabled={saving}
+							/>
 					</TitledBox>
 					<TitledBox title={"evidence"} className='min-h-40'>
 						<>
@@ -751,19 +975,41 @@ export function CaseDetail({ cas, onReload }) {
 	);
 }
 
-export function CaseFrame({ cas, safeOnly, ...props }) {
+export function CaseFrame({ cas, safeOnly, canJury, onReload, ...props }) {
 	const compact = useContext(ListCompactCtx);
+	const modalApi = useModal()
+	const [msgs, setMsgs] = useState([]);
 	const hiddenFields = ['title', 'description', 'status', 'crime_datetime'];
 	const fields = (safeOnly
 		? case_fields.filter(([,, id]) => case_safe_fields.includes(id))
 		: case_fields
 	).filter(([,, id]) => !hiddenFields.includes(id));
 	const navigate = useNavigate();
+
+	console.log(cas)
+
+	const openJudgeModal = () => {
+		modalId = modalApi.openNewModal(
+			<Retrieve msg="case" path={`/api/cases/${cas.id}/`}
+				then={
+					(cas2, onReload) => (
+						<CaseVerdictModal
+							cas={cas2}
+							onClose={modalApi.closeTop}
+							onSubmitted={() => {
+								setMsgs(['Verdicts submitted successfully.']);
+								if (onReload)
+									onReload();
+							}}
+						/>
+					)
+				}
+			/>
+		);
+	};
 	
 	const Process = (type, name, id) => FormField(type, name, cas[id], { key: id, compact });
 	const ProcessArr = ent => Process(...ent);
-
-	console.log(cas)
 
 	return (
 		<>
@@ -787,14 +1033,27 @@ export function CaseFrame({ cas, safeOnly, ...props }) {
 				<div className='grow'>
 					{fields.map(ProcessArr)}
 				</div>
+				{canJury?
+					<div className='flex flex-row justify-end gap-2'>
+						<button className='btn' onClick={e=>{e.stopPropagation(); navigate(`/cases/${cas.id}`);} }>
+							view case details
+						</button>
+						<button className='btn' onClick={e=>{e.stopPropagation(); openJudgeModal();}}>
+							judge
+						</button>
+					</div>
+				:null}
+				{msgs.map((msg, idx) => (
+					<p key={idx} className='m-0 text-right'>{msg}</p>
+				))}
 			</div>
 		</>
 	);
 }
 
-export const CaseList = ({ list, title, onReload, onReturn, safeOnly }) => (
+export const CaseList = ({ list, title, onReload, onReturn, safeOnly, canJury}) => (
 	<GenericList title={title} onReload={onReload} onReturn={onReturn}>
-		{list.map((cas, i) => (<CaseFrame key={i} cas={cas} safeOnly={safeOnly}/>))}
+		{list.map((cas, i) => (<CaseFrame key={i} cas={cas} safeOnly={safeOnly} canJury={canJury} onReload={onReload}/>))}
 	</GenericList>
 );
 

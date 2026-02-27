@@ -33,27 +33,36 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
 
     @classmethod
     def handle_submission_action(cls, submission: Submission, action: SubmissionAction, context, **kwargs):
+        evi = cls.get_object(submission.object_id)
         if action.action_type == SubmissionActionType.ACCEPT :
-            serializer = BioEvidenceSerializer(
-                instance=cls.get_object(submission.object_id),
-                context=context or {},
-                data=action.payload or {},
-                partial=True
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save(is_approved=True, )
+            # serializer = BioEvidenceSerializer(
+            #     instance=cls.get_object(submission.object_id),
+            #     context=context or {},
+            #     data=action.payload or {},
+            #     partial=True
+            # )
+            # serializer.is_valid(raise_exception=True)
+            # serializer.save(is_approved=True, )
+
+            evi.is_verified = True
+            evi.save()
+
 
             result_text = action.payload.get("coroner_result")
             submission.status = SubmissionStatus.ACCEPTED
             submission.save()
 
         elif action.action_type == SubmissionActionType.REJECT :
-            serializer = BioEvidenceSerializer(
-                instance=cls.get_object(submission.object_id),
-                context=context or {},
-                data=action.payload or {},
-                partial=True
-            )
+            # serializer = BioEvidenceSerializer(
+            #     instance=cls.get_object(submission.object_id),
+            #     context=context or {},
+            #     data=action.payload or {},
+            #     partial=True
+            # )
+
+            evi.is_verified = False
+            evi.save()
+
 
             submission.status = SubmissionStatus.REJECTED
             submission.save()

@@ -5,3 +5,5 @@ from .models import *
 admin.site.register(Case)
 admin.site.register(Complaint)
 admin.site.register(CrimeScene)
+admin.site.register(CaseSuspectLink)
+
