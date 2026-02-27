@@ -279,12 +279,15 @@ class DataRewardSubmissionRewardCreationTestCase(APITestCase):
         from payments.submissiontypes import DataForRewardSubmissionType
 
         reward_amount = 700_000
+        self.submission.current_stage = 1
+        self.submission.save()
         action = SubmissionAction.objects.create(
             submission=self.submission,
-            action_type=SubmissionActionType.ACCEPT,
+            action_type=SubmissionActionType.SET_REWARD,
             payload={"reward_amount": reward_amount},
             created_by=self.lead_detective,
         )
+        print("submission stage before action:", self.submission.current_stage)
 
         DataForRewardSubmissionType.handle_submission_action(
             self.submission, action, context=None
@@ -292,7 +295,7 @@ class DataRewardSubmissionRewardCreationTestCase(APITestCase):
 
         self.submission.refresh_from_db()
         self.data.refresh_from_db()
-
+        print ("Submission status after accepting at stage 1:", self.submission.status)
         assert self.submission.status == SubmissionStatus.ACCEPTED
 
         rewards = list(Reward.objects.filter(submission=self.submission))

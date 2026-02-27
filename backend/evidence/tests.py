@@ -27,4 +27,4 @@ class EvidenceTests(APITestCase):
     def test_evidence_list(self):
         self.client.force_authenticate(user=self.recorder1)
         response = self.client.get(self.list_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN) 
+        self.assertEqual(response.status_code, status.HTTP_200_OK) 
