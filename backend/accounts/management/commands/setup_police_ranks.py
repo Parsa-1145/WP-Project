@@ -55,7 +55,7 @@ class Command(BaseCommand):
             "police_officer",
             "Police Officer",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "complaint", "complaint_final_approve"),
             ],
         ),
@@ -63,7 +63,7 @@ class Command(BaseCommand):
             "detective",
             "Detective",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "case", "investigate_on_case"),
             ],
         ),
@@ -71,7 +71,7 @@ class Command(BaseCommand):
             "sergeant",
             "Sergeant",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "case", "supervise_case"),
             ],
         ),
@@ -79,7 +79,7 @@ class Command(BaseCommand):
             "captain",
             "Captain",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "case", "view_case"),
                 _perm("cases", "case", "assess_suspect_guilt"),
             ],
@@ -98,7 +98,7 @@ class Command(BaseCommand):
             "judge",
             "Judge",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "case", "view_case"),
                 _perm("cases", "case", "jury_case"),
             ],
