@@ -452,7 +452,7 @@ class FrontModulesGetView(APIView):
         if user.has_perm("evidence.can_approve_bioevidence"):
             items.append("AUTOPSY")
 
-        if user.has_perm("case.jury_case"):
+        if user.has_perm("cases.jury_case"):
             items.append("JURY")
 
         items.append("COMPLAINANT_CASES")
