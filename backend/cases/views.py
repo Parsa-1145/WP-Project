@@ -179,7 +179,7 @@ class AssignedCaseAccessMixin:
         )
         user = self.request.user
 
-        if (case.lead_detective_id != user.id and case.supervisor_id != user.id) and (not user.has_perm("cases.view_case")):
+        if (case.lead_detective_id != user.id and case.supervisor_id != user.id):
             raise PermissionDenied("Only assigned detective or supervisor can access this case.")
         self._case_obj = case
         return case
