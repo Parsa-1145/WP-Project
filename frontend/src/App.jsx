@@ -220,38 +220,31 @@ const UrlList = (local_path, remote_path, Component, props, decoder, title) => (
 	}/>
 );
 const chain = (...fns) => x => fns.reduce((mid, fn) => fn(mid), x);
-const TabLink = ({ to, children }) => (
-	<NavLink
-		to={to}
-		className={({ isActive }) => isActive ? 'tab-link tab-link-active' : 'tab-link'}
-	>
-		{children}
-	</NavLink>
-);
 
 const App = () => {
+	const navigate = useNavigate()
 	return (
 		<div className='w-screen h-screen m-0 px-18 py-12 box-border overflow-hidden'>
-				<div className='flex flex-col h-full gap-2 '>
-					<div className='shrink w-full flex flex-row'>
-						<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
+				<div className='flex flex-col h-full gap-2 items-center'>
+					<div className='shrink w-full flex flex-row justify-center'>
+						<div className='grow flex flex-row  gap-4' >
 							<Retrieve msg="modules" path={`/api/front-modules/`} then={ ({ modules }) => (<>
-								<TabLink to='/submission/inbox'>Inbox</TabLink>
-								<TabLink to='/submission/mine'>Submissions</TabLink>
-								<TabLink to='/most-wanted'>Most Wanted</TabLink>
+								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/inbox')}>Inbox</button>
+								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/mine')}>Submissions</button>
+								<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/most-wanted')}>Most Wanted</button>
 								
-								{modules.includes("PROFILE")?<TabLink to='/profile'>Profile</TabLink>:null}
-								{modules.includes("COMPLAINANT_CASES")?<TabLink to='/cases/complainant'>My Cases</TabLink>:null}
-								{modules.includes("ASSIGNED_CASES")?<TabLink to='/cases/list'>Assigned Cases</TabLink>:null}
-								{modules.includes("JUDICARY")?<TabLink to='/judicary'>Judicary</TabLink>:null}
+								{modules.includes("PROFILE")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/profile')}>Profile</button>:null}
+								{modules.includes("COMPLAINANT_CASES")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/complainant')}>My Cases</button>:null}
+								{modules.includes("ASSIGNED_CASES")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/list')}>Assigned Cases</button>:null}
+								{modules.includes("JUDICARY")?<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/judicary')}>Judicary</button>:null}
 							</>) } />
 						</div>
 						<AccountSwitcher />
-				</div>
+					</div>
 				<div className='grow p-8 overflow-y-scroll'>
 						<Routes>
-							<Route path="/health" exact element={<Health/>}/>
-							<Route path="/profile" exact element={<Profile/>}/>
+						<Route path="/health" exact element={<Health/>}/>
+						<Route path="/profile" exact element={<Profile/>}/>
 
 						<Route path="/cases/:id/detective-board" exact element={
 							<ParamWrap then={ps => (

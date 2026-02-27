@@ -14,6 +14,7 @@ import { formatDate, NormalizationType, normalizeString } from './utils';
 // type, name, id
 const case_fields = [
 	['text', 'Title', 'title'],
+	['text', 'Id', 'id'],
 	['textarea', 'Description', 'description'],
 	['datetime', 'Crime Datetime', 'crime_datetime'],
 	['text', 'Crime Level', 'crime_level'],

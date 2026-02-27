@@ -9,10 +9,11 @@ class BailRequestSerializer(serializers.Serializer):
     def create(self, validated_data):
         return BailRequest.objects.create(**validated_data)
     
-class DataForRewardSerializer(serializers.Serializer):
+class DataForRewardSerializer(serializers.ModelSerializer):
     class Meta:
         model = DataForReward
-        fields = "__all__"
+        fields = ["id", "reward", "description"]
+        read_only_fields = ["id", "reward"]
 
     def create(self, validated_data):
         return DataForReward.objects.create(**validated_data)

@@ -119,6 +119,9 @@ export const AccountSwitcher = () => {
 	const navigate = useNavigate();
 	const [activeUser, setActiveUser] = useState(session.activeUser);
 	const [accounts, setAccounts] = useState(() => ({ ...session.accounts }));
+	const menuButtonClass = 'w-full cursor-pointer border-1 border-[var(--c-border)] bg-[var(--c-surface-2)] px-2 py-1 text-left text-sm text-[var(--c-text)] hover:bg-[var(--c-primary)] hover:text-black';
+	const menuDangerButtonClass = 'w-full cursor-pointer border-1 border-[var(--c-danger)] bg-[var(--c-surface-2)] px-2 py-1 text-left text-sm text-[var(--c-danger)] hover:bg-[var(--c-danger)] hover:text-black';
+	const accountButtonBaseClass = 'flex w-full cursor-pointer items-center justify-between border-1 px-2 py-1 text-left text-sm hover:bg-[var(--c-primary)] hover:text-black';
 
 	useEffect(() => {
 		const unlisten = session.listen((newActiveUser, newAccounts) => {
@@ -132,35 +135,35 @@ export const AccountSwitcher = () => {
 	const usernames = Object.keys(accounts);
 
 	return (
-		<div className='relative text-xl w-56 flex justify-end'>
+		<div className='relative text-xl w-56 flex justify-center items-center'>
 			<details className='group'>
-				<summary className='flex min-w-0 cursor-pointer select-none items-center gap-2 rounded px-3 py-1 text-base hover:bg-white/5'>
+				<summary className='flex min-w-0 cursor-pointer select-none items-center gap-2 border-1 border-[var(--c-border)] bg-[var(--c-surface)] px-3 py-1 text-base hover:bg-[var(--c-surface-2)]'>
 					<span className='flex min-w-0 items-baseline gap-1'>
 						<span className='underline underline-offset-4 decoration-2 whitespace-nowrap'>
 							Accounts
 						</span>
 						{activeUser && (
-							<span className='w-24 truncate text-sm text-white/70 group-open:text-white'>
+							<span className='w-24 truncate text-sm text-[var(--c-text-muted)] group-open:text-[var(--c-text)]'>
 								{activeUser}
 							</span>
 						)}
 					</span>
-					<ChevronDown className='ml-1 h-3 w-3 text-white/70 transition-transform duration-150 group-open:rotate-180' />
+					<ChevronDown className='ml-1 h-3 w-3 text-[var(--c-text-muted)] transition-transform duration-150 group-open:rotate-180' />
 				</summary>
-				<div className='absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-2 rounded border border-white/20 bg-[#1f1f1f] p-3 text-left shadow-lg'>
+				<div className='absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-2 border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 text-left shadow-lg'>
 					{usernames.length === 0 ? (
 						<>
-							<div className='text-sm text-white/70'>No active accounts.</div>
-							<Link to='/login' className='hover:underline'>
+							<div className='text-sm text-[var(--c-text-muted)]'>No active accounts.</div>
+							<Link to='/login' className={menuButtonClass}>
 								Login
 							</Link>
-							<Link to='/signup' className='hover:underline'>
+							<Link to='/signup' className={menuButtonClass}>
 								Signup
 							</Link>
 						</>
 					) : (
 						<>
-							<div className='mb-1 text-sm font-semibold text-white/80'>
+							<div className='mb-1 text-sm font-semibold text-[var(--c-text-muted)]'>
 								Switch account
 							</div>
 							<div className='flex flex-col gap-1'>
@@ -172,40 +175,40 @@ export const AccountSwitcher = () => {
 												if (username !== activeUser)
 													session.switch_account(username);
 											}}
-											className={`flex w-full cursor-pointer items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-white/10 ${
+											className={`${accountButtonBaseClass} ${
 												username === activeUser
-													? 'bg-white/10 text-white'
-												: 'text-white/80'
+													? 'border-[var(--c-primary)] bg-[var(--c-surface)] text-[var(--c-primary)]'
+												: 'border-[var(--c-border)] bg-[var(--c-surface-2)] text-[var(--c-text)]'
 										}`}
 									>
 										<span>{username}</span>
 										{username === activeUser && (
-											<span className='ml-2 text-xs text-emerald-400'>
+											<span className='ml-2 text-xs text-[var(--c-primary-strong)]'>
 												Active
 											</span>
 										)}
 									</button>
 								))}
 							</div>
-							<div className='my-2 h-px bg-white/10' />
+							<div className='my-2 h-px bg-[var(--c-border)]' />
 							<button
 								type='button'
 								onClick={() => navigate('/login')}
-								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-white/80 hover:bg-white/10'
+								className={menuButtonClass}
 							>
 								Add account…
 							</button>
 							<button
 								type='button'
 								onClick={() => navigate('/signup')}
-								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-white/80 hover:bg-white/10'
+								className={menuButtonClass}
 							>
 								Sign Up
 							</button>
 							<button
 								type='button'
 								onClick={() => session.logout()}
-								className='w-full cursor-pointer rounded px-2 py-1 text-left text-sm text-red-300 hover:bg-red-500/20'
+								className={menuDangerButtonClass}
 							>
 								Logout
 							</button>

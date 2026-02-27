@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import PaymentTransaction, BailRequest
+from .models import PaymentTransaction, BailRequest, DataForReward
 
 @admin.register(PaymentTransaction)
 class PaymentTransactionAdmin(admin.ModelAdmin):
@@ -17,3 +17,6 @@ class BailRequestAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("requested_by__username",)
     ordering = ("-created_at",)
+
+
+admin.site.register(DataForReward)

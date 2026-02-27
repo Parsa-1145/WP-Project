@@ -27,7 +27,8 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
             submission=submission,
             target_permission="evidence.can_approve_bioevidence",
             order=0,
-            allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT],
+            prompt="Review this bio evidence and either verify (accept) or reject it."
         )
         submission.current_stage = 0
 

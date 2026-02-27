@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { FormInputField, FormInputChangeFn, FormField, GenericList, ListCompactCtx, form_list_decode } from './Forms'
 import { session, error_msg, error_msg_list } from './session'
 import { useModal } from './modals/ModalHost';
@@ -45,6 +45,7 @@ const subm_fields = {
 const subm_secondary_actions = {
 	GUILT_ASSESMENT: ["VIEW_CASE_DETAILS"],
 	BIO_EVIDENCE: ["VIEW_EVIDENCE"],
+	INVESTIGATION_APPROVAL: ["VIEW_CASE_DETAILS"]
 }
 const subm_types = [...Object.keys(subm_fields)];
 const submissionStatusClassMap = Object.freeze({
@@ -187,11 +188,6 @@ export function SubmissionSubmitForm({ subm0, resubmit, typeList, returnTo, onSu
 }
 
 export function SubmissionFrame({ subm, onAction, ...props }) {
-	const meta_fields = [
-		['text', 'Type', 'submission_type'],
-		['text', 'Status', 'status'],
-		['datetime', 'Created at', 'created_at'],
-	];
 	const compact = useContext(ListCompactCtx);
 	const type = subm.submission_type;
 	const type_normalized = normalizeString(type)
@@ -200,6 +196,7 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 	const last_action = subm.actions_history[0] ? subm.actions_history[0]: [];
 	const createdAtFormatted = formatDate(subm.created_at);
 	const statusClassName = getSubmissionStatusClass(subm.status);
+	const actionPrompt = typeof subm.action_prompt === 'string' ? subm.action_prompt.trim() : '';
 	
 	
 	const Process = data => (type, name, id) => FormField(type, name, data[id], { key: id, compact });
@@ -223,6 +220,14 @@ export function SubmissionFrame({ subm, onAction, ...props }) {
 				</div>
 			</div>
 			<div className='grow'>
+				{actionPrompt
+					? (
+						<div className='mb-2 border-1 border-[var(--c-warning)] bg-[var(--c-surface-2)] px-2 py-1 text-left'>
+							<div className='text-xs text-[var(--c-warning)] uppercase tracking-wide'>Current Prompt</div>
+							<div>{actionPrompt}</div>
+						</div>
+					)
+					: null}
 				{subm_fields[type].map(ProcessArr(subm.target))}
 				{type === 'DATA_REWARD'
 					? (
@@ -492,7 +497,6 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 	const [phase, setPhase] = useState(2);
 	const [str, setStr] = useState('');
 	const navigate = useNavigate();
-	const location = useLocation();
 	const modalApi = useModal();
 
 	const submitAction = (id, act, payload = {}) => {
@@ -543,24 +547,24 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		);
 	};
 
-	const openDataRewardCaseSelectModal = id => {
+	const openDataRewardCaseSelectModal = (id, actionType = 'SEND_TO_DETECTIVE') => {
 		modalApi.openNewModal(
 			<DataRewardCaseSelectModal
 				onCancel={modalApi.closeTop}
 				onSubmit={caseId => {
-					submitAction(id, 'ACCEPT', { case_id: caseId });
+					submitAction(id, actionType, { case_id: caseId });
 					modalApi.closeTop();
 				}}
 			/>
 		);
 	};
 
-	const openDataRewardAmountModal = id => {
+	const openDataRewardAmountModal = (id, actionType = 'SET_REWARD') => {
 		modalApi.openNewModal(
 			<DataRewardAmountModal
 				onCancel={modalApi.closeTop}
 				onSubmit={rewardAmount => {
-					submitAction(id, 'ACCEPT', { reward_amount: rewardAmount });
+					submitAction(id, actionType, { reward_amount: rewardAmount });
 					modalApi.closeTop();
 				}}
 			/>
@@ -584,6 +588,31 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		);
 	}
 
+	const openResubmitModal = id => {
+		modalApi.openNewModal(
+			<div style={{ width: 'min(56rem, 100%)' }}>
+				<div className='flex flex-row items-center justify-between mb-2'>
+					<h2 className='m-0'>Resubmit</h2>
+					<button className='btn' onClick={modalApi.closeTop}>close</button>
+				</div>
+				<Retrieve
+					msg="submission"
+					path={`/api/submission/${id}/`}
+					then={subm => (
+						<SubmissionSubmitForm
+							subm0={{ ...subm.target, submission_type: subm.submission_type }}
+							resubmit={subm.id}
+							onSubmitted={() => {
+								modalApi.closeTop();
+								if (onReload) onReload();
+							}}
+						/>
+					)}
+				/>
+			</div>
+		);
+	};
+
 	const getSubmissionCaseId = subm =>
 		subm?.target?.case_id
 		?? subm?.target?.case
@@ -600,6 +629,10 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 		window.scrollTo(0, 0);
 		if (act === 'ACCEPT' && subm.submission_type === 'BAIL_REQUEST') {
 			openBailAmountModal(id);
+		} else if (act === 'SEND_TO_DETECTIVE' && subm.submission_type === 'DATA_REWARD') {
+			openDataRewardCaseSelectModal(id, 'SEND_TO_DETECTIVE');
+		} else if (act === 'SET_REWARD' && subm.submission_type === 'DATA_REWARD') {
+			openDataRewardAmountModal(id, 'SET_REWARD');
 		} else if (act === 'ACCEPT' && subm.submission_type === 'DATA_REWARD') {
 			const hasCaseLinked = (subm?.actions_history || []).some(action =>
 				action?.action_type === 'ACCEPT'
@@ -608,16 +641,15 @@ export function SubmissionList({ list, title, onReload, onReturn, create_button=
 				&& action.payload.case_id !== null
 			);
 			if (hasCaseLinked)
-				openDataRewardAmountModal(id);
+				openDataRewardAmountModal(id, 'ACCEPT');
 			else
-				openDataRewardCaseSelectModal(id);
+				openDataRewardCaseSelectModal(id, 'ACCEPT');
 		} else if (act === 'ACCEPT' || act === 'APPROVE') {
 			submitAction(id, act);
 		} else if (act === 'REJECT') {
 			openRejectModal(id);
 			} else if (act === 'RESUBMIT') {
-				const params = new URLSearchParams({ redir: location.pathname }).toString();
-				navigate(`/submission/${id}/edit?${params}`);
+				openResubmitModal(id);
 			} else if (act === 'ASSESS_GUILTS') {
 				openAssessGuiltsModal(subm);
 			} else if (act === 'VIEW_CASE_DETAILS') {

@@ -37,7 +37,7 @@ class CurrentUserSerializer(ModelSerializer):
         if obj.pk in cache:
             return cache[obj.pk]
 
-        selected = BailRequest.objects.filter(requested_by=obj, status=BailRequest.Status.APPROVED).first()
+        selected = BailRequest.objects.filter(requested_by=obj).exclude(status=BailRequest.Status.PAID).first()
         cache[obj.pk] = selected
         return selected
 

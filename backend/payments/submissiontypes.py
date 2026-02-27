@@ -28,7 +28,8 @@ class BailRequestSubmissionType(BaseSubmissionType["BailRequest"]):
             submission=submission,
             target_permission="payments.can_approve_bail_request",
             order=0,
-            allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.ACCEPT, SubmissionActionType.REJECT],
+            prompt="Review this bail request and either accept it by setting an amount or reject it."
         )
         submission.current_stage = 0
         submission.save()
@@ -72,7 +73,8 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
             submission=submission,
             target_permission="payments.can_approve_data_reward",
             order=0,
-            allowed_actions=[SubmissionActionType.SEND_TO_DETECTIVE, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.SEND_TO_DETECTIVE, SubmissionActionType.REJECT],
+            prompt="Review submitted citizen details and either reject them or send them to the related case detective with a case ID."
         )
         submission.current_stage = 0
         submission.save()
@@ -80,7 +82,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
     @classmethod
     def handle_submission_action(cls, submission: Submission, action, context, **kwargs):
         if submission.current_stage == 0:
-            if action.action_type == SubmissionActionType.ACCEPT:
+            if action.action_type == SubmissionActionType.SEND_TO_DETECTIVE:
                 case_id = action.payload.get("case_id")
                 case: Case = Case.objects.get(id=case_id)
                 lead_detective = case.lead_detective
@@ -88,7 +90,8 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
                     submission=submission,
                     target_user=lead_detective,
                     order=1,
-                    allowed_actions=[SubmissionActionType.SET_REWARD, SubmissionActionType.REJECT]
+                    allowed_actions=[SubmissionActionType.SET_REWARD, SubmissionActionType.REJECT],
+                    prompt="Review the forwarded details and either set a reward amount for the reporter or reject the request."
                 )
                 submission.current_stage = 1
                 submission.save()
@@ -96,7 +99,7 @@ class DataForRewardSubmissionType(BaseSubmissionType["DataForReward"]):
                 submission.status = SubmissionStatus.REJECTED
                 submission.save()
         elif submission.current_stage == 1:
-            if action.action_type == SubmissionActionType.ACCEPT:
+            if action.action_type == SubmissionActionType.SET_REWARD:
                 reward_amount = action.payload.get("reward_amount")
                 reward = Reward.objects.create(
                     user=submission.created_by,

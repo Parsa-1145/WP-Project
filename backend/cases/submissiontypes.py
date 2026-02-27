@@ -82,7 +82,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                 submission.save()
         elif stage.order == 2:
             if action.action_type == SubmissionActionType.REJECT:
-                submission.current_stage = 1
+                submission.current_stage = 0
                 submission.save()
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status=SubmissionStatus.APPROVED
@@ -101,19 +101,22 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
             submission=submission,
             target_user=submission.created_by,
             order=0,
-            allowed_actions=[SubmissionActionType.RESUBMIT]
+            allowed_actions=[SubmissionActionType.RESUBMIT],
+            prompt="Revise this complaint with requested changes and resubmit it."
         )
         SubmissionStage.objects.create(
             submission=submission,
             target_permission="cases.complaint_initial_approve",
             order=1,
-            allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
+            allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE],
+            prompt="Perform initial complaint review and either approve it for final review or reject it with feedback."
         )
         SubmissionStage.objects.create(
             submission=submission,
             target_permission="cases.complaint_final_approve",
             order=2,
-            allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
+            allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE],
+            prompt="Perform final complaint review and decide whether to approve and open a case or reject it."
         )
 
         submission.current_stage = 1
@@ -172,7 +175,8 @@ class CrimeSceneSubmissionType(BaseSubmissionType["CrimeScene"]):
             submission=submission,
             target_permission="cases.approve_crime_scene",
             order=0,
-            allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT],
+            prompt="Review this crime scene report and either approve it to create a case or reject it."
         )
 
     @classmethod
@@ -226,13 +230,15 @@ class CaseStaffingSubmissionType(BaseSubmissionType["Case"]):
             submission=submission,
             target_permission="cases.investigate_on_case",
             order=0,
-            allowed_actions=[SubmissionActionType.ACCEPT]
+            allowed_actions=[SubmissionActionType.ACCEPT],
+            prompt="Accept this case assignment as lead detective."
         )
         SubmissionStage.objects.create(
             submission=submission,
             target_permission="cases.supervise_case",
             order=1,
-            allowed_actions=[SubmissionActionType.ACCEPT]
+            allowed_actions=[SubmissionActionType.ACCEPT],
+            prompt="Accept this case assignment as supervisor."
         )
         return super().on_submit(submission)
 
@@ -326,7 +332,8 @@ class InvestigationResultsApprovalSubmissionType(BaseSubmissionType["Investigati
             submission=submission,
             target_user=target.case.supervisor,
             order=0,
-            allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT]
+            allowed_actions=[SubmissionActionType.APPROVE, SubmissionActionType.REJECT],
+            prompt="Review the investigation results and suggested suspects, then approve or reject this proposal."
         )
 
     @classmethod
@@ -400,7 +407,8 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
             submission=submission,
             target_permission="cases.assess_suspect_guilt",
             order=0,
-            allowed_actions=[SubmissionActionType.ASSESS_GUILTS]
+            allowed_actions=[SubmissionActionType.ASSESS_GUILTS],
+            prompt="Assess suspects and submit the list of guilty suspect links."
         )
 
         if target.crime_level == target.CrimeLevel.CRITICAL:
@@ -408,7 +416,8 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
                 submission=submission,
                 target_permission="cases.approve_suspect_guilt_assessment",
                 order=1,
-                allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE]
+                allowed_actions=[SubmissionActionType.REJECT, SubmissionActionType.APPROVE],
+                prompt="Review the submitted guilt assessment for this critical case and either approve or reject it."
             )
     
     @classmethod
@@ -465,5 +474,4 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
     @classmethod
     def can_user_submit(cls, user):
         return super().can_user_submit(user) and Case.objects.filter(Q(lead_detective=user)|Q(supervisor=user)).filter(status=Case.Status.INTEROGATING_SUSPECTS).exists()
-
 

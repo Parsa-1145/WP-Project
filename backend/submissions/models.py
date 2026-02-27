@@ -18,6 +18,9 @@ class SubmissionActionType(models.TextChoices):
     ACCEPT          = "ACCEPT"
     REJECT          = "REJECT"
     RESUBMIT        = "RESUBMIT"
+    SET_REWARD        = "SET_REWARD"
+    SEND_TO_DETECTIVE = "SEND_TO_DETECTIVE"
+
 
 class Submission(models.Model):
     """
