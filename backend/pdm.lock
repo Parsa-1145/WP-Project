@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:d93bf011f761233bf286aa41823b6f774ba957c5594802e04fa98af8856e7863"
+content_hash = "sha256:504fd6ca5e7342fade3a4c2ead9cf5f40c0b20cd369cf84055ff7d6b35443bea"
 
 [[metadata.targets]]
 requires_python = "==3.13.*"
@@ -652,11 +652,11 @@ files = [
 
 [[package]]
 name = "whitenoise"
-version = "6.11.0"
-requires_python = ">=3.9"
+version = "6.12.0"
+requires_python = ">=3.10"
 summary = "Radically simplified static file serving for WSGI applications"
 groups = ["default"]
 files = [
-    {file = "whitenoise-6.11.0-py3-none-any.whl", hash = "sha256:b2aeb45950597236f53b5342b3121c5de69c8da0109362aee506ce88e022d258"},
-    {file = "whitenoise-6.11.0.tar.gz", hash = "sha256:0f5bfce6061ae6611cd9396a8231e088722e4fc67bc13a111be74c738d99375f"},
+    {file = "whitenoise-6.12.0-py3-none-any.whl", hash = "sha256:fc5e8c572e33ebf24795b47b6a7da8da3c00cff2349f5b04c02f28d0cc5a3cc2"},
+    {file = "whitenoise-6.12.0.tar.gz", hash = "sha256:f723ebb76a112e98816ff80fcea0a6c9b8ecde835f8ddda25df7a30a3c2db6ad"},
 ]
