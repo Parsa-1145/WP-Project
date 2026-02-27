@@ -82,7 +82,7 @@ class ComplaintSubmissionType(BaseSubmissionType["Complaint"]):
                 submission.save()
         elif stage.order == 2:
             if action.action_type == SubmissionActionType.REJECT:
-                submission.current_stage = 0
+                submission.current_stage = 1
                 submission.save()
             if action.action_type == SubmissionActionType.APPROVE:
                 submission.status=SubmissionStatus.APPROVED

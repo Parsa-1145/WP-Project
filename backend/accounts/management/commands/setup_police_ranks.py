@@ -88,7 +88,7 @@ class Command(BaseCommand):
             "police_chief",
             "Police Chief",
             [
-                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "crimescene", "add_crimescene"),
                 _perm("cases", "crimescene", "approve_crime_scene"),
                 _perm("cases", "case", "view_case"),
                 _perm("cases", "case", "approve_suspect_guilt_assessment"),
