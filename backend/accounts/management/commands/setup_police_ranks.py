@@ -35,7 +35,6 @@ class Command(BaseCommand):
         "Create groups for police ranks (رده های پلیس) and assign permissions. "
         "Idempotent: safe to run multiple times."
     )
-
     # group_name, display_name, list of _perm(app_label, model, codename)
     RANKS = [
         (
@@ -56,15 +55,15 @@ class Command(BaseCommand):
             "police_officer",
             "Police Officer",
             [
-                _perm("cases", "crimescene", "approve_crime_scene"),
-                _perm("cases", "case", "view_case"),
+                _perm("cases", "crimescene", "add_crime_scene"),
+                _perm("cases", "complaint", "complaint_final_approve"),
             ],
         ),
         (
             "detective",
             "Detective",
             [
-                _perm("cases", "case", "view_case"),
+                _perm("cases", "crimescene", "add_crime_scene"),
                 _perm("cases", "case", "investigate_on_case"),
             ],
         ),
@@ -72,36 +71,34 @@ class Command(BaseCommand):
             "sergeant",
             "Sergeant",
             [
-                _perm("cases", "case", "view_case"),
+                _perm("cases", "crimescene", "add_crime_scene"),
                 _perm("cases", "case", "supervise_case"),
-                _perm("cases", "case", "add_case_acceptance_submission"),
-                _perm("cases", "case", "assess_suspect_guilt"),
             ],
         ),
         (
             "captain",
             "Captain",
             [
+                _perm("cases", "crimescene", "add_crime_scene"),
                 _perm("cases", "case", "view_case"),
-                _perm("cases", "case", "approve_suspect_guilt_assessment"),
-                _perm("cases", "case", "jury_case"),
+                _perm("cases", "case", "assess_suspect_guilt"),
             ],
         ),
         (
             "police_chief",
             "Police Chief",
             [
+                _perm("cases", "crimescene", "add_crimescene"),
+                _perm("cases", "crimescene", "approve_crime_scene"),
                 _perm("cases", "case", "view_case"),
                 _perm("cases", "case", "approve_suspect_guilt_assessment"),
-                _perm("cases", "case", "jury_case"),
-                _perm("cases", "case", "supervise_case"),
-                _perm("cases", "case", "assess_suspect_guilt"),
             ],
         ),
         (
             "judge",
             "Judge",
             [
+                _perm("cases", "crimescene", "add_crime_scene"),
                 _perm("cases", "case", "view_case"),
                 _perm("cases", "case", "jury_case"),
             ],

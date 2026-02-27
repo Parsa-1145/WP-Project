@@ -82,7 +82,7 @@ img {
   }
 
   .user-card{
-    @apply flex flex-col gap-2 w-full md:w-60 min-h-40 bg-[var(--c-surface)] p-2 border-1 border-[var(--c-border)] box-border;
+    @apply flex flex-col gap-2 w-full md:w-60 min-h-40 bg-[var(--c-surface)] p-0 border-1 border-[var(--c-border)] box-border;
   }
 
   .tab-list{
@@ -99,6 +99,10 @@ img {
 
   .tab-link-active{
     @apply bg-white text-black border-white;
+  }
+
+  .header-btn{
+    @apply bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)
   }
 
   .generic-list-item{
