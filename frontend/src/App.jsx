@@ -227,16 +227,16 @@ const App = () => {
 		<div className='w-screen h-screen m-0 px-18 py-12 box-border overflow-hidden'>
 			<div className='flex flex-col h-full gap-2 '>
 				<div className='shrink w-full flex flex-row'>
-					<div className='tab-list grow' role='tablist' aria-label='Main navigation tabs'>
+					<div className='grow flex flex-row gap-2' role='tablist' aria-label='Main navigation tabs'>
 						<Retrieve msg="modules" path={`/api/front-modules/`} then={({ modules }) => (<>
-							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/inbox')}>Inbox</button>
-							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/submission/mine')}>Submissions</button>
-							<button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/most-wanted')}>Most Wanted</button>
+							<button className='header-btn' onClick={() => navigate('/submission/inbox')}>Inbox</button>
+							<button className='header-btn' onClick={() => navigate('/submission/mine')}>Submissions</button>
+							<button className='header-btn' onClick={() => navigate('/most-wanted')}>Most Wanted</button>
 
-							{modules.includes("PROFILE") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/profile')}>Profile</button> : null}
-							{modules.includes("COMPLAINANT_CASES") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/complainant')}>My Cases</button> : null}
-							{modules.includes("ASSIGNED_CASES") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/cases/list')}>Assigned Cases</button> : null}
-							{modules.includes("JUDICARY") ? <button className='bg-(--c-primary-strong) text-2xl p-2 text-(--c-surface) hover:bg-(--c-primary)' onClick={() => navigate('/judicary')}>Judicary</button> : null}
+							{modules.includes("PROFILE") ? <button className='header-btn' onClick={() => navigate('/profile')}>Profile</button> : null}
+							{modules.includes("COMPLAINANT_CASES") ? <button className='header-btn' onClick={() => navigate('/cases/complainant')}>My Cases</button> : null}
+							{modules.includes("ASSIGNED_CASES") ? <button className='header-btn' onClick={() => navigate('/cases/list')}>Assigned Cases</button> : null}
+							{modules.includes("JUDICARY") ? <button className='header-btn' onClick={() => navigate('/judicary')}>Judicary</button> : null}
 						</>)} />
 					</div>
 					<AccountSwitcher />

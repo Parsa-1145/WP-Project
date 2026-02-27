@@ -150,7 +150,7 @@ export const AccountSwitcher = () => {
 					</span>
 					<ChevronDown className='ml-1 h-3 w-3 text-[var(--c-text-muted)] transition-transform duration-150 group-open:rotate-180' />
 				</summary>
-				<div className='absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-2 border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 text-left shadow-lg'>
+				<div className='absolute left-1/2 -translate-x-1/2 z-20 mt-2 flex min-w-52 flex-col gap-2 border-1 border-[var(--c-border)] bg-[var(--c-surface)] p-3 text-left shadow-lg'>
 					{usernames.length === 0 ? (
 						<>
 							<div className='text-sm text-[var(--c-text-muted)]'>No active accounts.</div>
