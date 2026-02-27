@@ -371,7 +371,6 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
         case_id = data.get("case_id")
         if case_id is None:
             raise ValidationError({"case_id":"this field is required"})
-        
         case = Case.objects.get(pk=case_id)
 
         if case is None:
@@ -468,3 +467,5 @@ class GuiltAssesmentSubmissionType(BaseSubmissionType["Case"]):
     @classmethod
     def can_user_submit(cls, user):
         return super().can_user_submit(user) and Case.objects.filter(Q(lead_detective=user)|Q(supervisor=user)).filter(status=Case.Status.INTEROGATING_SUSPECTS).exists()
+
+

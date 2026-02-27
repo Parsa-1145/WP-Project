@@ -32,9 +32,13 @@ class BailRequest(models.Model):
 
     pass
 
+
+
+
 class Reward(models.Model):
     # Represents a reward for a citizen who provided valid info
     # Stores the generated Unique ID and the calculated amount
+
     class Status(models.TextChoices):
         PENDING = 'PENDING', "Pending"
         CLAIMED = 'CLAIMED', "Claimed"
@@ -78,6 +82,22 @@ class Reward(models.Model):
         self.status = self.Status.CLAIMED
         self.claimed_at = timezone.now()
         self.save(update_fields=["status", "claimed_at"])
+
+
+class DataForReward(models.Model):
+    class Meta:
+        permissions = [
+            ("can_approve_data_reward", "Can approve data for reward submissions"),
+        ]
+    description = models.TextField()
+    reward = models.ForeignKey(
+        Reward,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="data_for_rewards",
+    )
+
 
 class PaymentTransaction(models.Model):
     class Status(models.TextChoices):

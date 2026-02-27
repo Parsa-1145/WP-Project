@@ -217,87 +217,82 @@ class RewardModelTestCase(APITestCase):
         assert reward.claimed_at is None
 
 
-class RewardCreationOnEvidenceApprovalTestCase(APITestCase):
+class DataRewardSubmissionRewardCreationTestCase(APITestCase):
     """
-    When evidence (e.g. bio evidence) is submitted and then approved,
-    a Reward should be created for the submitter, linked to that submission.
+    When a DATA_REWARD submission reaches its second stage and is accepted,
+    a Reward should be created for the submitter and linked to the submission
+    and DataForReward instance.
     """
-
-    @classmethod
-    def add_perms(cls, user: User, *codenames):
-        for perm in codenames:
-            if "." in perm:
-                app_label, codename = perm.split(".", 1)
-                p = Permission.objects.get(
-                    content_type__app_label=app_label, codename=codename
-                )
-            else:
-                p = Permission.objects.get(codename=perm)
-            user.user_permissions.add(p)
 
     @classmethod
     def setUpTestData(cls):
         from cases.models import Case
-        from evidence.models import BioEvidence
-        from evidence.submissiontypes import BioEvidenceSubmissionType
+        from payments.models import DataForReward
+        from payments.submissiontypes import DataForRewardSubmissionType
 
         cls.citizen = User.objects.create_user(
-            username="evidence_citizen",
+            username="data_reward_citizen",
             password="testpass",
             status=User.Status.FREE,
         )
-        cls.approver = User.objects.create_user(
-            username="evidence_approver",
+        cls.lead_detective = User.objects.create_user(
+            username="lead_detective",
             password="testpass",
             status=User.Status.FREE,
         )
-        cls.add_perms(cls.approver, "evidence.can_approve_bioevidence")
 
         cls.case = Case.objects.create(
-            title="Reward test case",
-            description="Case for reward creation test",
+            title="Data reward case",
+            description="Case for data reward test",
             crime_datetime=timezone.now(),
+            lead_detective=cls.lead_detective,
         )
-        cls.bio_evidence = BioEvidence.objects.create(
-            case=cls.case,
-            recorder=cls.approver,
-            title="Bio evidence",
-            description="Sample bio evidence",
+
+        cls.data = DataForReward.objects.create(
+            description="Helpful information about a suspect",
         )
+
         cls.submission = Submission.objects.create(
-            submission_type=BioEvidenceSubmissionType.type_key,
-            object_id=cls.bio_evidence.pk,
+            submission_type=DataForRewardSubmissionType.type_key,
+            object_id=cls.data.pk,
             created_by=cls.citizen,
             status=SubmissionStatus.PENDING,
             current_stage=0,
         )
-        SubmissionStage.objects.create(
+
+        # Initialize workflow (stage 0) using the submission type's on_submit hook
+        DataForRewardSubmissionType.on_submit(cls.submission)
+
+        # Simulate first-stage approval to move to stage 1 and assign the lead detective
+        first_stage_action = SubmissionAction.objects.create(
             submission=cls.submission,
-            target_permission="evidence.can_approve_bioevidence",
-            order=0,
-            allowed_actions=[
-                SubmissionActionType.ACCEPT,
-                SubmissionActionType.REJECT,
-            ],
+            action_type=SubmissionActionType.ACCEPT,
+            payload={"case_id": cls.case.id},
+            created_by=cls.lead_detective,
+        )
+        DataForRewardSubmissionType.handle_submission_action(
+            cls.submission, first_stage_action, context=None
         )
 
-    def test_reward_created_when_evidence_approved(self):
-        """Approving an evidence submission creates a Reward for the submitter."""
-        from evidence.submissiontypes import BioEvidenceSubmissionType
+    def test_reward_created_on_second_stage_accept(self):
+        """Accepting DATA_REWARD at stage 1 creates a Reward."""
+        from payments.submissiontypes import DataForRewardSubmissionType
 
-        reward_amount = 500_000
+        reward_amount = 700_000
         action = SubmissionAction.objects.create(
             submission=self.submission,
             action_type=SubmissionActionType.ACCEPT,
-            payload={"reward_amount": reward_amount, "coroner_result": "Verified."},
-            created_by=self.approver,
+            payload={"reward_amount": reward_amount},
+            created_by=self.lead_detective,
         )
 
-        BioEvidenceSubmissionType.handle_submission_action(
+        DataForRewardSubmissionType.handle_submission_action(
             self.submission, action, context=None
         )
 
         self.submission.refresh_from_db()
+        self.data.refresh_from_db()
+
         assert self.submission.status == SubmissionStatus.ACCEPTED
 
         rewards = list(Reward.objects.filter(submission=self.submission))
@@ -309,3 +304,4 @@ class RewardCreationOnEvidenceApprovalTestCase(APITestCase):
         assert reward.status == Reward.Status.PENDING
         assert reward.claimed_at is None
         assert reward.unique_code is not None
+        assert self.data.reward == reward

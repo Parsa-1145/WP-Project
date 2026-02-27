@@ -47,16 +47,6 @@ class BioEvidenceSubmissionType(BaseSubmissionType["BioEvidence"]):
             submission.status = SubmissionStatus.ACCEPTED
             submission.save()
 
-            # Create reward for the citizen who provided the evidence (submission creator)
-            if submission.created_by_id:
-                from payments.models import Reward
-                amount = action.payload.get("reward_amount") or 1_000_000
-                Reward.objects.create(
-                    user=submission.created_by,
-                    submission=submission,
-                    amount=amount,
-                )
-
         elif action.action_type == SubmissionActionType.REJECT :
             serializer = BioEvidenceSerializer(
                 instance=cls.get_object(submission.object_id),

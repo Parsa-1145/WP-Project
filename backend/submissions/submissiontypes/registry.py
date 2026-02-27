@@ -1,6 +1,6 @@
 from cases.submissiontypes import ComplaintSubmissionType, GuiltAssesmentSubmissionType, CrimeSceneSubmissionType, BaseSubmissionType, CaseStaffingSubmissionType, InvestigationResultsApprovalSubmissionType
 from evidence.submissiontypes import BioEvidenceSubmissionType
-from payments.submissiontypes import BailRequestSubmissionType
+from payments.submissiontypes import BailRequestSubmissionType, DataForRewardSubmissionType
 
 SUBMISSION_TYPES: dict[str, type[BaseSubmissionType]] = {
     ComplaintSubmissionType.type_key: ComplaintSubmissionType,
@@ -10,6 +10,7 @@ SUBMISSION_TYPES: dict[str, type[BaseSubmissionType]] = {
     BioEvidenceSubmissionType.type_key: BioEvidenceSubmissionType,
     GuiltAssesmentSubmissionType.type_key: GuiltAssesmentSubmissionType,
     BailRequestSubmissionType.type_key: BailRequestSubmissionType,
+    DataForRewardSubmissionType.type_key: DataForRewardSubmissionType,
 }
 
 
